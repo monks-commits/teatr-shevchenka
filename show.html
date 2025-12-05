@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Вистава — шаблон квиткового сервісу</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div id="site-header"></div>
+  <script type="module" src="scripts/include.js"></script>
+
+  <main class="container">
+    <div id="wrap" class="section"></div>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script>
+  (async()=>{
+    const q = new URLSearchParams(location.search);
+    const slug = q.get('show');
+    const el = document.getElementById('wrap');
+
+    if (!slug){
+      el.innerHTML = '<p>Немає параметра <code>show</code>.</p>';
+      return;
+    }
+
+    const r = await fetch(`data/shows/${slug}.json`, {cache:'no-store'});
+    if (!r.ok){
+      el.innerHTML = '<p>Не знайдено опис вистави.</p>';
+      return;
+    }
+    const s = await r.json();
+
+    const poster = s.poster ? s.poster.replace(/^\/+/, '') : '';
+    const place  = [s.city, s.theatre, s.stage].filter(Boolean).join(' • ');
+    const title  = s.title || '';
+
+    el.innerHTML = `
+      <article class="show-hero">
+        <div class="hero" style="display:grid;gap:12px;align-items:flex-start">
+          ${poster ? `
+          <div class="show-hero__media">
+            <img src="${poster}" alt="${title}"
+                 style="width:100%;max-width:320px;border-radius:12px;object-fit:cover;background:#eee"
+                 onerror="this.style.display='none'"/>
+          </div>` : ''}
+
+          <div class="show-hero__content">
+            <h1 style="margin-top:0">${title}</h1>
+            ${place ? `<p class="meta" style="margin:6px 0 12px">${place}</p>` : ''}
+
+            <div class="content">
+              ${s.description || ''}
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+              <a class="btn" href="spectacles/hall.html?show=${encodeURIComponent(slug)}">
+                Вибрати місця
+              </a>
+              <a class="btn secondary" href="afisha.html">Назад до афіші</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    `;
+  })();
+  </script>
+</body>
+</html>

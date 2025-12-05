@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Підтвердження та оплата — шаблон</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <script type="module" src="scripts/include.js"></script>
+
+  <main class="main">
+    <section class="section">
+      <div class="container">
+        <h1>Підтвердження та оплата</h1>
+
+        <section class="card">
+          <p class="title" style="font-weight:700;font-size:18px;margin:0 0 8px;">Вистава</p>
+          <p id="order-show"   class="meta">—</p>
+          <p id="order-seats"  class="meta" style="margin-top:4px;">Місця: —</p>
+          <p id="order-amount" class="meta" style="margin-top:4px;">Сума до сплати: — грн</p>
+          <p class="meta" style="margin-top:6px;">Номер замовлення: <span id="order-id">—</span></p>
+        </section>
+
+        <section class="card">
+          <p class="title" style="font-weight:700;font-size:18px;margin:0 0 8px;">Оплата онлайн</p>
+          <p class="meta">Тут буде кнопка LiqPay або іншого платіжного сервісу (після підключення ключів).</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const show     = qs.get("show")     || "";
+    const seatsRaw = qs.get("seats")    || "";
+    const amount   = qs.get("amount")   || "0";
+    const order_id = qs.get("order_id") || ("ORD-" + Date.now());
+
+    const seatPretty = seatsRaw
+      .split(",")
+      .filter(Boolean)
+      .map(s => {
+        const [r,c] = s.split("_");
+        return `Ряд ${r}, місце ${c}`;
+      })
+      .join("; ");
+
+    document.getElementById("order-show").textContent   = show || "Вистава";
+    document.getElementById("order-seats").textContent  = "Місця: " + (seatPretty || "—");
+    document.getElementById("order-amount").textContent = "Сума до сплати: " + amount + " грн";
+    document.getElementById("order-id").textContent     = order_id;
+  </script>
+</body>
+</html>

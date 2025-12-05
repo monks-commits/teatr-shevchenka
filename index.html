@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Шаблон квиткового сервісу</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <script type="module" src="scripts/include.js"></script>
+
+  <main class="main">
+    <section class="section">
+      <div class="container" style="text-align:center;">
+        <h1>Онлайн-продаж театральних квитків</h1>
+        <p class="meta">
+          Універсальний шаблон сайту для театрів та квиткових сервісів.
+          Оберіть виставу, виберіть місця на схемі залу та оплатіть квитки онлайн.
+        </p>
+        <p style="margin-top:16px;">
+          <a class="btn" href="afisha.html">Перейти до афіші</a>
+          <a class="btn secondary" href="howto.html" style="margin-left:8px;">Як це працює</a>
+        </p>
+
+        <div class="card" style="text-align:left;margin-top:32px;">
+          <h2>Як використовувати цей шаблон</h2>
+          <p>Це універсальний шаблон сайту для онлайн-продажу квитків. Ви можете:</p>
+          <ul>
+            <li>налаштувати афішу через файл <code>/data/afisha.json</code>;</li>
+            <li>додати описи вистав у <code>/data/shows/&lt;slug&gt;.json</code>;</li>
+            <li>налаштувати схему залу у <code>/spectacles/hall.html</code>;</li>
+            <li>змінити реквізити та юридичні документи на свої дані.</li>
+          </ul>
+          <p>У фінальному проєкті замініть текст, логотипи та контакти на дані конкретного театру або сервісу.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+</body>
+</html>
