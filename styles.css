@@ -194,3 +194,13 @@ body {
   .header-inner{flex-direction:column;align-items:flex-start;height:auto;padding:8px 0;}
   .nav__list{margin-top:6px;flex-wrap:wrap;}
 }
+.hall-center{
+  display:flex;
+  justify-content:center;
+}
+
+/* чуть минимальной ширины, чтобы не сжимались */
+#amphi-block,
+#balcony-block{
+  min-width:420px;
+}
