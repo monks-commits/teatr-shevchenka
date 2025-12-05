@@ -1,0 +1,12 @@
+[
+  {
+    "show": "demo",
+    "title": "Демо вистава",
+    "city": "Місто",
+    "theatre": "Назва театру",
+    "stage": "Велика сцена",
+    "date": "2025-12-15",
+    "time": "18:00",
+    "poster": "images/poster-demo.jpg"
+  }
+]
