@@ -2,9 +2,177 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Схема залу — шаблон</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Схема залу — Театр ім. Т. Г. Шевченка</title>
   <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .hall-layout{
+      display:grid;
+      gap:20px;
+    }
+    @media (min-width:900px){
+      .hall-layout{
+        grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);
+        align-items:flex-start;
+      }
+    }
+    .hall-scroll{
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .hall-inner{
+      width:max(820px,100%);
+      background:#e5e7eb;
+      border-radius:16px;
+      padding:16px 16px 24px;
+    }
+    .hall-title{
+      text-align:center;
+      font-weight:600;
+      margin-bottom:10px;
+    }
+    .hall-section-label{
+      text-align:center;
+      font-size:14px;
+      font-weight:600;
+      margin:6px 0;
+      color:#4b5563;
+    }
+    .hall-grid{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .hall-row{
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+    .row-label{
+      width:22px;
+      flex:0 0 22px;
+      text-align:right;
+      font-size:12px;
+      color:#4b5563;
+    }
+    .seat-row{
+      display:flex;
+      gap:4px;
+      flex-wrap:nowrap;
+    }
+    .seat{
+      width:26px;
+      height:26px;
+      border-radius:6px;
+      background:#fff;
+      border:1px solid #d1d5db;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .seat.selected{
+      background:#2563eb;
+      color:#fff;
+      border-color:#2563eb;
+    }
+    .seat.taken{
+      background:#9ca3af;
+      color:#fff;
+      cursor:not-allowed;
+    }
+    /* зоны по цвету */
+    .seat.zone-front{background:#facc15;}
+    .seat.zone-mid{background:#60a5fa;}
+    .seat.zone-back{background:#a5b4fc;}
+    .seat.zone-front.selected,
+    .seat.zone-mid.selected,
+    .seat.zone-back.selected{
+      background:#2563eb;
+      color:#fff;
+      border-color:#2563eb;
+    }
+
+    .order-box{
+      background:#fff;
+      border-radius:16px;
+      padding:16px;
+      box-shadow:0 10px 25px rgba(15,23,42,0.05);
+      border:1px solid #e5e7eb;
+    }
+    .order-title{
+      font-weight:600;
+      font-size:18px;
+      margin:0 0 8px;
+    }
+    .order-meta{
+      font-size:14px;
+      color:#6b7280;
+      margin-bottom:10px;
+    }
+    .order-seats{
+      font-size:14px;
+      margin:8px 0 10px;
+    }
+    .order-seats ul{
+      margin:4px 0 0;
+      padding-left:18px;
+    }
+    .order-total{
+      font-weight:600;
+      margin-top:6px;
+    }
+    .order-hint{
+      font-size:13px;
+      color:#6b7280;
+      margin-top:8px;
+    }
+    .btn-primary{
+      background:#2563eb;
+      color:#fff;
+      border:none;
+      border-radius:999px;
+      padding:10px 20px;
+      font-weight:600;
+      cursor:pointer;
+    }
+    .btn-primary:disabled{
+      background:#9ca3af;
+      cursor:not-allowed;
+    }
+
+    .row-price-list{
+      margin-top:16px;
+      padding:12px 14px;
+      background:#f7f7f8;
+      border-radius:12px;
+      font-size:14px;
+    }
+    .row-price{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:4px 0;
+      border-bottom:1px dashed #e2e2e2;
+    }
+    .row-price:last-child{border-bottom:0;}
+    .row-price .dots{
+      flex:1 1 auto;
+      border-bottom:1px dotted #d7d7d7;
+      height:0;
+      transform:translateY(-2px);
+    }
+
+    .scene-label{
+      margin-top:10px;
+      text-align:center;
+      font-size:14px;
+      font-weight:600;
+      color:#374151;
+    }
+  </style>
 </head>
 <body>
   <div id="site-header"></div>
@@ -12,36 +180,44 @@
 
   <main class="main">
     <section class="section">
-      <div class="container" style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
-        <div style="flex:1 1 380px; min-width:320px;">
-          <h1>Схема залу</h1>
-          <div id="hall" class="hall-wrapper">
+      <div class="container">
+        <h1>Схема залу</h1>
+
+        <div class="hall-layout">
+          <!-- левая часть: схема -->
+          <div>
             <div class="hall-scroll">
               <div class="hall-inner">
-                <div id="hall-grid"></div>
+                <div class="hall-title">Партер</div>
+                <div id="parter-grid" class="hall-grid"></div>
+
+                <div class="scene-label">Сцена</div>
+
+                <div class="hall-title" style="margin-top:18px;">Балкон</div>
+                <div id="balcony-grid" class="hall-grid"></div>
               </div>
             </div>
-            <p class="meta" style="margin-top:8px;">
-              Натисніть на місця, щоб додати або прибрати їх з замовлення.
-            </p>
-            <div id="rowPrices" class="row-price-list"></div>
           </div>
+
+          <!-- правая часть: заказ -->
+          <aside class="order-box">
+            <p class="order-title">Ваше замовлення</p>
+            <p id="show-info" class="order-meta">Вистава: —</p>
+            <div class="order-seats">
+              Обрані місця:
+              <ul id="seat-list"></ul>
+            </div>
+            <p id="order-total" class="order-total">Сума: 0 грн</p>
+            <p class="order-hint">
+              Натисніть на місця в залі, щоб додати їх до замовлення.
+            </p>
+            <button id="go-order" class="btn-primary" disabled>
+              Перейти до оформлення
+            </button>
+          </aside>
         </div>
 
-        <aside style="flex:0 0 320px;max-width:360px;">
-          <h2 style="margin-top:0;">Ваше замовлення</h2>
-          <p id="summary-show" class="meta"></p>
-          <p id="summary-seats" class="meta">Обрані місця: —</p>
-          <p id="summary-amount" class="meta">Сума: 0 грн</p>
-
-          <button id="go-order" class="button-primary" disabled>
-            Перейти до оформлення
-          </button>
-
-          <p class="meta" style="margin-top:8px;font-size:13px;">
-            Кнопка стане активною, коли ви оберете хоча б одне місце.
-          </p>
-        </aside>
+        <div id="legend" class="row-price-list"></div>
       </div>
     </section>
   </main>
@@ -49,123 +225,222 @@
   <div id="site-footer"></div>
 
   <script>
-    const qs   = new URLSearchParams(location.search);
-    const show = qs.get("show")  || "demo";
-    const title = qs.get("title") || "Демо вистава";
-
-    document.getElementById("summary-show").textContent =
-      "Вистава: " + (title || show);
-
-    const rowsConfig = [
-      { row: 1, seats: 12, price: 300 },
-      { row: 2, seats: 12, price: 300 },
-      { row: 3, seats: 12, price: 280 },
-      { row: 4, seats: 12, price: 260 },
-      { row: 5, seats: 12, price: 240 },
-      { row: 6, seats: 12, price: 220 },
-      { row: 7, seats: 12, price: 220 },
-      { row: 8, seats: 12, price: 200 },
-      { row: 9, seats: 12, price: 200 },
-      { row:10, seats: 12, price: 180 }
-    ];
-
-    const hallGrid  = document.getElementById("hall-grid");
-    const rowPrices = document.getElementById("rowPrices");
-
-    hallGrid.innerHTML = rowsConfig.map(r => {
-      const seatsHtml = Array.from({length: r.seats}, (_,i) => {
-        const seat = i+1;
-        const id   = `${r.row}_${seat}`;
-        return `<button type="button"
-                         class="seat"
-                         data-id="${id}"
-                         data-row="${r.row}"
-                         data-seat="${seat}"
-                         data-price="${r.price}">
-                  ${seat}
-                </button>`;
-      }).join("");
-
-      return `
-        <div class="hall-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <div class="row-label" style="width:26px;font-size:12px;color:#4b5563;">${r.row}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${seatsHtml}</div>
-        </div>`;
-    }).join("");
-
-    rowPrices.innerHTML = rowsConfig.map(r => `
-      <div class="row-price">
-        <span>Ряд ${r.row}</span>
-        <span class="dots"></span>
-        <b>${r.price} грн</b>
-      </div>
-    `).join("");
-
-    const selected = new Set();
-
-    function updateSummary() {
-      const seatsArr = Array.from(selected)
-        .map(id => {
-          const [r,s] = id.split("_");
-          return { row: Number(r), seat: Number(s) };
-        })
-        .sort((a,b) => a.row - b.row || a.seat - b.seat);
-
-      const btn = document.getElementById("go-order");
-      if (!seatsArr.length) {
-        document.getElementById("summary-seats").textContent  = "Обрані місця: —";
-        document.getElementById("summary-amount").textContent = "Сума: 0 грн";
-        btn.disabled = true;
-        return;
-      }
-
-      const txt = seatsArr
-        .map(s => `Ряд ${s.row}, місце ${s.seat}`)
-        .join("; ");
-
-      const total = seatsArr.reduce((sum, s) => {
-        const cfg = rowsConfig.find(r => r.row === s.row);
-        return sum + (cfg ? cfg.price : 0);
-      }, 0);
-
-      document.getElementById("summary-seats").textContent  = "Обрані місця: " + txt;
-      document.getElementById("summary-amount").textContent = "Сума: " + total + " грн";
-      btn.disabled = false;
+    // --- Конфігuration залу: зони та ціни ---
+    // Для простоти: один театр, одна схема.
+    // Партер: 18 рядів, 18 місць у ряду.
+    const PARTER_ROWS = [];
+    for (let row = 1; row <= 18; row++) {
+      let zone = "front";   // ближче до сцени
+      let price = 350;
+      if (row >= 7 && row <= 12) { zone = "mid"; price = 320; }
+      if (row >= 13) { zone = "back"; price = 280; }
+      PARTER_ROWS.push({
+        section: "Партер",
+        rowLabel: row,
+        seats: 18,
+        zone,
+        price
+      });
     }
 
-    hallGrid.addEventListener("click", (e) => {
-      const btn = e.target.closest(".seat");
-      if (!btn) return;
+    // Балкон: 8 рядів, 20 місць, дешевше
+    const BALCONY_ROWS = [];
+    for (let row = 1; row <= 8; row++) {
+      BALCONY_ROWS.push({
+        section: "Балкон",
+        rowLabel: row,
+        seats: 20,
+        zone: "back",
+        price: 200
+      });
+    }
 
-      const id = btn.dataset.id;
-      if (selected.has(id)) {
-        selected.delete(id);
-        btn.classList.remove("selected");
+    // відповідність zone -> CSS клас + текст для легенди
+    const ZONES = {
+      front: { class: "zone-front", label: "Партер, ряди 1–6", price: 350 },
+      mid:   { class: "zone-mid",   label: "Партер, ряди 7–12", price: 320 },
+      back:  { class: "zone-back",  label: "Партер, ряди 13–18 + балкон", price: 200 } // для легенди трохи узагальнюємо
+    };
+
+    // --- стан вибраних місць ---
+    const selected = []; // {section,row,seat,price}
+
+    function renderRows(containerId, rows) {
+      const box = document.getElementById(containerId);
+      box.innerHTML = "";
+      rows.forEach(r => {
+        const rowEl = document.createElement("div");
+        rowEl.className = "hall-row";
+
+        const labelEl = document.createElement("div");
+        labelEl.className = "row-label";
+        labelEl.textContent = r.rowLabel;
+        rowEl.appendChild(labelEl);
+
+        const seatsEl = document.createElement("div");
+        seatsEl.className = "seat-row";
+
+        for (let s = 1; s <= r.seats; s++) {
+          const seatEl = document.createElement("div");
+          seatEl.className = "seat " + (ZONES[r.zone]?.class || "");
+          seatEl.textContent = s;
+
+          seatEl.dataset.section = r.section;
+          seatEl.dataset.row = r.rowLabel;
+          seatEl.dataset.seat = s;
+          seatEl.dataset.price = r.price;
+
+          seatEl.addEventListener("click", () => onSeatClick(seatEl));
+          seatsEl.appendChild(seatEl);
+        }
+
+        rowEl.appendChild(seatsEl);
+        box.appendChild(rowEl);
+      });
+    }
+
+    function onSeatClick(el) {
+      if (el.classList.contains("taken")) return;
+
+      const section = el.dataset.section;
+      const row = Number(el.dataset.row);
+      const seat = Number(el.dataset.seat);
+      const price = Number(el.dataset.price);
+
+      const key = section + "-" + row + "-" + seat;
+      const idx = selected.findIndex(x => x.key === key);
+
+      if (idx >= 0) {
+        // прибрати
+        selected.splice(idx, 1);
+        el.classList.remove("selected");
       } else {
-        selected.add(id);
-        btn.classList.add("selected");
+        selected.push({ key, section, row, seat, price });
+        el.classList.add("selected");
       }
-      updateSummary();
-    });
+      updateSidebar();
+    }
 
-    document.getElementById("go-order").addEventListener("click", () => {
-      const seatsArr = Array.from(selected);
-      if (!seatsArr.length) return;
+    function updateSidebar() {
+      const list = document.getElementById("seat-list");
+      const totalEl = document.getElementById("order-total");
+      const btn = document.getElementById("go-order");
 
-      const total = Array.from(selected).reduce((sum, id) => {
-        const [r] = id.split("_");
-        const cfg = rowsConfig.find(x => x.row === Number(r));
-        return sum + (cfg ? cfg.price : 0);
-      }, 0);
+      list.innerHTML = "";
 
-      const url = new URL("../order.html", location.href);
-      url.searchParams.set("show", show);
-      url.searchParams.set("title", title);
-      url.searchParams.set("seats", seatsArr.join(","));
-      url.searchParams.set("amount", String(total));
+      let total = 0;
+      selected.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.section}, ряд ${item.row}, місце ${item.seat} — ${item.price} грн`;
+        list.appendChild(li);
+        total += item.price;
+      });
 
-      location.href = url.toString();
-    });
+      totalEl.textContent = "Сума: " + total + " грн";
+      btn.disabled = selected.length === 0;
+    }
+
+    function renderLegend() {
+      const el = document.getElementById("legend");
+      el.innerHTML = "";
+
+      const usedZones = {
+        front: false,
+        mid: false,
+        back: false
+      };
+
+      PARTER_ROWS.forEach(r => {
+        if (usedZones[r.zone] === false) usedZones[r.zone] = true;
+      });
+      BALCONY_ROWS.forEach(r => {
+        if (usedZones[r.zone] === false) usedZones[r.zone] = true;
+      });
+
+      const order = ["front", "mid", "back"];
+      order.forEach(z => {
+        if (!usedZones[z]) return;
+        const data = ZONES[z];
+        const rowEl = document.createElement("div");
+        rowEl.className = "row-price";
+
+        const label = document.createElement("span");
+        label.textContent = data.label;
+
+        const dots = document.createElement("span");
+        dots.className = "dots";
+
+        const price = document.createElement("span");
+        price.innerHTML = `<b>${data.price} грн</b>`;
+
+        rowEl.appendChild(label);
+        rowEl.appendChild(dots);
+        rowEl.appendChild(price);
+        el.appendChild(rowEl);
+      });
+
+      const note = document.createElement("p");
+      note.style.marginTop = "8px";
+      note.style.fontSize = "12px";
+      note.style.color = "#6b7280";
+      note.textContent = "Фактичні ціни за секторами можна змінити у конфігурації залу.";
+      el.appendChild(note);
+    }
+
+    // --- прив'язка до вистави / show ---
+    const qs = new URLSearchParams(location.search);
+    const showSlug = qs.get("show") || "";
+    let showTitle = "";
+    let showDate = "";
+    let showTime = "";
+
+    async function loadShowInfo() {
+      try {
+        const res = await fetch("../data/afisha.json", { cache: "no-store" });
+        if (!res.ok) return;
+        const list = await res.json();
+        const item = (list || []).find(x => String(x.id) === showSlug);
+        if (!item) return;
+        showTitle = item.title || showSlug;
+        showDate = item.date || "";
+        showTime = item.time || "";
+      } catch (e) {
+        console.error(e);
+      }
+      const infoEl = document.getElementById("show-info");
+      const parts = [];
+      if (showTitle) parts.push(showTitle);
+      if (showDate || showTime) parts.push([showDate, showTime].filter(Boolean).join(" • "));
+      infoEl.textContent = "Вистава: " + (parts.join(" — ") || showSlug || "—");
+    }
+
+    function initOrderButton() {
+      const btn = document.getElementById("go-order");
+      btn.addEventListener("click", () => {
+        if (!selected.length) return;
+
+        const amount = selected.reduce((sum, s) => sum + s.price, 0);
+
+        const seatsHuman = selected
+          .map(s => `${s.section}, ряд ${s.row}, місце ${s.seat}`)
+          .join("; ");
+
+        const url = new URL("../order.html", location.href);
+        if (showSlug) url.searchParams.set("show", showSlug);
+        if (showTitle) url.searchParams.set("title", showTitle);
+        url.searchParams.set("seats", seatsHuman);
+        url.searchParams.set("amount", String(amount));
+
+        location.href = url.toString();
+      });
+    }
+
+    // --- старт ---
+    renderRows("parter-grid", PARTER_ROWS);
+    renderRows("balcony-grid", BALCONY_ROWS);
+    renderLegend();
+    loadShowInfo();
+    initOrderButton();
   </script>
 </body>
 </html>
