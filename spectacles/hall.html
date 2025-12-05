@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Схема залу</title>
 
-  <!-- из /spectacles/ поднимаемся на уровень выше -->
+  <!-- мы находимся в /spectacles/, поднимаемся на уровень выше -->
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
@@ -50,6 +50,7 @@
       margin:4px 0 6px;
     }
 
+    /* одна строка ряда */
     .row-line{
       display:flex;
       align-items:center;
@@ -100,7 +101,7 @@
       cursor:not-allowed;
     }
 
-    /* вертикальный проход — добавляем справа побольше отступ */
+    /* вертикальный проход (партер, балкон) */
     .seat--gap-right{
       margin-right:16px;
     }
@@ -110,14 +111,14 @@
       flex:0 0 24px;
     }
 
-    /* Ложі */
-    .lodges-wrap{
+    /* Ложі по бокам партера */
+    .parter-wrap{
       display:flex;
-      justify-content:space-between;
-      margin:8px 60px 20px;
+      justify-content:center;
+      align-items:flex-start;
+      gap:24px;
     }
     .hall-lodge{
-      width:60px;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -170,6 +171,14 @@
       transform:translateY(-2px);
     }
 
+    /* "пустое" место в ряду (балкон 6) */
+    .seat--empty{
+      visibility:hidden;
+      pointer-events:none;
+      border:none;
+      background:transparent;
+    }
+
     @media (max-width:900px){
       .hall-layout{
         flex-direction:column;
@@ -193,20 +202,17 @@
           <div class="hall-scroll">
             <div class="hall-inner">
 
-              <!-- Партер -->
+              <!-- Партер + ложі збоку -->
               <section class="hall-section">
                 <div class="hall-section-title">Партер</div>
-                <div id="parter-block"></div>
-              </section>
-
-              <!-- Ложі -->
-              <section class="hall-section">
-                <div class="hall-section-title">Ложі</div>
-                <div class="lodges-wrap">
+                <div class="parter-wrap">
                   <div class="hall-lodge">
                     <div class="hall-lodge-label">Ложа Б</div>
                     <div class="hall-lodge-seats" id="lodge-b-seats"></div>
                   </div>
+
+                  <div id="parter-block"></div>
+
                   <div class="hall-lodge">
                     <div class="hall-lodge-label">Ложа А</div>
                     <div class="hall-lodge-seats" id="lodge-a-seats"></div>
@@ -324,7 +330,7 @@
       className:"seat--lodge"
     }));
 
-    const takenSeats = new Set(); // если нужно — сюда ключи занятых мест
+    const takenSeats = new Set(); // сюда можно помечать занятые
 
     // -------- Вспомогательные функции --------
 
@@ -424,7 +430,7 @@
       });
     })();
 
-    // Ложі
+    // Ложі А и Б (по бокам)
     (function renderLodges(){
       const a = document.getElementById("lodge-a-seats");
       const b = document.getElementById("lodge-b-seats");
@@ -508,11 +514,11 @@
         const seatsRow = document.createElement("div");
         seatsRow.className = "seats-row";
 
-        for (let s=1; s<=28; s++){
-          const meta = {zone:r.zone,row:r.row,seat:s};
-          const cls  = r.className + (s===14 ? " seat--gap-right" : "");
+        for (let pos=1; pos<=28; pos++){
+          const meta = {zone:r.zone,row:r.row,seat:pos};
+          const cls  = r.className + (pos===14 ? " seat--gap-right" : "");
           seatsRow.appendChild(
-            makeSeatElement(metaKey(meta), s, cls, r.price, meta)
+            makeSeatElement(metaKey(meta), pos, cls, r.price, meta)
           );
         }
 
@@ -520,7 +526,7 @@
         block.appendChild(rowLine);
       });
 
-      // ряд 6: 1–20, проход після 10
+      // ряд 6: 1–10, потом пустые слоты 11–18, потом 11–20 на позициях 19–28
       const r = balconyRow6;
       const rowLine = document.createElement("div");
       rowLine.className = "row-line";
@@ -533,12 +539,30 @@
       const seatsRow = document.createElement("div");
       seatsRow.className = "seats-row";
 
-      for (let s=1; s<=20; s++){
-        const meta = {zone:r.zone,row:r.row,seat:s};
-        const cls  = r.className + (s===10 ? " seat--gap-right" : "");
-        seatsRow.appendChild(
-          makeSeatElement(metaKey(meta), s, cls, r.price, meta)
-        );
+      for (let pos=1; pos<=28; pos++){
+        if (pos<=10){
+          // реальные места 1–10
+          const meta = {zone:r.zone,row:r.row,seat:pos};
+          const cls  = r.className + (pos===10 ? " seat--gap-right" : "");
+          seatsRow.appendChild(
+            makeSeatElement(metaKey(meta), pos, cls, r.price, meta)
+          );
+        } else if (pos>=19){
+          // реальные места 11–20, но сдвинуты: позиция 19 => место 11
+          const seatNum = pos - 8; // 19→11, 28→20
+          const meta = {zone:r.zone,row:r.row,seat:seatNum};
+          const cls  = r.className;
+          seatsRow.appendChild(
+            makeSeatElement(metaKey(meta), seatNum, cls, r.price, meta)
+          );
+        } else {
+          // пустой слот 11–18 (для выравнивания)
+          const empty = document.createElement("button");
+          empty.type = "button";
+          empty.textContent = "";
+          empty.className = "seat seat--empty";
+          seatsRow.appendChild(empty);
+        }
       }
 
       rowLine.appendChild(seatsRow);
