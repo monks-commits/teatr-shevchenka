@@ -1,12 +1,12 @@
 [
   {
-    "show": "demo",
-    "title": "Демо вистава",
-    "city": "Місто",
-    "theatre": "Назва театру",
+    "show": "visim-lyubyachyh-zhinok",
+    "title": "Вісім люблячих жінок",
+    "city": "Кривий Ріг",
+    "theatre": "Театр ім. Т. Г. Шевченка",
     "stage": "Велика сцена",
-    "date": "2025-12-15",
-    "time": "18:00",
-    "poster": "images/poster-demo.jpg"
+    "date": "2025-12-28",
+    "time": "16:00",
+    "poster": "images/posters/shevchenko/visim.jpg"
   }
 ]
