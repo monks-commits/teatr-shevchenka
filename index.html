@@ -5,6 +5,39 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Театр ім. Т. Г. Шевченка — офіційні квитки онлайн</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .hero {
+      padding: 40px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+    }
+    .hero-logo {
+      max-width: 320px;
+      width: 100%;
+      border-radius: 16px;
+      display: block;
+    }
+    .hero-text {
+      max-width: 560px;
+    }
+    @media (min-width: 900px) {
+      .hero {
+        flex-direction: row;
+        align-items: center;
+        text-align: left;
+        justify-content: center;
+      }
+      .hero-logo-wrap {
+        flex: 0 0 320px;
+      }
+      .hero-text {
+        max-width: 520px;
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="site-header"></div>
@@ -12,18 +45,29 @@
 
   <main class="main">
     <section class="section">
-      <div class="container">
-        <h1>Театр ім. Т. Г. Шевченка</h1>
-        <p class="meta">
-          Офіційний сайт онлайн-продажу квитків. Обирайте виставу, місця у залі
-          та купуйте квитки за ціною каси театру.
-        </p>
-        <p style="margin-top:16px">
-          <a class="btn" href="afisha.html">Перейти до афіші</a>
-          <a class="btn secondary" href="howto.html" style="margin-left:8px">
-            Як придбати квиток
-          </a>
-        </p>
+      <div class="container hero">
+        <div class="hero-logo-wrap">
+          <!-- ТУТ БОЛЬШОЕ ЛОГО -->
+          <img
+            src="images/logo-shevchenko-big.jpg"
+            alt="Театр ім. Т. Г. Шевченка"
+            class="hero-logo"
+          />
+        </div>
+
+        <div class="hero-text">
+          <h1>Театр ім. Т. Г. Шевченка</h1>
+          <p class="meta">
+            Офіційний онлайн-продаж квитків. Обирайте виставу, місця у залі
+            та купуйте квитки за ціною каси театру — без черг і переплат.
+          </p>
+          <p style="margin-top:16px;">
+            <a class="btn" href="afisha.html">Перейти до афіші</a>
+            <a class="btn secondary" href="howto.html" style="margin-left:8px">
+              Як придбати квиток
+            </a>
+          </p>
+        </div>
       </div>
     </section>
   </main>
