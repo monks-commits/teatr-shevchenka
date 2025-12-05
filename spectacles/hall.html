@@ -3,526 +3,583 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Схема залу — Театр ім. Т. Г. Шевченка</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <title>Схема залу</title>
+
+  <!-- ВАЖНО: из /spectacles/ идём на уровень вверх -->
+  <link rel="stylesheet" href="../styles.css" />
+
   <style>
-    .page-wrap{
-      max-width:1100px;
-      margin:0 auto;
-      padding:20px 16px 40px;
-      display:grid;
-      grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
+    .hall-layout{
+      display:flex;
       gap:24px;
+      align-items:flex-start;
     }
-    @media(max-width:900px){
-      .page-wrap{
-        grid-template-columns:1fr;
-      }
+    .hall-left{
+      flex:1 1 auto;
+      min-width:0;
+    }
+    .hall-sidebar{
+      width:280px;
+      flex:0 0 280px;
+    }
+    .hall-card{
+      margin-top:0;
     }
 
     .hall-scroll{
-      background:#f3f4f6;
+      background:#e5e7eb;
       border-radius:16px;
-      padding:16px;
+      padding:12px;
       overflow-x:auto;
+      overflow-y:visible;
       -webkit-overflow-scrolling:touch;
     }
     .hall-inner{
-      width:max(780px,100%);
+      width:max(980px, 100%);
+      /* достаточно ширины, чтобы влезли обе ложи и правый край */
     }
 
-    .hall-section{
-      margin-bottom:18px;
-    }
     .hall-section-title{
       text-align:center;
-      font-size:13px;
+      font-size:14px;
       text-transform:uppercase;
-      letter-spacing:.05em;
+      letter-spacing:.08em;
       color:#6b7280;
-      margin:6px 0 10px;
+      margin:4px 0 6px;
     }
+
     .hall-row{
       display:flex;
       align-items:flex-start;
-      justify-content:center;
-      gap:18px;
+      gap:8px;
+      margin-bottom:16px;
+    }
+
+    .hall-row-labels{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      margin-top:18px; /* чтобы не прилипало к первой строке кресел */
+      min-width:26px;
+      text-align:right;
+      font-size:11px;
+      color:#6b7280;
+    }
+    .row-label{
+      height:24px;
+      line-height:24px;
     }
 
     .hall-block{
       display:grid;
-      gap:4px;
+      grid-auto-rows:24px;
+      grid-auto-flow:row;
+      row-gap:4px;
     }
+
     .hall-block--parter{
-      grid-auto-rows:26px;
-      grid-template-columns:repeat(20,26px);
+      grid-template-columns:repeat(20,24px);
+      column-gap:4px;
     }
-    .hall-block--amphi-left{
-      grid-auto-rows:24px;
+    .hall-block--amphi{
       grid-template-columns:repeat(11,24px);
+      column-gap:4px;
     }
-    .hall-block--amphi-right{
-      grid-auto-rows:24px;
-      grid-template-columns:repeat(11,24px);
+    .hall-block--balcony{
+      grid-template-columns:repeat(28,24px);
+      column-gap:4px;
     }
-    .hall-block--balcony-half{
-      grid-auto-rows:22px;
-      grid-template-columns:repeat(14,22px);
-    }
-    .hall-block--balcony-last{
-      grid-auto-rows:22px;
-      grid-template-columns:repeat(10,22px);
-    }
-    .hall-lodge{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      align-items:center;
-      font-size:10px;
-      color:#4b5563;
-    }
-    .hall-lodge-label{
-      writing-mode:vertical-rl;
-      text-orientation:mixed;
-      font-size:11px;
-      margin-bottom:4px;
+
+    .hall-gap-horizontal{
+      width:24px;
     }
 
     .seat{
-      width:100%;
-      height:100%;
-      border-radius:8px;
+      width:24px;
+      height:24px;
+      border-radius:6px;
       border:1px solid #d1d5db;
-      background:#ffffff;
+      background:#fff;
+      font-size:11px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:11px;
       cursor:pointer;
-      user-select:none;
+      padding:0;
     }
-    .seat--parter-front{ background:#fef3c7; }   /* 1–6 */
-    .seat--parter-mid{   background:#e0f2fe; }   /* 7–12 */
-    .seat--parter-back{  background:#e5e7eb; }   /* 13–18 */
-    .seat--amphi{        background:#e5e7eb; }
-    .seat--balcony{      background:#e5e7eb; }
-    .seat--lodge{        background:#e0f2fe; }
+    .seat--parter-front{ background:#fef9c3; }
+    .seat--parter-mid{ background:#dbeafe; }
+    .seat--parter-back{ background:#e5e7eb; }
+    .seat--amphi{ background:#e0f2fe; }
+    .seat--balcony{ background:#f3e8ff; }
+    .seat--lodge{ background:#fee2e2; }
 
-    .seat.selected{
-      background:#2563eb;
+    .seat--selected{
+      background:#2563eb !important;
       color:#fff;
       border-color:#2563eb;
     }
-    .seat.taken{
-      background:#9ca3af;
+    .seat--taken{
+      background:#9ca3af !important;
       color:#fff;
       cursor:not-allowed;
     }
 
-    /* справа – боковая карточка заказа */
-    .order-box{
-      background:#fff;
-      border-radius:16px;
-      padding:16px 18px;
-      box-shadow:0 10px 25px rgba(15,23,42,.06);
-      border:1px solid #e5e7eb;
+    /* вертикальные проходы */
+    .seat--gap-right{
+      margin-right:14px;
     }
-    .order-title{
-      font-size:18px;
-      font-weight:700;
-      margin:0 0 10px;
+
+    /* Ложи */
+    .hall-row--lodges{
+      justify-content:space-between;
+      margin:8px 0 20px;
     }
-    .order-meta{
-      font-size:14px;
+    .hall-lodge{
+      width:52px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:4px;
+    }
+    .hall-lodge-label{
+      font-size:11px;
       color:#6b7280;
+      margin-bottom:4px;
+    }
+    .hall-lodge-seats{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .hall-lodge-spacer{
+      flex:1 1 auto;
+    }
+
+    .hall-summary-title{
+      margin-top:0;
+      margin-bottom:8px;
+    }
+    .hall-summary-meta{
+      font-size:14px;
+      color:#4b5563;
       margin:4px 0;
     }
-    .order-list{
-      margin:10px 0;
+    .hall-summary-meta b{
+      font-weight:600;
+    }
+
+    .row-price-list{
+      margin-top:14px;
+      padding:12px 14px;
+      background:#f7f7f8;
+      border-radius:12px;
       font-size:14px;
     }
-    .order-list li{
-      margin-bottom:2px;
+    .row-price{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:14px;
+      color:#0f172a;
+      padding:6px 0;
+      border-bottom:1px dotted #e5e7eb;
     }
-    .order-total{
-      margin-top:10px;
-      font-weight:600;
+    .row-price:last-child{
+      border-bottom:0;
     }
-    .order-note{
-      margin-top:10px;
-      font-size:13px;
-      color:#6b7280;
+    .row-price .dots{
+      flex:1 1 auto;
+      border-bottom:1px dotted #e5e7eb;
+      height:0;
+      transform:translateY(-2px);
     }
-    .btn-main{
-      margin-top:14px;
-      padding:10px 18px;
-      border-radius:999px;
-      border:none;
-      background:#2563eb;
-      color:#fff;
-      font-weight:600;
-      cursor:pointer;
-    }
-    .btn-main:disabled{
-      background:#9ca3af;
-      cursor:not-allowed;
+
+    @media (max-width:900px){
+      .hall-layout{
+        flex-direction:column;
+      }
+      .hall-sidebar{
+        width:auto;
+      }
     }
   </style>
 </head>
 <body>
-<div id="site-header"></div>
-<script type="module" src="/scripts/include.js"></script>
+  <div id="site-header"></div>
 
-<main class="page-wrap">
-  <!-- Зал -->
-  <section>
-    <h1 style="margin:0 0 12px;">Схема залу</h1>
+  <main class="main">
+    <div class="container">
+      <h1>Схема залу</h1>
 
-    <div class="hall-scroll">
-      <div class="hall-inner">
-        <!-- Партер + ложі -->
-        <div class="hall-section">
-          <div class="hall-section-title">Партер</div>
-          <div class="hall-row">
-            <div class="hall-lodge" id="lodge-b">
-              <div class="hall-lodge-label">Ложа Б</div>
+      <div class="hall-layout">
+        <!-- Левая часть: схема -->
+        <div class="hall-left">
+          <div class="hall-scroll">
+            <div class="hall-inner">
+
+              <!-- Партер -->
+              <div class="hall-section-title">Партер</div>
+              <div class="hall-row">
+                <div class="hall-row-labels" id="parter-row-labels"></div>
+                <div id="hall-parter" class="hall-block hall-block--parter"></div>
+              </div>
+
+              <!-- Ложі -->
+              <div class="hall-row hall-row--lodges">
+                <div class="hall-lodge" id="lodge-b">
+                  <div class="hall-lodge-label">Ложа Б</div>
+                  <div class="hall-lodge-seats" id="lodge-b-seats"></div>
+                </div>
+
+                <div class="hall-lodge-spacer"></div>
+
+                <div class="hall-lodge" id="lodge-a">
+                  <div class="hall-lodge-label">Ложа А</div>
+                  <div class="hall-lodge-seats" id="lodge-a-seats"></div>
+                </div>
+              </div>
+
+              <!-- Амфітеатр -->
+              <div class="hall-section-title">Амфітеатр</div>
+              <div class="hall-row">
+                <div class="hall-row-labels" id="amphi-row-labels"></div>
+                <div id="hall-amphi-left" class="hall-block hall-block--amphi"></div>
+                <div class="hall-gap-horizontal"></div>
+                <div id="hall-amphi-right" class="hall-block hall-block--amphi"></div>
+              </div>
+
+              <!-- Балкон -->
+              <div class="hall-section-title">Балкон</div>
+              <div class="hall-row">
+                <div class="hall-row-labels" id="balcony-row-labels"></div>
+                <div id="hall-balcony" class="hall-block hall-block--balcony"></div>
+              </div>
+
             </div>
+          </div>
 
-            <div id="parter" class="hall-block hall-block--parter"></div>
-
-            <div class="hall-lodge" id="lodge-a">
-              <div class="hall-lodge-label">Ложа А</div>
+          <!-- Легенда цін -->
+          <div class="row-price-list">
+            <div class="row-price">
+              <span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Партер, ряди 13–18</span><span class="dots"></span><b>140 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Амфітеатр (усі ряди)</span><span class="dots"></span><b>120 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Балкон, ряди 1–5</span><span class="dots"></span><b>100 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Балкон, ряд 6</span><span class="dots"></span><b>80 грн</b>
+            </div>
+            <div class="row-price">
+              <span>Ложі А і Б</span><span class="dots"></span><b>200 грн</b>
             </div>
           </div>
         </div>
 
-        <!-- Амфітеатр -->
-        <div class="hall-section">
-          <div class="hall-section-title">Амфітеатр</div>
-          <div class="hall-row">
-            <div id="amphi-left" class="hall-block hall-block--amphi-left"></div>
-            <div id="amphi-right" class="hall-block hall-block--amphi-right"></div>
+        <!-- Правая часть: заказ -->
+        <aside class="hall-sidebar">
+          <div class="card hall-card">
+            <h2 class="hall-summary-title">Ваше замовлення</h2>
+            <p id="summary-show" class="hall-summary-meta"></p>
+            <p id="summary-places" class="hall-summary-meta">Обрані місця: немає</p>
+            <p id="summary-amount" class="hall-summary-meta">Сума: 0 грн</p>
+            <button id="go-order" class="button-primary" disabled>Перейти до оформлення</button>
+            <p class="hall-summary-meta" style="font-size:12px;margin-top:10px;">
+              Кнопка стане активною, коли ви оберете хоча б одне місце.
+            </p>
           </div>
-        </div>
-
-        <!-- Балкон -->
-        <div class="hall-section">
-          <div class="hall-section-title">Балкон</div>
-          <div class="hall-row">
-            <div id="balcony-left" class="hall-block hall-block--balcony-half"></div>
-            <div id="balcony-right" class="hall-block hall-block--balcony-half"></div>
-          </div>
-          <div class="hall-row" style="margin-top:6px;justify-content:center;">
-            <!-- 6-й ряд балкона: 10 місць зліва + 10 справа -->
-            <div id="balcony-row6-left"  class="hall-block hall-block--balcony-last"></div>
-            <div style="width:30px;"></div>
-            <div id="balcony-row6-right" class="hall-block hall-block--balcony-last"></div>
-          </div>
-        </div>
+        </aside>
       </div>
     </div>
-  </section>
+  </main>
 
-  <!-- Блок замовлення -->
-  <aside class="order-box">
-    <h2 class="order-title">Ваше замовлення</h2>
-    <p id="order-show" class="order-meta">Вистава: —</p>
-    <p id="order-date" class="order-meta"></p>
-    <p id="order-picked" class="order-meta">Обрані місця: немає</p>
+  <div id="site-footer"></div>
+  <script type="module" src="../scripts/include.js"></script>
 
-    <ul id="order-list" class="order-list"></ul>
-    <p id="order-total" class="order-total">Сума: 0 грн</p>
+  <script>
+    // ----------------- ПАРАМЕТРЫ ІЗ URL -----------------
+    const qs = new URLSearchParams(location.search);
+    const showSlug  = qs.get("show")  || "";
+    const showTitle = qs.get("title") || showSlug || "Вистава";
 
-    <p class="order-note">
-      Натисніть на місця на схемі, щоб додати їх до замовлення.
-      Після цього перейдіть до оформлення.
-    </p>
+    document.getElementById("summary-show").textContent =
+      "Вистава: " + (showTitle || "—");
 
-    <button id="go-order" class="btn-main" disabled>Перейти до оформлення</button>
-  </aside>
-</main>
+    // ----------------- КОНФИГУРАЦИЯ ЗАЛА -----------------
 
-<div id="site-footer"></div>
+    // Партер: 18 рядів по 20 місць, проход після 10-го
+    const parterRows = Array.from({length:18}, (_,i)=>({
+      row: i+1,
+      seats: 20,
+      zone: "Партер",
+      price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
+      className: i+1 <= 6 ? "seat--parter-front"
+               :  i+1 <=12 ? "seat--parter-mid"
+                            : "seat--parter-back"
+    }));
 
-<script>
-  const urlParams = new URLSearchParams(location.search);
-  const showSlug = urlParams.get("show") || "demo";
+    // Амфітеатр: ліва частина 19–23 (1–11), права 19–21 (12–22)
+    const amphiLeftRows  = [
+      {row:19,seats:11},
+      {row:20,seats:11},
+      {row:21,seats:11},
+      {row:22,seats:11},
+      {row:23,seats:11},
+    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
 
-  // --- Конфігурація залу ---
+    const amphiRightRows = [
+      {row:19,seats:11},
+      {row:20,seats:11},
+      {row:21,seats:11},
+    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
 
-  // Партер: 18 рядів по 20 місць
-  const parterRows = Array.from({length:18}, (_,i)=>({
-    row: i+1,
-    seats: 20,
-    zone: "Партер",
-    // умовні ціни за секторами
-    price: i+1 <= 6 ? 350 : (i+1 <= 12 ? 320 : 280),
-    className: i+1 <= 6 ? "seat--parter-front"
-              : i+1 <=12 ? "seat--parter-mid"
-                         : "seat--parter-back"
-  }));
+    // Балкон: 1–5 — по 28 місць (прохід після 14), 6-й — 20 місць (прохід після 10)
+    const balconyRows = [
+      {row:1},{row:2},{row:3},{row:4},{row:5}
+    ].map(r=>({...r, zone:"Балкон", price:100, className:"seat--balcony"}));
 
-  // Амфітеатр – ліва частина 19–23 (5 рядів по 11),
-  // права частина 19–21 (3 ряди по 11)
-  const amphiLeftRows  = [
-    {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11}
-  ].map(r=>({...r, zone:"Амфітеатр (ліва частина)", price:250, className:"seat--amphi"}));
+    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
 
-  const amphiRightRows = [
-    {row:19,seats:11},{row:20,seats:11},{row:21,seats:11}
-  ].map(r=>({...r, zone:"Амфітеатр (права частина)", price:250, className:"seat--amphi"}));
+    // Ложі А і Б — по 18 місць вертикально
+    const lodgeSeats = Array.from({length:18}, (_,i)=>({
+      index:i+1,
+      price:200,
+      zone:"Ложа",
+      className:"seat--lodge"
+    }));
 
-  // Балкон: 1–5 — по 28 місць (14+прохід+14), 6-й — 10+10
-  const balconyRows = [
-    {row:1},{row:2},{row:3},{row:4},{row:5}
-  ].map(r=>({...r, seatsPerSide:14, zone:"Балкон", price:200, className:"seat--balcony"}));
+    // На будущее: тут можно указать выкупленные места
+    const takenSeats = new Set(); // напр. "Партер-1-5"
 
-  const balconyRow6 = { row:6, seats:10, zone:"Балкон", price:180, className:"seat--balcony" };
+    // ----------------- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ -----------------
 
-  // Ложі А і Б — по 18 місць (вертикально)
-  const lodgeSeats = Array.from({length:18}, (_,i)=>({
-    index:i+1, price:350, zone:"Ложа", className:"seat--lodge"
-  }));
-
-  const selected = new Map(); // key -> seatData
-
-  function makeSeatElement(key, label, extraClass, price, meta){
-    const div = document.createElement("div");
-    div.className = "seat " + (extraClass || "");
-    div.textContent = label;
-    div.dataset.key = key;
-    div.dataset.price = price;
-    div.dataset.meta = JSON.stringify(meta);
-
-    div.addEventListener("click", () => {
-      if (div.classList.contains("taken")) return;
-      const k = div.dataset.key;
-      if (selected.has(k)){
-        selected.delete(k);
-        div.classList.remove("selected");
-      }else{
-        selected.set(k, meta);
-        div.classList.add("selected");
-      }
-      refreshOrderBox();
-    });
-
-    return div;
-  }
-
-  // рендер партеру
-  (function renderParter(){
-    const parterEl = document.getElementById("parter");
-    parterRows.forEach(r=>{
-      for(let s=1;s<=r.seats;s++){
-        const key = `parter-${r.row}-${s}`;
-        const label = s;
-        const meta = {
-          zone:r.zone,
-          row:r.row,
-          seat:s,
-          price:r.price,
-          human:`Партер, ряд ${r.row}, місце ${s}`
-        };
-        parterEl.appendChild(
-          makeSeatElement(key,label,r.className,r.price,meta)
-        );
-      }
-    });
-  })();
-
-  // рендер лож
-  (function renderLodges(){
-    const lodgeBEl = document.getElementById("lodge-b");
-    const lodgeAEl = document.getElementById("lodge-a");
-
-    lodgeSeats.forEach(ls=>{
-      const metaB = {
-        zone:"Ложа Б",
-        row:ls.index,
-        seat:1,
-        price:ls.price,
-        human:`Ложа Б, місце ${ls.index}`
-      };
-      lodgeBEl.appendChild(
-        makeSeatElement(`lodge-b-${ls.index}`, ls.index, ls.className, ls.price, metaB)
-      );
-
-      const metaA = {
-        zone:"Ложа А",
-        row:ls.index,
-        seat:1,
-        price:ls.price,
-        human:`Ложа А, місце ${ls.index}`
-      };
-      lodgeAEl.appendChild(
-        makeSeatElement(`lodge-a-${ls.index}`, ls.index, ls.className, ls.price, metaA)
-      );
-    });
-  })();
-
-  // амфітеатр
-  (function renderAmphi(){
-    const leftEl  = document.getElementById("amphi-left");
-    const rightEl = document.getElementById("amphi-right");
-
-    amphiLeftRows.forEach(r=>{
-      for(let s=1;s<=r.seats;s++){
-        const key = `amphiL-${r.row}-${s}`;
-        const meta = {
-          zone:r.zone,
-          row:r.row,
-          seat:s,
-          price:r.price,
-          human:`Амфітеатр (ліва), ряд ${r.row}, місце ${s}`
-        };
-        leftEl.appendChild(
-          makeSeatElement(key,s,r.className,r.price,meta)
-        );
-      }
-    });
-
-    amphiRightRows.forEach(r=>{
-      for(let s=1;s<=r.seats;s++){
-        const key = `amphiR-${r.row}-${s}`;
-        const meta = {
-          zone:r.zone,
-          row:r.row,
-          seat:s,
-          price:r.price,
-          human:`Амфітеатр (права), ряд ${r.row}, місце ${s}`
-        };
-        rightEl.appendChild(
-          makeSeatElement(key,s,r.className,r.price,meta)
-        );
-      }
-    });
-  })();
-
-  // балкон 1–5
-  (function renderBalcony(){
-    const leftEl  = document.getElementById("balcony-left");
-    const rightEl = document.getElementById("balcony-right");
-
-    balconyRows.forEach(r=>{
-      // ліва половина
-      for(let s=1;s<=r.seatsPerSide;s++){
-        const key = `balL-${r.row}-${s}`;
-        const meta = {
-          zone:r.zone,
-          row:r.row,
-          seat:s,
-          price:r.price,
-          human:`Балкон, ряд ${r.row}, місце ${s}`
-        };
-        leftEl.appendChild(
-          makeSeatElement(key,s,r.className,r.price,meta)
-        );
-      }
-      // права половина
-      for(let s=1;s<=r.seatsPerSide;s++){
-        const num = s + r.seatsPerSide;
-        const key = `balR-${r.row}-${num}`;
-        const meta = {
-          zone:r.zone,
-          row:r.row,
-          seat:num,
-          price:r.price,
-          human:`Балкон, ряд ${r.row}, місце ${num}`
-        };
-        rightEl.appendChild(
-          makeSeatElement(key,num,r.className,r.price,meta)
-        );
-      }
-    });
-
-    // 6-й ряд
-    const l6 = document.getElementById("balcony-row6-left");
-    const r6 = document.getElementById("balcony-row6-right");
-    for(let s=1;s<=balconyRow6.seats;s++){
-      const key = `bal6L-${s}`;
-      const meta = {
-        zone:"Балкон",
-        row:6,
-        seat:s,
-        price:balconyRow6.price,
-        human:`Балкон, ряд 6, місце ${s}`
-      };
-      l6.appendChild(
-        makeSeatElement(key,s,balconyRow6.className,balconyRow6.price,meta)
-      );
+    function metaKey(meta){
+      return `${meta.zone}-${meta.row ?? "l"}-${meta.seat ?? meta.index}`;
     }
-    for(let s=1;s<=balconyRow6.seats;s++){
-      const num = s+10;
-      const key = `bal6R-${num}`;
-      const meta = {
-        zone:"Балкон",
-        row:6,
-        seat:num,
-        price:balconyRow6.price,
-        human:`Балкон, ряд 6, місце ${num}`
-      };
-      r6.appendChild(
-        makeSeatElement(key,num,balconyRow6.className,balconyRow6.price,meta)
-      );
+
+    function makeSeatElement(key,label,extraClass,price,meta){
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = label;
+      btn.className = "seat" + (extraClass ? " " + extraClass : "");
+      btn.dataset.key = key;
+      btn.dataset.price = price;
+      btn.dataset.row = meta.row ?? "";
+      btn.dataset.seat = meta.seat ?? meta.index;
+      btn.dataset.zone = meta.zone;
+      const taken = takenSeats.has(key);
+      if (taken){
+        btn.classList.add("seat--taken");
+        btn.disabled = true;
+      }
+      btn.addEventListener("click", ()=> onSeatClick(btn, meta, price));
+      return btn;
     }
-  })();
 
-  // заполняем шапку заказа (берём из /data/shows/<slug>.json если есть)
-  (async function fillShowInfo(){
-    const showEl = document.getElementById("order-show");
-    const dateEl = document.getElementById("order-date");
-    try{
-      const r = await fetch(`/data/shows/${encodeURIComponent(showSlug)}.json`, {cache:"no-store"});
-      if (!r.ok) { showEl.textContent = "Вистава: " + showSlug; return; }
-      const s = await r.json();
-      const title = s.title || showSlug;
-      const when = [s.date,s.time].filter(Boolean).join(" • ");
-      showEl.textContent = "Вистава: " + title;
-      if (when) dateEl.textContent = when;
-    }catch(e){
-      showEl.textContent = "Вистава: " + showSlug;
+    const selected = new Map(); // key -> {meta, price}
+
+    function onSeatClick(btn, meta, price){
+      const key = metaKey(meta);
+      if (btn.classList.contains("seat--selected")){
+        btn.classList.remove("seat--selected");
+        selected.delete(key);
+      } else {
+        btn.classList.add("seat--selected");
+        selected.set(key, {meta, price});
+      }
+      updateSummary();
     }
-  })();
 
-  const orderListEl  = document.getElementById("order-list");
-  const orderPickedEl = document.getElementById("order-picked");
-  const orderTotalEl = document.getElementById("order-total");
-  const goOrderBtn   = document.getElementById("go-order");
+    function updateSummary(){
+      const placesEl = document.getElementById("summary-places");
+      const amountEl = document.getElementById("summary-amount");
+      const btn      = document.getElementById("go-order");
 
-  function refreshOrderBox(){
-    const seats = Array.from(selected.values());
-    if (!seats.length){
-      orderPickedEl.textContent = "Обрані місця: немає";
-      orderListEl.innerHTML = "";
-      orderTotalEl.textContent = "Сума: 0 грн";
-      goOrderBtn.disabled = true;
-      return;
+      const items = Array.from(selected.values());
+      if (!items.length){
+        placesEl.textContent = "Обрані місця: немає";
+        amountEl.textContent = "Сума: 0 грн";
+        btn.disabled = true;
+        return;
+      }
+
+      const placesStr = items
+        .map(({meta})=>{
+          const row  = meta.row ?? meta.index;
+          const seat = meta.seat ?? meta.index;
+          return `ряд ${row}, місце ${seat}`;
+        })
+        .join("; ");
+
+      const total = items.reduce((sum,x)=> sum + (x.price||0), 0);
+
+      placesEl.textContent = "Обрані місця: " + placesStr;
+      amountEl.textContent = "Сума: " + total + " грн";
+      btn.disabled = false;
     }
-    orderPickedEl.textContent = `Обрані місця: ${seats.length}`;
-    orderListEl.innerHTML = seats
-      .map(s=>`<li>${s.human} — ${s.price} грн</li>`)
-      .join("");
 
-    const total = seats.reduce((sum,s)=>sum+s.price,0);
-    orderTotalEl.textContent = `Сума: ${total} грн`;
-    goOrderBtn.disabled = false;
-  }
+    // ----------------- РЕНДЕР СХЕМЫ -----------------
 
-  goOrderBtn.addEventListener("click", ()=>{
-    const seats = Array.from(selected.values());
-    if (!seats.length) return;
-    const amount = seats.reduce((sum,s)=>sum+s.price,0);
-    const seatsHuman = seats.map(s=>s.human).join("; ");
+    // Партер
+    (function renderParter(){
+      const rowsCol = document.getElementById("parter-row-labels");
+      const parterEl = document.getElementById("hall-parter");
 
-    const u = new URL(location.origin + "/order.html");
-    u.searchParams.set("show", showSlug);
-    u.searchParams.set("title", document.getElementById("order-show").textContent.replace("Вистава: ",""));
-    u.searchParams.set("seats", seatsHuman);
-    u.searchParams.set("amount", String(amount));
+      parterRows.forEach(r=>{
+        const rl = document.createElement("div");
+        rl.className = "row-label";
+        rl.textContent = r.row;
+        rowsCol.appendChild(rl);
 
-    location.href = u.toString();
-  });
-</script>
+        for(let s=1; s<=r.seats; s++){
+          const seatMeta = {
+            zone:r.zone,
+            row:r.row,
+            seat:s
+          };
+          const key = metaKey(seatMeta);
+          const label = s;
+          const extraClass =
+            r.className + (s === 10 ? " seat--gap-right" : "");
+          parterEl.appendChild(
+            makeSeatElement(key,label,extraClass,r.price,seatMeta)
+          );
+        }
+      });
+    })();
+
+    // Ложі
+    (function renderLodges(){
+      const a = document.getElementById("lodge-a-seats");
+      const b = document.getElementById("lodge-b-seats");
+
+      lodgeSeats.forEach(ls=>{
+        const metaA = { zone:"Ложа А", index:ls.index, seat:ls.index };
+        const metaB = { zone:"Ложа Б", index:ls.index, seat:ls.index };
+
+        const keyA = metaKey(metaA);
+        const keyB = metaKey(metaB);
+
+        a.appendChild(
+          makeSeatElement(keyA, ls.index, ls.className, ls.price, metaA)
+        );
+        b.appendChild(
+          makeSeatElement(keyB, ls.index, ls.className, ls.price, metaB)
+        );
+      });
+    })();
+
+    // Амфітеатр
+    (function renderAmphi(){
+      const labels = document.getElementById("amphi-row-labels");
+      const leftEl  = document.getElementById("hall-amphi-left");
+      const rightEl = document.getElementById("hall-amphi-right");
+
+      // Рядовые подписи для 19–23
+      [19,20,21,22,23].forEach(r=>{
+        const rl = document.createElement("div");
+        rl.className = "row-label";
+        rl.textContent = r;
+        labels.appendChild(rl);
+      });
+
+      amphiLeftRows.forEach(r=>{
+        for(let s=1; s<=r.seats; s++){
+          const meta = { zone:r.zone, row:r.row, seat:s };
+          const key  = metaKey(meta);
+          leftEl.appendChild(
+            makeSeatElement(key, s, r.className, r.price, meta)
+          );
+        }
+      });
+
+      amphiRightRows.forEach(r=>{
+        for(let s=1; s<=r.seats; s++){
+          const seatNum = s + 11; // 12–22
+          const meta = { zone:r.zone, row:r.row, seat:seatNum };
+          const key  = metaKey(meta);
+          rightEl.appendChild(
+            makeSeatElement(key, seatNum, r.className, r.price, meta)
+          );
+        }
+      });
+    })();
+
+    // Балкон
+    (function renderBalcony(){
+      const labels = document.getElementById("balcony-row-labels");
+      const block  = document.getElementById("hall-balcony");
+
+      // Ряды 1–5 по 28 мест, проход после 14
+      balconyRows.forEach(r=>{
+        const rl = document.createElement("div");
+        rl.className = "row-label";
+        rl.textContent = r.row;
+        labels.appendChild(rl);
+
+        for(let s=1; s<=28; s++){
+          const meta = { zone:r.zone, row:r.row, seat:s };
+          const key  = metaKey(meta);
+          const extraClass =
+            r.className + (s === 14 ? " seat--gap-right" : "");
+          block.appendChild(
+            makeSeatElement(key, s, extraClass, r.price, meta)
+          );
+        }
+      });
+
+      // Ряд 6: 1–10 и 11–20, проход после 10-го
+      const rl = document.createElement("div");
+      rl.className = "row-label";
+      rl.textContent = "6";
+      labels.appendChild(rl);
+
+      for(let s=1; s<=20; s++){
+        const meta = { zone:balconyRow6.zone, row:6, seat:s };
+        const key  = metaKey(meta);
+        const extraClass =
+          balconyRow6.className + (s === 10 ? " seat--gap-right" : "");
+        block.appendChild(
+          makeSeatElement(key, s, extraClass, balconyRow6.price, meta)
+        );
+      }
+    })();
+
+    // ----------------- ПЕРЕХОД НА ФОРМУ ЗАМОВЛЕННЯ -----------------
+
+    document.getElementById("go-order").addEventListener("click", ()=>{
+      const items = Array.from(selected.values());
+      if (!items.length) return;
+
+      const placesStr = items
+        .map(({meta})=>{
+          const row  = meta.row ?? meta.index;
+          const seat = meta.seat ?? meta.index;
+          return `ряд ${row}, місце ${seat}`;
+        })
+        .join("; ");
+
+      const total = items.reduce((sum,x)=> sum + (x.price||0), 0);
+
+      const u = new URL("../order.html", location.origin + location.pathname);
+      const params = new URLSearchParams();
+      params.set("show", showSlug);
+      params.set("title", showTitle);
+      params.set("seats", placesStr);
+      params.set("amount", String(total));
+
+      u.search = params.toString();
+      location.href = u.toString();
+    });
+  </script>
 </body>
 </html>
