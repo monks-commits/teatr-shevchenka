@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Схема залу — шаблон</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <script type="module" src="../scripts/include.js"></script>
+
+  <main class="main">
+    <section class="section">
+      <div class="container" style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1 1 380px; min-width:320px;">
+          <h1>Схема залу</h1>
+          <div id="hall" class="hall-wrapper">
+            <div class="hall-scroll">
+              <div class="hall-inner">
+                <div id="hall-grid"></div>
+              </div>
+            </div>
+            <p class="meta" style="margin-top:8px;">
+              Натисніть на місця, щоб додати або прибрати їх з замовлення.
+            </p>
+            <div id="rowPrices" class="row-price-list"></div>
+          </div>
+        </div>
+
+        <aside style="flex:0 0 320px;max-width:360px;">
+          <h2 style="margin-top:0;">Ваше замовлення</h2>
+          <p id="summary-show" class="meta"></p>
+          <p id="summary-seats" class="meta">Обрані місця: —</p>
+          <p id="summary-amount" class="meta">Сума: 0 грн</p>
+
+          <button id="go-order" class="button-primary" disabled>
+            Перейти до оформлення
+          </button>
+
+          <p class="meta" style="margin-top:8px;font-size:13px;">
+            Кнопка стане активною, коли ви оберете хоча б одне місце.
+          </p>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+
+  <script>
+    const qs   = new URLSearchParams(location.search);
+    const show = qs.get("show")  || "demo";
+    const title = qs.get("title") || "Демо вистава";
+
+    document.getElementById("summary-show").textContent =
+      "Вистава: " + (title || show);
+
+    const rowsConfig = [
+      { row: 1, seats: 12, price: 300 },
+      { row: 2, seats: 12, price: 300 },
+      { row: 3, seats: 12, price: 280 },
+      { row: 4, seats: 12, price: 260 },
+      { row: 5, seats: 12, price: 240 },
+      { row: 6, seats: 12, price: 220 },
+      { row: 7, seats: 12, price: 220 },
+      { row: 8, seats: 12, price: 200 },
+      { row: 9, seats: 12, price: 200 },
+      { row:10, seats: 12, price: 180 }
+    ];
+
+    const hallGrid  = document.getElementById("hall-grid");
+    const rowPrices = document.getElementById("rowPrices");
+
+    hallGrid.innerHTML = rowsConfig.map(r => {
+      const seatsHtml = Array.from({length: r.seats}, (_,i) => {
+        const seat = i+1;
+        const id   = `${r.row}_${seat}`;
+        return `<button type="button"
+                         class="seat"
+                         data-id="${id}"
+                         data-row="${r.row}"
+                         data-seat="${seat}"
+                         data-price="${r.price}">
+                  ${seat}
+                </button>`;
+      }).join("");
+
+      return `
+        <div class="hall-row" style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <div class="row-label" style="width:26px;font-size:12px;color:#4b5563;">${r.row}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${seatsHtml}</div>
+        </div>`;
+    }).join("");
+
+    rowPrices.innerHTML = rowsConfig.map(r => `
+      <div class="row-price">
+        <span>Ряд ${r.row}</span>
+        <span class="dots"></span>
+        <b>${r.price} грн</b>
+      </div>
+    `).join("");
+
+    const selected = new Set();
+
+    function updateSummary() {
+      const seatsArr = Array.from(selected)
+        .map(id => {
+          const [r,s] = id.split("_");
+          return { row: Number(r), seat: Number(s) };
+        })
+        .sort((a,b) => a.row - b.row || a.seat - b.seat);
+
+      const btn = document.getElementById("go-order");
+      if (!seatsArr.length) {
+        document.getElementById("summary-seats").textContent  = "Обрані місця: —";
+        document.getElementById("summary-amount").textContent = "Сума: 0 грн";
+        btn.disabled = true;
+        return;
+      }
+
+      const txt = seatsArr
+        .map(s => `Ряд ${s.row}, місце ${s.seat}`)
+        .join("; ");
+
+      const total = seatsArr.reduce((sum, s) => {
+        const cfg = rowsConfig.find(r => r.row === s.row);
+        return sum + (cfg ? cfg.price : 0);
+      }, 0);
+
+      document.getElementById("summary-seats").textContent  = "Обрані місця: " + txt;
+      document.getElementById("summary-amount").textContent = "Сума: " + total + " грн";
+      btn.disabled = false;
+    }
+
+    hallGrid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".seat");
+      if (!btn) return;
+
+      const id = btn.dataset.id;
+      if (selected.has(id)) {
+        selected.delete(id);
+        btn.classList.remove("selected");
+      } else {
+        selected.add(id);
+        btn.classList.add("selected");
+      }
+      updateSummary();
+    });
+
+    document.getElementById("go-order").addEventListener("click", () => {
+      const seatsArr = Array.from(selected);
+      if (!seatsArr.length) return;
+
+      const total = Array.from(selected).reduce((sum, id) => {
+        const [r] = id.split("_");
+        const cfg = rowsConfig.find(x => x.row === Number(r));
+        return sum + (cfg ? cfg.price : 0);
+      }, 0);
+
+      const url = new URL("../order.html", location.href);
+      url.searchParams.set("show", show);
+      url.searchParams.set("title", title);
+      url.searchParams.set("seats", seatsArr.join(","));
+      url.searchParams.set("amount", String(total));
+
+      location.href = url.toString();
+    });
+  </script>
+</body>
+</html>
