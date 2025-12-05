@@ -1,31 +1,40 @@
 <footer class="site-footer">
   <div class="container footer-grid">
-    <div class="footer-col">
+    <div>
       <h4>Контакти</h4>
       <p>
-        [НАЗВА КОМПАНІЇ / ФОП]<br>
-        Адреса: [АДРЕСА ДЛЯ ЛИСТУВАННЯ]<br>
-        Телефон: [ТЕЛЕФОН]
+        Криворізький академічний театр драми ім. Т. Г. Шевченка<br>
+        Адреса: [адреса театру]<br>
+        Телефон каси: <a href="tel:+380">+380&nbsp;..&nbsp;..&nbsp;..</a><br>
+        Email: <a href="mailto:info@teatr.kr.ua">info@teatr.kr.ua</a>
       </p>
     </div>
-    <div class="footer-col">
+
+    <div>
       <h4>Інформація</h4>
       <p>
-        <a href="docs/public-offer.html">Публічний договір (оферта)</a><br>
-        <a href="privacy.html">Політика конфіденційності</a><br>
-        <a href="terms.html">Умови користування сайтом</a><br>
-        <a href="refund.html">Умови повернення</a>
+        <a href="public-offer.html" target="_blank">Публічний договір (оферта)</a><br>
+        <a href="privacy.html" target="_blank">Політика конфіденційності</a><br>
+        <a href="terms.html" target="_blank">Умови користування сайтом</a><br>
+        <a href="refund.html" target="_blank">Умови повернення</a>
       </p>
     </div>
-    <div class="footer-col">
+
+    <div>
       <h4>Про сервіс</h4>
       <p>
-        Шаблон сайту для онлайн-продажу квитків.
-        Замініть цей текст на опис вашого театру або платформи.
+        Офіційний онлайн-продаж квитків театру ім. Т. Г. Шевченка.
+        Обирайте виставу, місця у залі та купуйте квитки без черг.
       </p>
     </div>
   </div>
+
   <div class="footer-bottom">
-    © 2025 [Назва сервісу]
+    © <span id="year"></span> Театр ім. Т. Г. Шевченка
   </div>
+
+  <script>
+    // поточний рік у копірайте
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
 </footer>
