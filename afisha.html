@@ -3,35 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Афіша — шаблон квиткового сервісу</title>
+  <title>Афіша — Театр ім. Т. Г. Шевченка</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .grid{
+    .afisha-grid{
       display:grid;
       gap:16px;
+      grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+      margin-top:20px;
     }
-    @media (min-width:850px){
-      .grid{grid-template-columns:repeat(3,minmax(0,1fr));}
-    }
-    .card{
+    .afisha-card{
       background:#fff;
-      border:1px solid #eee;
       border-radius:12px;
+      border:1px solid #e5e7eb;
       padding:12px;
       display:grid;
-      gap:12px;
-      box-shadow:0 8px 20px rgba(15,23,42,0.05);
+      gap:10px;
     }
-    .poster{
+    .afisha-poster{
       width:100%;
       height:260px;
       object-fit:cover;
       border-radius:10px;
-      background:#eee;
+      background:#e5e7eb;
     }
-    .meta{
-      color:#6b7280;
-      font-size:14px;
+    .meta{color:#6b7280;font-size:14px;}
+    .btn-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:6px;
     }
   </style>
 </head>
@@ -39,59 +40,79 @@
   <div id="site-header"></div>
   <script type="module" src="scripts/include.js"></script>
 
-  <main class="container" style="padding-top:24px;padding-bottom:40px;">
-    <h1>Афіша</h1>
-    <p class="meta" style="margin-bottom:20px;">
-      Оберіть виставу та забронюйте квитки онлайн за ціною каси театру.
-    </p>
+  <main class="main">
+    <section class="section">
+      <div class="container">
+        <h1>Афіша</h1>
+        <p class="meta">Оберіть виставу та перейдіть до вибору місць у залі.</p>
 
-    <div id="grid" class="grid"></div>
-    <div id="empty" class="meta" style="display:none;margin-top:12px;">
-      Подій поки немає.
-    </div>
+        <div id="afisha-grid" class="afisha-grid"></div>
+        <p id="afisha-empty" class="meta" style="display:none;margin-top:12px">
+          Наразі немає запланованих подій.
+        </p>
+      </div>
+    </section>
   </main>
 
   <div id="site-footer"></div>
 
   <script>
-  (async()=>{
-    const grid  = document.getElementById('grid');
-    const empty = document.getElementById('empty');
+    (async () => {
+      const grid = document.getElementById('afisha-grid');
+      const emptyEl = document.getElementById('afisha-empty');
 
-    const res = await fetch('data/afisha.json', {cache:'no-store'});
-    const items = res.ok ? await res.json() : [];
+      let items = [];
+      try {
+        const res = await fetch('data/afisha.json', { cache: 'no-store' });
+        items = res.ok ? await res.json() : [];
+      } catch (e) {
+        console.error(e);
+        items = [];
+      }
 
-    function cardHTML(s){
-      const poster = s.poster ? s.poster.replace(/^\/+/, '') : '';
-      const show   = encodeURIComponent(s.show);
-      return `
-        <article class="card">
-          <img class="poster"
-               src="${poster}"
-               alt="${s.title || ''}"
-               onerror="this.style.display='none'">
-          <div><strong>${s.title || ''}</strong></div>
-          <div class="meta">
-            ${[s.date, s.time].filter(Boolean).join(' • ')}
-          </div>
-          <div class="meta">
-            ${[s.theatre, s.stage].filter(Boolean).join(' • ')}
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-            <a class="btn secondary" href="show.html?show=${show}">Детальніше</a>
-            <a class="btn" href="spectacles/hall.html?show=${show}">Вибрати місця</a>
-          </div>
-        </article>
-      `;
-    }
+      if (!Array.isArray(items) || !items.length) {
+        emptyEl.style.display = 'block';
+        return;
+      }
 
-    function render(){
+      function cardHTML(s) {
+        const id = s.id || '';
+        const poster = s.poster ? s.poster : '';
+        const when = [s.date, s.time].filter(Boolean).join(' • ');
+        const place = [s.theatre, s.stage].filter(Boolean).join(' • ');
+
+        return `
+          <article class="afisha-card">
+            ${poster ? `
+              <img
+                src="${poster}"
+                alt="${s.title || ''}"
+                class="afisha-poster"
+                onerror="this.style.display='none'"
+              />
+            ` : ''}
+
+            <div>
+              <strong>${s.title || ''}</strong>
+            </div>
+
+            ${when ? `<div class="meta">${when}</div>` : ''}
+            ${place ? `<div class="meta">${place}</div>` : ''}
+
+            <div class="btn-row">
+              <a class="btn secondary" href="show.html?show=${encodeURIComponent(id)}">
+                Детальніше
+              </a>
+              <a class="btn" href="spectacles/hall.html?show=${encodeURIComponent(id)}">
+                Вибрати місця
+              </a>
+            </div>
+          </article>
+        `;
+      }
+
       grid.innerHTML = items.map(cardHTML).join('');
-      empty.style.display = items.length ? 'none' : 'block';
-    }
-
-    render();
-  })();
+    })();
   </script>
 </body>
 </html>
