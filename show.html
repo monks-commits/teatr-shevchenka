@@ -1,72 +1,120 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Вистава — шаблон квиткового сервісу</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Вистава — Театр ім. Т. Г. Шевченка</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .show-hero{
+      display:grid;
+      gap:16px;
+    }
+    @media (min-width:900px){
+      .show-hero{
+        grid-template-columns:320px 1fr;
+        align-items:flex-start;
+      }
+    }
+    .show-hero__poster{
+      width:100%;
+      height:420px;
+      object-fit:cover;
+      border-radius:12px;
+      background:#e5e7eb;
+    }
+    .meta{color:#6b7280;font-size:14px;margin:4px 0 10px;}
+    .show-hero__actions{
+      margin-top:14px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .show-hero__description p{
+      margin:0 0 8px;
+    }
+  </style>
 </head>
 <body>
   <div id="site-header"></div>
   <script type="module" src="scripts/include.js"></script>
 
-  <main class="container">
-    <div id="wrap" class="section"></div>
+  <main class="main">
+    <section class="section">
+      <div class="container">
+        <div id="show-wrap"></div>
+      </div>
+    </section>
   </main>
 
   <div id="site-footer"></div>
 
   <script>
-  (async()=>{
-    const q = new URLSearchParams(location.search);
-    const slug = q.get('show');
-    const el = document.getElementById('wrap');
+    (async () => {
+      const wrap = document.getElementById('show-wrap');
+      const qs = new URLSearchParams(location.search);
+      const slug = qs.get('show');
 
-    if (!slug){
-      el.innerHTML = '<p>Немає параметра <code>show</code>.</p>';
-      return;
-    }
+      if (!slug) {
+        wrap.innerHTML = '<p>Не передано параметр <code>show</code>.</p>';
+        return;
+      }
 
-    const r = await fetch(`data/shows/${slug}.json`, {cache:'no-store'});
-    if (!r.ok){
-      el.innerHTML = '<p>Не знайдено опис вистави.</p>';
-      return;
-    }
-    const s = await r.json();
+      let items = [];
+      try {
+        const res = await fetch('data/afisha.json', { cache: 'no-store' });
+        items = res.ok ? await res.json() : [];
+      } catch (e) {
+        console.error(e);
+        wrap.innerHTML = '<p>Не вдалося завантажити дані про виставу.</p>';
+        return;
+      }
 
-    const poster = s.poster ? s.poster.replace(/^\/+/, '') : '';
-    const place  = [s.city, s.theatre, s.stage].filter(Boolean).join(' • ');
-    const title  = s.title || '';
+      const s = (items || []).find(x => String(x.id) === slug);
+      if (!s) {
+        wrap.innerHTML = '<p>Виставу не знайдено.</p>';
+        return;
+      }
 
-    el.innerHTML = `
-      <article class="show-hero">
-        <div class="hero" style="display:grid;gap:12px;align-items:flex-start">
+      const poster = s.poster || '';
+      const when = [s.date, s.time].filter(Boolean).join(' • ');
+      const place = [s.city, s.theatre, s.stage].filter(Boolean).join(' • ');
+      const desc = s.description || '';
+
+      wrap.innerHTML = `
+        <article class="show-hero">
           ${poster ? `
-          <div class="show-hero__media">
-            <img src="${poster}" alt="${title}"
-                 style="width:100%;max-width:320px;border-radius:12px;object-fit:cover;background:#eee"
-                 onerror="this.style.display='none'"/>
-          </div>` : ''}
+            <div>
+              <img
+                src="${poster}"
+                alt="${s.title || ''}"
+                class="show-hero__poster"
+                onerror="this.style.display='none'"
+              />
+            </div>
+          ` : ''}
 
-          <div class="show-hero__content">
-            <h1 style="margin-top:0">${title}</h1>
-            ${place ? `<p class="meta" style="margin:6px 0 12px">${place}</p>` : ''}
+          <div>
+            <h1 style="margin-top:0">${s.title || ''}</h1>
+            ${when ? `<div class="meta">${when}</div>` : ''}
+            ${place ? `<div class="meta">${place}</div>` : ''}
 
-            <div class="content">
-              ${s.description || ''}
+            <div class="show-hero__description">
+              ${desc}
             </div>
 
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+            <div class="show-hero__actions">
               <a class="btn" href="spectacles/hall.html?show=${encodeURIComponent(slug)}">
                 Вибрати місця
               </a>
-              <a class="btn secondary" href="afisha.html">Назад до афіші</a>
+              <a class="btn secondary" href="afisha.html">
+                Назад до афіші
+              </a>
             </div>
           </div>
-        </div>
-      </article>
-    `;
-  })();
+        </article>
+      `;
+    })();
   </script>
 </body>
 </html>
