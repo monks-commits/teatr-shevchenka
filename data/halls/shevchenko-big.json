@@ -1,26 +1,38 @@
 {
   "id": "shevchenko-big",
-  "name": "Велика сцена",
+  "title": "Велика сцена",
+
   "zones": {
-    "parter": "Партер",
-    "amphi": "Амфітеатр",
-    "balcony": "Балкон",
-    "boxA": "Ложа A",
-    "boxB": "Ложа B"
+    "parter": { "label": "Партер" },
+    "amphi":  { "label": "Амфітеатр" },
+    "balcony":{ "label": "Балкон" }
   },
 
-  "price_groups": [
-    { "id": "p_parter_1_6",  "label": "Партер, ряди 1–6",  "default_price": 200 },
-    { "id": "p_parter_7_12", "label": "Партер, ряди 7–12", "default_price": 180 },
-    { "id": "p_parter_13_18","label": "Партер, ряди 13–18","default_price": 160 },
-    { "id": "p_amphi_all",   "label": "Амфітеатр (усі ряди)", "default_price": 140 },
-    { "id": "p_balcony_1_5", "label": "Балкон, ряди 1–5", "default_price": 120 },
-    { "id": "p_balcony_6",   "label": "Балкон, ряд 6",    "default_price": 100 },
-    { "id": "p_boxes",       "label": "Ложі A і B",       "default_price": 200 }
-  ],
+  "price_groups": {
+    "p_parter_1_6": {
+      "label": "Партер, ряди 1–6"
+    },
+    "p_parter_7_12": {
+      "label": "Партер, ряди 7–12"
+    },
+    "p_parter_13_18": {
+      "label": "Партер, ряди 13–18"
+    },
+    "p_amphi_all": {
+      "label": "Амфітеатр, усі ряди"
+    },
+    "p_balcony_1_5": {
+      "label": "Балкон, ряди 1–5"
+    },
+    "p_balcony_6": {
+      "label": "Балкон, ряд 6"
+    },
+    "p_boxes": {
+      "label": "Ложі A і Б"
+    }
+  },
 
   "rows": [
-    /* --- ПАРТЕР 1–18, по 20 місць, прохід після 10-го --- */
     { "row": 1,  "zone": "parter", "seats": 20, "aisle_after": 10, "price_group": "p_parter_1_6" },
     { "row": 2,  "zone": "parter", "seats": 20, "aisle_after": 10, "price_group": "p_parter_1_6" },
     { "row": 3,  "zone": "parter", "seats": 20, "aisle_after": 10, "price_group": "p_parter_1_6" },
@@ -42,36 +54,35 @@
     { "row": 17, "zone": "parter", "seats": 20, "aisle_after": 10, "price_group": "p_parter_13_18" },
     { "row": 18, "zone": "parter", "seats": 20, "aisle_after": 10, "price_group": "p_parter_13_18" },
 
-    /* --- АМФІТЕАТР 19–23 --- */
-    /* Ліва частина: 11 місць, права — 10, між ними прохід */
     { "row": 19, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
     { "row": 20, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
     { "row": 21, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
-    { "row": 22, "zone": "amphi", "seats_left": 11, "seats_right": 0,  "price_group": "p_amphi_all" },
-    { "row": 23, "zone": "amphi", "seats_left": 11, "seats_right": 0,  "price_group": "p_amphi_all" },
+    { "row": 22, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
+    { "row": 23, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
 
-    /* --- БАЛКОН --- */
-    /* Ряди 1–5: по 28 місць, прохід між 14 і 15 */
     { "row": 1, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
     { "row": 2, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
     { "row": 3, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
     { "row": 4, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
     { "row": 5, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
 
-    /* Ряд 6: 10 місць зліва (1–10) та 10 місць справа (11–20) */
     { "row": 6, "zone": "balcony", "seats_left": 10, "seats_right": 10, "price_group": "p_balcony_6" }
   ],
 
-  "boxes": {
-    "boxA": {
+  "boxes": [
+    {
+      "id": "boxA",
       "label": "Ложа A",
+      "side": "right",
       "seats": 18,
       "price_group": "p_boxes"
     },
-    "boxB": {
-      "label": "Ложа B",
+    {
+      "id": "boxB",
+      "label": "Ложа Б",
+      "side": "left",
       "seats": 18,
       "price_group": "p_boxes"
     }
-  }
+  ]
 }
