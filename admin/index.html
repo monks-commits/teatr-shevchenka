@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <title>Адмінка каси — Театр ім. Т. Г. Шевченка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- базовые стили сайта, если есть -->
+  <link rel="stylesheet" href="../styles.css" />
+  <!-- отдельные стили адмінки -->
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header__left">
+      <div class="admin-logo-mini">Т</div>
+      <div>
+        <div class="admin-header__title">Театр ім. Т. Г. Шевченка</div>
+        <div class="admin-header__subtitle">Панель касира / адміністратору</div>
+      </div>
+    </div>
+    <div class="admin-header__right">
+      <label class="admin-header__field">
+        Сеанс:
+        <select id="seanceSelect"></select>
+      </label>
+      <span id="offlineBadge" class="badge badge--online">Онлайн</span>
+    </div>
+  </header>
+
+  <main class="admin-layout">
+    <!-- ЛЕВАЯ ЧАСТЬ: СХЕМА ЗАЛА -->
+    <section class="admin-main">
+      <div class="admin-toolbar">
+        <div class="admin-toolbar__group">
+          <button id="btnModeOnline" class="btn btn--sm btn--outline btn--primary">Онлайн-режим</button>
+          <button id="btnModeOffline" class="btn btn--sm btn--outline">Офлайн-режим</button>
+        </div>
+        <div class="admin-toolbar__hint">
+          Клік по місцю → вибір до кошика. Продані / заблоковані місця недоступні.
+        </div>
+      </div>
+
+      <div id="hallContainer" class="hall-admin">
+        <!-- сюда JS отрисует зал -->
+      </div>
+
+      <div class="admin-legend">
+        <span><span class="legend-box legend-box--free"></span> вільно</span>
+        <span><span class="legend-box legend-box--selected"></span> у кошику</span>
+        <span><span class="legend-box legend-box--sold"></span> продано</span>
+        <span><span class="legend-box legend-box--reserved"></span> бронь</span>
+        <span><span class="legend-box legend-box--blocked"></span> службові / заблок.</span>
+      </div>
+    </section>
+
+    <!-- ПРАВАЯ ЧАСТЬ: КОРЗИНА / КНОПКИ -->
+    <aside class="admin-side">
+      <h2 class="side-title">Кошик каси</h2>
+      <div class="side-meta">
+        <div>Сеанс: <span id="sideShowTitle">—</span></div>
+        <div>Дата та час: <span id="sideShowTime">—</span></div>
+      </div>
+
+      <div class="side-box">
+        <div class="side-box__header">
+          Обрані місця
+          <span class="side-box__counter" id="basketCount">0</span>
+        </div>
+        <div class="side-box__body">
+          <table class="basket-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Зона</th>
+                <th>Ряд / Ложа</th>
+                <th>Місце</th>
+                <th>Ціна, грн</th>
+              </tr>
+            </thead>
+            <tbody id="basketBody">
+              <!-- строки корзины -->
+            </tbody>
+          </table>
+        </div>
+        <div class="side-box__footer">
+          <div>Квитків: <span id="sumCount">0</span></div>
+          <div>На суму: <span id="sumAmount">0</span> грн</div>
+        </div>
+      </div>
+
+      <div class="side-actions">
+        <button id="btnSell" class="btn btn--primary">Продати (каса)</button>
+        <button id="btnReserve" class="btn btn--warn">Поставити на бронь</button>
+        <button id="btnClear" class="btn btn--ghost">Очистити кошик</button>
+      </div>
+
+      <div class="side-note">
+        ⚠ Поки що це демо-режим: дані не відправляються на сервер.  
+        У режимі офлайн зміни дублюються у this браузері (localStorage).
+      </div>
+    </aside>
+  </main>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
