@@ -53,9 +53,10 @@ async function init() {
 
   seanceSelect.addEventListener("change", onSeanceChange);
 
-  btnSell.addEventListener("click", () => applyStatusToSelection("sold"));
-  btnReserve.addEventListener("click", () => applyStatusToSelection("reserved"));
-  btnClear.addEventListener("click", clearSelection);
+  const btnSell = document.getElementById("btnSell");
+const btnReserve = document.getElementById("btnReserve");
+const btnCancelReserve = document.getElementById("btnCancelReserve"); // ← НОВОЕ
+const btnClear = document.getElementById("btnClear");
 
   btnModeOnline.addEventListener("click", () => setOfflineMode(false));
   btnModeOffline.addEventListener("click", () => setOfflineMode(true));
