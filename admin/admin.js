@@ -98,6 +98,12 @@
       title.textContent = zoneLabels[zone] || zone;
 
       const body = document.createElement('div');
+
+      // Амфітеатр і балкон центруємо, як у глядацькій схемі
+      if (zone === 'amphi' || zone === 'balcony') {
+        body.classList.add('hall-center');
+      }
+
       section.appendChild(title);
       section.appendChild(body);
 
