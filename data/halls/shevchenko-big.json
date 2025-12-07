@@ -58,7 +58,7 @@
     { "row": 20, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
     { "row": 21, "zone": "amphi", "seats_left": 11, "seats_right": 10, "price_group": "p_amphi_all" },
     { "row": 22, "zone": "amphi", "seats_left": 11, "seats_right": 0, "price_group": "p_amphi_all" },
-{ "row": 23, "zone": "amphi", "seats_left": 11, "seats_right": 0, "price_group": "p_amphi_all" }
+    { "row": 23, "zone": "amphi", "seats_left": 11, "seats_right": 0, "price_group": "p_amphi_all" },
 
 
     { "row": 1, "zone": "balcony", "seats": 28, "aisle_after": 14, "price_group": "p_balcony_1_5" },
