@@ -263,18 +263,22 @@ body {
 }
 
 /* ЛОЖИ */
+/* Ложі під партером */
 .hall-boxes {
   display: flex;
   justify-content: space-between;
-  margin: 8px 0 0;
+  /* ширина примерно как 20 місць партера */
+  width: 540px;
+  margin: 8px auto 0;      /* центрируем под партером */
 }
 
 .hall-box {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
+
 
 .hall-box-title {
   font-size: 12px;
