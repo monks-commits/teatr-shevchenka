@@ -1,506 +1,550 @@
 // admin/admin.js
 
-// ----- НАСТРОЙКИ -----
-const HALL_CONFIG_URL = "../data/halls/shevchenko-big.json";
+// ================= БАЗОВЫЕ НАСТРОЙКИ =================
 
-// здесь можно дописать ещё сеансы
-const SEANCES = [
-  {
-    id: "visim-2025-12-28",
-    label: "«Вісім люблячих жінок» — 28.12.2025 16:00",
-    url: "../data/seances/visim-2025-12-28.json",
-  },
-];
+const HALL_CONFIG_URL = "/teatr-shevchenka/data/halls/shevchenko-big.json";
 
-// ----- СОСТОЯНИЕ -----
-let hallDef = null;        // конфиг зала
-let currentSeance = null;  // объект сеанса (prices + places)
-let places = {};           // ссылка на currentSeance.places
-let selectedKeys = new Set();
-let offlineMode = false;
+// Для демо-режима: локальный "сеанс" и localStorage ключ
+const DEMO_SEANCE_ID = "visim-2025-12-28";
+const LS_KEY = "teatr_shevchenka_admin_demo_places";
 
-// ----- ЭЛЕМЕНТЫ DOM -----
-const hallContainer = document.getElementById("hallContainer");
-const seanceSelect = document.getElementById("seanceSelect");
-const sideShowTitle = document.getElementById("sideShowTitle");
-const sideShowTime = document.getElementById("sideShowTime");
-const basketBody = document.getElementById("basketBody");
-const basketCount = document.getElementById("basketCount");
-const sumCount = document.getElementById("sumCount");
-const sumAmount = document.getElementById("sumAmount");
-const offlineBadge = document.getElementById("offlineBadge");
+// ================= СОСТОЯНИЕ ПРИЛОЖЕНИЯ =================
 
-const btnSell = document.getElementById("btnSell");
-const btnReserve = document.getElementById("btnReserve");
-const btnClear = document.getElementById("btnClear");
-const btnModeOnline = document.getElementById("btnModeOnline");
-const btnModeOffline = document.getElementById("btnModeOffline");
+/**
+ * hallConfig.rows -> массив строк схемы
+ * prices -> словарь групп цен
+ */
+let hallConfig = null;
 
-// ----- ИНИЦИАЛИЗАЦИЯ -----
-init().catch((err) => console.error(err));
+/**
+ * placesState: объект
+ *   ключ: seatId (формат "row-seat" или "boxA-5")
+ *   значение: { status, channel?, order_id?, comment?, agent? }
+ *
+ * В демо мы храним это ТОЛЬКО в localStorage.
+ * В реальной интеграции это будет прилетать с Supabase.
+ */
+let placesState = {};
 
-async function init() {
-  // загрузка конфигурации зала
-  hallDef = await fetchJson(HALL_CONFIG_URL);
+/**
+ * cart: выбранные места в текущей сессии кассира
+ *   массив seatId: ["1-5","1-6", ...]
+ */
+let cart = [];
 
-  // заполнение селекта сеансов
-  SEANCES.forEach((s) => {
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = s.label;
-    seanceSelect.appendChild(opt);
-  });
+/**
+ * offline / online режим.
+ * Пока вся логика — офлайн; флаг просто для интерфейса.
+ */
+let isOffline = true;
 
-  seanceSelect.addEventListener("change", onSeanceChange);
+// ================= УТИЛИТЫ =================
 
-  btnSell.addEventListener("click", () => applyStatusToSelection("sold"));
-  btnReserve.addEventListener("click", () => applyStatusToSelection("reserved"));
-  btnClear.addEventListener("click", clearSelection);
-
-  btnModeOnline.addEventListener("click", () => setOfflineMode(false));
-  btnModeOffline.addEventListener("click", () => setOfflineMode(true));
-
-  // по умолчанию первый сеанс
-  if (SEANCES.length) {
-    await loadSeance(SEANCES[0]);
-    seanceSelect.value = SEANCES[0].id;
-  }
-
-  setOfflineMode(false);
+function qs(selector, root = document) {
+  return root.querySelector(selector);
+}
+function qsa(selector, root = document) {
+  return Array.from(root.querySelectorAll(selector));
 }
 
-// ----- ЗАГРУЗКА СЕАНСА -----
-async function loadSeance(meta) {
-  const data = await fetchJson(meta.url);
-  // дополним идентификатором для localStorage
-  data._id = meta.id;
-  currentSeance = data;
-
-  // нормализуем структуру places
-  if (!currentSeance.places) currentSeance.places = {};
-  places = currentSeance.places;
-
-  // подтянем локальные офлайн-изменения, если есть
-  restoreFromLocalStorage();
-
-  selectedKeys.clear();
-  updateHeaderInfo();
-  renderHall();
-  renderBasket();
-}
-
-function onSeanceChange() {
-  const id = seanceSelect.value;
-  const meta = SEANCES.find((s) => s.id === id);
-  if (meta) {
-    loadSeance(meta).catch(console.error);
+function loadFromLocalStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("LS parse error", e);
+    return {};
   }
 }
 
-// ----- ОТРИСОВКА ЗАЛА -----
-function renderHall() {
-  if (!hallDef || !currentSeance) return;
-
-  const seancePlaces = places || {};
-  hallContainer.innerHTML = "";
-
-  const layout = document.createElement("div");
-  layout.className = "hall-layout";
-
-  // партер
-  const parterBlock = document.createElement("div");
-  parterBlock.className = "hall-block";
-  parterBlock.appendChild(caption("Партер"));
-
-  hallDef.rows
-    .filter((r) => r.zone === "parter")
-    .forEach((rowDef) => {
-      parterBlock.appendChild(renderRow(rowDef, seancePlaces));
-    });
-
-  // ложи
-  if (hallDef.boxes && hallDef.boxes.length) {
-    parterBlock.appendChild(renderBoxes(hallDef.boxes, seancePlaces));
-  }
-
-  layout.appendChild(parterBlock);
-
-  // амфитеатр
-  const amphiBlock = document.createElement("div");
-  amphiBlock.className = "hall-block";
-  amphiBlock.appendChild(caption("Амфітеатр"));
-
-  hallDef.rows
-    .filter((r) => r.zone === "amphi")
-    .forEach((rowDef) => {
-      amphiBlock.appendChild(renderRow(rowDef, seancePlaces));
-    });
-
-  layout.appendChild(amphiBlock);
-
-  // балкон
-  const balconyBlock = document.createElement("div");
-  balconyBlock.className = "hall-block";
-  balconyBlock.appendChild(caption("Балкон"));
-
-  hallDef.rows
-    .filter((r) => r.zone === "balcony")
-    .forEach((rowDef) => {
-      balconyBlock.appendChild(renderRow(rowDef, seancePlaces));
-    });
-
-  layout.appendChild(balconyBlock);
-
-  hallContainer.appendChild(layout);
-}
-
-function caption(text) {
-  const el = document.createElement("div");
-  el.className = "hall-caption";
-  el.textContent = text;
-  return el;
-}
-
-function renderRow(rowDef, seancePlaces) {
-  const rowEl = document.createElement("div");
-  rowEl.className = "hall-row";
-
-  const label = document.createElement("div");
-  label.className = "hall-row-label";
-  label.textContent = rowDef.row;
-  rowEl.appendChild(label);
-
-  const seatsWrap = document.createElement("div");
-  seatsWrap.className = "hall-row-seats";
-
-  // считаем количество мест и позицию прохода
-  let totalSeats = 0;
-  let aisleAfter = null;
-
-  if (typeof rowDef.seats === "number") {
-    totalSeats = rowDef.seats;
-    aisleAfter = rowDef.aisle_after || null;
-  } else {
-    const left = rowDef.seats_left || 0;
-    const right = rowDef.seats_right || 0;
-    totalSeats = left + right;
-    aisleAfter = left || null; // проход между левым и правым блоком
-  }
-
-  for (let seatNo = 1; seatNo <= totalSeats; seatNo++) {
-    if (aisleAfter && seatNo === aisleAfter + 1) {
-      const gap = document.createElement("div");
-      gap.className = "hall-aisle";
-      seatsWrap.appendChild(gap);
-    }
-
-    const key = `${rowDef.row}-${seatNo}`;
-    const place = seancePlaces[key];
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "seat";
-    btn.textContent = seatNo;
-    btn.dataset.key = key;
-    btn.dataset.row = String(rowDef.row);
-    btn.dataset.seat = String(seatNo);
-    btn.dataset.zone = rowDef.zone;
-    btn.dataset.priceGroup = rowDef.price_group || "";
-
-    applySeatClasses(btn, place);
-
-    btn.addEventListener("click", onSeatClick);
-
-    seatsWrap.appendChild(btn);
-  }
-
-  rowEl.appendChild(seatsWrap);
-  return rowEl;
-}
-
-function renderBoxes(boxes, seancePlaces) {
-  const wrap = document.createElement("div");
-  wrap.className = "hall-boxes";
-
-  const leftCol = document.createElement("div");
-  const rightCol = document.createElement("div");
-  leftCol.className = "hall-box";
-  rightCol.className = "hall-box";
-
-  const boxLeft = boxes.find((b) => (b.side || "").toLowerCase() === "left") || boxes[0];
-  const boxRight =
-    boxes.find((b) => (b.side || "").toLowerCase() === "right") ||
-    boxes.find((b) => b !== boxLeft) ||
-    null;
-
-  if (boxLeft) {
-    leftCol.appendChild(boxTitle(boxLeft.label || "Ложа A"));
-    leftCol.appendChild(renderBoxColumn(boxLeft, seancePlaces));
-  }
-  if (boxRight) {
-    rightCol.appendChild(boxTitle(boxRight.label || "Ложа B"));
-    rightCol.appendChild(renderBoxColumn(boxRight, seancePlaces));
-  }
-
-  wrap.appendChild(leftCol);
-  wrap.appendChild(rightCol);
-  return wrap;
-}
-
-function boxTitle(text) {
-  const el = document.createElement("div");
-  el.className = "hall-box-title";
-  el.textContent = text;
-  return el;
-}
-
-function renderBoxColumn(boxDef, seancePlaces) {
-  const col = document.createElement("div");
-  col.className = "hall-box-col";
-  const seats = boxDef.seats || 18;
-
-  for (let i = 1; i <= seats; i++) {
-    const key = `${boxDef.id}-${i}`;
-    const place = seancePlaces[key];
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "seat";
-    btn.textContent = i;
-    btn.dataset.key = key;
-    btn.dataset.zone = "boxes";
-    btn.dataset.boxId = boxDef.id;
-    btn.dataset.priceGroup = boxDef.price_group || "";
-
-    applySeatClasses(btn, place);
-
-    btn.addEventListener("click", onSeatClick);
-
-    col.appendChild(btn);
-  }
-
-  return col;
-}
-
-function applySeatClasses(btn, place) {
-  btn.classList.remove("seat--selected", "seat--sold", "seat--reserved", "seat--blocked");
-
-  const key = btn.dataset.key;
-  if (selectedKeys.has(key)) {
-    btn.classList.add("seat--selected");
-  }
-
-  if (!place || !place.status || place.status === "free") return;
-
-  switch (place.status) {
-    case "sold":
-      btn.classList.add("seat--sold");
-      break;
-    case "reserved":
-      btn.classList.add("seat--reserved");
-      break;
-    case "blocked":
-      btn.classList.add("seat--blocked");
-      break;
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(placesState));
+  } catch (e) {
+    console.error("LS save error", e);
   }
 }
 
-// ----- ОБРАБОТКА КЛИКОВ ПО МЕСТАМ -----
-function onSeatClick(e) {
-  const btn = e.currentTarget;
-  const key = btn.dataset.key;
-  const place = places[key];
+/**
+ * Цена для места по row / zone / price_group
+ */
+function getSeatPrice(rowNum, zone, priceGroupKey) {
+  if (!hallConfig || !hallConfig.prices) return 0;
 
-  // нельзя трогать проданные / заблокированные
-  if (place && (place.status === "sold" || place.status === "blocked")) {
-    return;
-  }
+  // price_group уже лежит в строке, но можно переопределить логикой,
+  // если театр захочет другую модель
+  const groupKey = priceGroupKey;
 
-  if (selectedKeys.has(key)) {
-    selectedKeys.delete(key);
-  } else {
-    selectedKeys.add(key);
-  }
-
-  renderHall();
-  renderBasket();
+  const v = hallConfig.prices[groupKey];
+  return typeof v === "number" ? v : 0;
 }
 
-// ----- КОРЗИНА -----
-function renderBasket() {
-  basketBody.innerHTML = "";
-  let total = 0;
-
-  const keys = Array.from(selectedKeys);
-
-  keys.sort((a, b) => a.localeCompare(b, "uk"));
-
-  keys.forEach((key, index) => {
-    const meta = getSeatMeta(key);
-    if (!meta) return;
-    total += meta.price;
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td>${meta.zoneLabel}</td>
-      <td>${meta.rowLabel}</td>
-      <td>${meta.seatLabel}</td>
-      <td>${meta.price}</td>
-    `;
-    basketBody.appendChild(tr);
-  });
-
-  basketCount.textContent = String(keys.length);
-  sumCount.textContent = String(keys.length);
-  sumAmount.textContent = String(total);
+/**
+ * Читает состояние места с учетом дефолта.
+ * Если места нет в placesState -> считаем "free".
+ */
+function getPlaceStatus(seatId) {
+  const p = placesState[seatId];
+  if (!p) return { status: "free" };
+  return p;
 }
 
-function clearSelection() {
-  selectedKeys.clear();
-  renderHall();
-  renderBasket();
-}
-
-// ----- ПРИМЕНЕНИЕ СТАТУСОВ -----
-function applyStatusToSelection(status) {
-  if (!selectedKeys.size) {
-    alert("Спочатку оберіть хоча б одне місце.");
-    return;
-  }
-
-  selectedKeys.forEach((key) => {
-    if (!places[key]) places[key] = {};
-    const place = places[key];
-
-    // если уже продано/заблокировано — пропускаем
-    if (place.status === "sold" || place.status === "blocked") return;
-
-    place.status = status; // sold / reserved
-    place.channel = "boxoffice";
-  });
-
-  // сохраняем офлайн-копию
-  saveToLocalStorage();
-
-  selectedKeys.clear();
-  renderHall();
-  renderBasket();
-
-  const msg =
-    status === "sold"
-      ? "Місця відмічені як продані (каса)."
-      : "Місця поставлені на бронь.";
-  alert(msg);
-}
-
-// ----- МЕТАДАННЫЕ МЕСТА -----
-function getSeatMeta(key) {
-  // ложи
-  if (key.startsWith("box")) {
-    const [boxId, seatStr] = key.split("-");
-    const seatNo = Number(seatStr);
-    const box = hallDef.boxes.find(
-      (b) => b.id.toLowerCase() === boxId.toLowerCase()
-    );
-    if (!box) return null;
-    const priceGroup = box.price_group;
-    const price = (currentSeance.prices && currentSeance.prices[priceGroup]) || 0;
-
-    return {
-      zone: "boxes",
-      zoneLabel: "Ложа",
-      rowLabel: box.label || box.id,
-      seatLabel: seatNo,
-      price,
-    };
-  }
-
-  // обычное место: "ряд-місце"
-  const [rowStr, seatStr] = key.split("-");
-  const row = Number(rowStr);
-  const seatNo = Number(seatStr);
-  const rowDef = hallDef.rows.find((r) => Number(r.row) === row);
-  if (!rowDef) return null;
-
-  const priceGroup = rowDef.price_group;
-  const price = (currentSeance.prices && currentSeance.prices[priceGroup]) || 0;
-  const zone = rowDef.zone;
-
-  const zoneLabel =
-    zone === "parter"
-      ? "Партер"
-      : zone === "amphi"
-      ? "Амфітеатр"
-      : zone === "balcony"
-      ? "Балкон"
-      : "Зал";
-
-  return {
-    zone,
-    zoneLabel,
-    rowLabel: `Ряд ${row}`,
-    seatLabel: seatNo,
-    price,
+/**
+ * Обновляет статус в памяти и (в демо) сразу в localStorage.
+ */
+function setPlaceStatus(seatId, nextStatusObj) {
+  placesState[seatId] = {
+    ...(placesState[seatId] || {}),
+    ...nextStatusObj,
   };
 }
 
-// ----- ИНФО В ПРАВОМ БЛОКЕ -----
-function updateHeaderInfo() {
-  sideShowTitle.textContent = currentSeance.title || "—";
-  sideShowTime.textContent = currentSeance.datetime || "—";
+// ================= ОТРИСОВКА ЗАЛА =================
+
+/**
+ * Создает DOM-элемент "кружок" для конкретного места
+ */
+function createSeatElement(rowConfig, seatIndex, rowIndex) {
+  const zone = rowConfig.zone; // parter / amphi / balcony / box
+  const rowNum = rowConfig.row; // номер ряда (1..N)
+  const seatsCount = rowConfig.seats;
+
+  // seatIndex: 0..(seatsCount-1)
+  const seatNumber = seatIndex + 1;
+
+  let seatId = `${rowNum}-${seatNumber}`;
+  if (zone === "boxA") {
+    seatId = `boxA-${seatNumber}`;
+  } else if (zone === "boxB") {
+    seatId = `boxB-${seatNumber}`;
+  }
+
+  const seat = document.createElement("button");
+  seat.type = "button";
+  seat.className = "seat";
+  seat.dataset.seatId = seatId;
+  seat.dataset.zone = zone;
+  seat.dataset.row = String(rowNum);
+  seat.dataset.number = String(seatNumber);
+
+  seat.textContent = String(seatNumber);
+
+  // статус и класс
+  const state = getPlaceStatus(seatId);
+  updateSeatClasses(seat, state.status);
+
+  // обработчик клика — добавляем / убираем seatId в cart
+  seat.addEventListener("click", () => handleSeatClick(seat));
+
+  return seat;
 }
 
-// ----- ОФЛАЙН-РЕЖИМ -----
-function setOfflineMode(flag) {
-  offlineMode = !!flag;
+/**
+ * Обновление CSS-классов для seat-элемента
+ */
+function updateSeatClasses(el, status) {
+  el.classList.remove(
+    "seat--free",
+    "seat--in-cart",
+    "seat--sold",
+    "seat--reserved",
+    "seat--blocked"
+  );
 
-  if (offlineMode) {
-    offlineBadge.textContent = "Офлайн";
-    offlineBadge.classList.remove("badge--online");
-    offlineBadge.classList.add("badge--offline");
-    btnModeOffline.classList.add("btn--primary");
-    btnModeOnline.classList.remove("btn--primary");
+  switch (status) {
+    case "sold":
+      el.classList.add("seat--sold");
+      el.disabled = true;
+      break;
+    case "reserved":
+      el.classList.add("seat--reserved");
+      el.disabled = false;
+      break;
+    case "blocked":
+      el.classList.add("seat--blocked");
+      el.disabled = true;
+      break;
+    default:
+      // free
+      el.classList.add("seat--free");
+      el.disabled = false;
+  }
+}
+
+/**
+ * Основной рендер зала
+ */
+function renderHall() {
+  const hallRoot = qs("[data-hall-root]");
+  if (!hallRoot || !hallConfig) return;
+
+  hallRoot.innerHTML = "";
+
+  const rowsWrapper = document.createElement("div");
+  rowsWrapper.className = "hall-admin";
+
+  hallConfig.rows.forEach((rowConfig) => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "hall-admin__row";
+
+    const label = document.createElement("div");
+    label.className = "hall-admin__row-label";
+    label.textContent =
+      rowConfig.rowLabel || `Ряд ${rowConfig.row}${zoneSuffix(rowConfig.zone)}`;
+
+    rowEl.appendChild(label);
+
+    // левая часть (для проходов / пустот)
+    if (rowConfig.seats_left && rowConfig.seats_left > 0) {
+      const leftStub = document.createElement("div");
+      leftStub.className = "hall-admin__stub";
+      for (let i = 0; i < rowConfig.seats_left; i++) {
+        const seatStub = document.createElement("span");
+        seatStub.className = "seat seat--stub";
+        leftStub.appendChild(seatStub);
+      }
+      rowEl.appendChild(leftStub);
+    }
+
+    const seatsContainer = document.createElement("div");
+    seatsContainer.className = "hall-admin__seats";
+
+    for (let i = 0; i < rowConfig.seats; i++) {
+      const seat = createSeatElement(rowConfig, i);
+      seatsContainer.appendChild(seat);
+    }
+    rowEl.appendChild(seatsContainer);
+
+    if (rowConfig.seats_right && rowConfig.seats_right > 0) {
+      const rightStub = document.createElement("div");
+      rightStub.className = "hall-admin__stub";
+      for (let i = 0; i < rowConfig.seats_right; i++) {
+        const seatStub = document.createElement("span");
+        seatStub.className = "seat seat--stub";
+        rightStub.appendChild(seatStub);
+      }
+      rowEl.appendChild(rightStub);
+    }
+
+    rowsWrapper.appendChild(rowEl);
+  });
+
+  hallRoot.appendChild(rowsWrapper);
+}
+
+/**
+ * Надпись для ряда: " (Ложа A)" и т.п., если надо.
+ */
+function zoneSuffix(zone) {
+  switch (zone) {
+    case "parter":
+      return " (Партер)";
+    case "amphi":
+      return " (Амфітеатр)";
+    case "balcony":
+      return " (Балкон)";
+    case "boxA":
+      return " (Ложа A)";
+    case "boxB":
+      return " (Ложа Б)";
+    default:
+      return "";
+  }
+}
+
+// ================= ЛОГИКА КОРЗИНЫ =================
+
+/**
+ * При клике по месту
+ */
+function handleSeatClick(seatEl) {
+  const seatId = seatEl.dataset.seatId;
+  const current = getPlaceStatus(seatId);
+
+  if (current.status === "sold" || current.status === "blocked") {
+    // уже продано / заблокировано — кассир не может трогать
+    return;
+  }
+
+  // toggle: если уже в cart -> убрать, иначе добавить
+  const idx = cart.indexOf(seatId);
+  if (idx >= 0) {
+    cart.splice(idx, 1);
+    // вернуть визуально к своему "базовому" статусу
+    updateSeatClasses(seatEl, current.status);
   } else {
-    offlineBadge.textContent = "Онлайн";
-    offlineBadge.classList.remove("badge--offline");
-    offlineBadge.classList.add("badge--online");
-    btnModeOnline.classList.add("btn--primary");
-    btnModeOffline.classList.remove("btn--primary");
+    cart.push(seatId);
+    seatEl.classList.add("seat--in-cart");
+  }
+
+  renderCart();
+}
+
+/**
+ * Пересчет корзины (табличка справа)
+ */
+function renderCart() {
+  const tbody = qs("[data-cart-body]");
+  const totalSpan = qs("[data-cart-total]");
+  const countSpan = qs("[data-cart-count]");
+
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  let total = 0;
+
+  cart.forEach((seatId, idx) => {
+    const state = getPlaceStatus(seatId);
+    const info = parseSeatId(seatId); // {row, seat, zone}
+    const rowConfig = hallConfig.rows.find(
+      (r) => r.row === info.row && r.zone === info.zone
+    );
+    if (!rowConfig) return;
+
+    const price = getSeatPrice(rowConfig.row, info.zone, rowConfig.price_group);
+    total += price;
+
+    const tr = document.createElement("tr");
+
+    const colIdx = document.createElement("td");
+    colIdx.textContent = String(idx + 1);
+    tr.appendChild(colIdx);
+
+    const colZone = document.createElement("td");
+    colZone.textContent = zoneLabel(info.zone);
+    tr.appendChild(colZone);
+
+    const colRow = document.createElement("td");
+    colRow.textContent =
+      info.zone === "boxA" || info.zone === "boxB"
+        ? `Ложа ${info.zone === "boxA" ? "A" : "Б"}`
+        : `Ряд ${info.row}`;
+    tr.appendChild(colRow);
+
+    const colSeat = document.createElement("td");
+    colSeat.textContent =
+      info.zone === "boxA" || info.zone === "boxB"
+        ? `Місце ${info.seat}`
+        : `Місце ${info.seat}`;
+    tr.appendChild(colSeat);
+
+    const colPrice = document.createElement("td");
+    colPrice.textContent = `${price} грн`;
+    tr.appendChild(colPrice);
+
+    tbody.appendChild(tr);
+  });
+
+  if (totalSpan) totalSpan.textContent = String(total);
+  if (countSpan) countSpan.textContent = String(cart.length);
+}
+
+/**
+ * Разбор seatId вида "10-12" или "boxA-5"
+ */
+function parseSeatId(seatId) {
+  if (seatId.startsWith("boxA-")) {
+    return {
+      zone: "boxA",
+      row: 0,
+      seat: Number(seatId.split("-")[1]),
+    };
+  }
+  if (seatId.startsWith("boxB-")) {
+    return {
+      zone: "boxB",
+      row: 0,
+      seat: Number(seatId.split("-")[1]),
+    };
+  }
+
+  const [rowStr, seatStr] = seatId.split("-");
+  return {
+    zone: detectZoneByRow(Number(rowStr)),
+    row: Number(rowStr),
+    seat: Number(seatStr),
+  };
+}
+
+/**
+ * По номеру ряда определяем зону (для подписи).
+ * В идеале лучше хранить в конфиге hallConfig.rows.
+ */
+function detectZoneByRow(rowNum) {
+  const rowCfg = hallConfig.rows.find((r) => r.row === rowNum);
+  return rowCfg ? rowCfg.zone : "parter";
+}
+
+function zoneLabel(zone) {
+  switch (zone) {
+    case "parter":
+      return "Партер";
+    case "amphi":
+      return "Амфітеатр";
+    case "balcony":
+      return "Балкон";
+    case "boxA":
+      return "Ложа A";
+    case "boxB":
+      return "Ложа Б";
+    default:
+      return zone;
   }
 }
 
-// сохраняем только локальную копию состояний мест
-function saveToLocalStorage() {
-  if (!currentSeance || !currentSeance._id) return;
-  try {
-    const key = "shevchenko-seance-" + currentSeance._id;
-    localStorage.setItem(key, JSON.stringify(places));
-  } catch (e) {
-    console.warn("localStorage error:", e);
+// ================= ДЕЙСТВИЯ КАССИРА =================
+
+/**
+ * Продажа мест (офлайн).
+ * В демо меняем статус на 'sold' и пишем channel: 'boxoffice'
+ */
+function sellSeatsFromCart() {
+  if (!cart.length) return;
+
+  cart.forEach((seatId) => {
+    setPlaceStatus(seatId, {
+      status: "sold",
+      channel: "boxoffice",
+      // order_id можно сгенерить здесь, но для демо опустим
+    });
+
+    const btn = qs(`.seat[data-seat-id="${seatId}"]`);
+    if (btn) {
+      updateSeatClasses(btn, "sold");
+      btn.classList.remove("seat--in-cart");
+    }
+  });
+
+  saveToLocalStorage();
+  cart = [];
+  renderCart();
+}
+
+/**
+ * Поставить выбранные места на бронь
+ */
+function reserveSeatsFromCart() {
+  if (!cart.length) return;
+
+  cart.forEach((seatId) => {
+    setPlaceStatus(seatId, {
+      status: "reserved",
+      channel: "cash",
+    });
+
+    const btn = qs(`.seat[data-seat-id="${seatId}"]`);
+    if (btn) {
+      updateSeatClasses(btn, "reserved");
+      btn.classList.remove("seat--in-cart");
+    }
+  });
+
+  saveToLocalStorage();
+  cart = [];
+  renderCart();
+}
+
+/**
+ * Снять бронь со всех мест, которые сейчас в корзине
+ * (и которые реально находятся в статусе "reserved").
+ */
+function cancelReserveFromCart() {
+  if (!cart.length) return;
+
+  cart.forEach((seatId) => {
+    const prev = getPlaceStatus(seatId);
+    if (prev.status === "reserved") {
+      setPlaceStatus(seatId, {
+        status: "free",
+        channel: null,
+        order_id: null,
+        comment: null,
+        agent: null,
+      });
+
+      const btn = qs(`.seat[data-seat-id="${seatId}"]`);
+      if (btn) {
+        updateSeatClasses(btn, "free");
+        btn.classList.remove("seat--in-cart");
+      }
+    } else {
+      // если был не reserved — просто убираем из корзины, не трогая статус
+      const btn = qs(`.seat[data-seat-id="${seatId}"]`);
+      if (btn) {
+        btn.classList.remove("seat--in-cart");
+      }
+    }
+  });
+
+  saveToLocalStorage();
+  cart = [];
+  renderCart();
+}
+
+/**
+ * Очистить корзину (не меняя статусы мест)
+ */
+function clearCartOnly() {
+  cart.forEach((seatId) => {
+    const state = getPlaceStatus(seatId);
+    const btn = qs(`.seat[data-seat-id="${seatId}"]`);
+    if (btn) {
+      updateSeatClasses(btn, state.status);
+      btn.classList.remove("seat--in-cart");
+    }
+  });
+
+  cart = [];
+  renderCart();
+}
+
+// ================= ИНИЦИАЛИЗАЦИЯ =================
+
+async function init() {
+  // Загружаем конфиг зала
+  const hallRes = await fetch(HALL_CONFIG_URL, { cache: "no-store" });
+  hallConfig = await hallRes.json();
+
+  // Загружаем состояние мест из localStorage (только демо)
+  placesState = loadFromLocalStorage();
+
+  // Рендерим зал
+  renderHall();
+  renderCart();
+
+  // Кнопки действий
+  const btnSell = qs("#btnSell");
+  const btnReserve = qs("#btnReserve");
+  const btnCancelReserve = qs("#btnCancelReserve");
+  const btnClearCart = qs("#btnClearCart");
+
+  if (btnSell) btnSell.addEventListener("click", sellSeatsFromCart);
+  if (btnReserve) btnReserve.addEventListener("click", reserveSeatsFromCart);
+  if (btnCancelReserve)
+    btnCancelReserve.addEventListener("click", cancelReserveFromCart);
+  if (btnClearCart) btnClearCart.addEventListener("click", clearCartOnly);
+
+  // Переключатель офлайн/онлайн — пока просто визуальный
+  const offlineBtn = qs("#modeOffline");
+  const onlineBtn = qs("#modeOnline");
+
+  if (offlineBtn) {
+    offlineBtn.addEventListener("click", () => {
+      isOffline = true;
+      offlineBtn.classList.add("mode-switch--active");
+      if (onlineBtn) onlineBtn.classList.remove("mode-switch--active");
+    });
+  }
+  if (onlineBtn) {
+    onlineBtn.addEventListener("click", () => {
+      isOffline = false;
+      onlineBtn.classList.add("mode-switch--active");
+      if (offlineBtn) offlineBtn.classList.remove("mode-switch--active");
+      // в будущем здесь будет sync с сервером
+    });
   }
 }
 
-function restoreFromLocalStorage() {
-  if (!currentSeance || !currentSeance._id) return;
-  try {
-    const key = "shevchenko-seance-" + currentSeance._id;
-    const s = localStorage.getItem(key);
-    if (!s) return;
-    const saved = JSON.parse(s);
-    currentSeance.places = Object.assign({}, currentSeance.places, saved);
-    places = currentSeance.places;
-  } catch (e) {
-    console.warn("localStorage restore error:", e);
-  }
-}
-
-// ----- УТИЛИТА ДЛЯ ЗАГРУЗКИ JSON -----
-async function fetchJson(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error("HTTP " + res.status + " for " + url);
-  }
-  return await res.json();
-}
-
+// Запуск
+document.addEventListener("DOMContentLoaded", init);
