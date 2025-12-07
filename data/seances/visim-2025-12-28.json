@@ -1,9 +1,9 @@
 {
-  "id": "visim-2025-12-28-16-00",
-  "hall_id": "shevchenko-big",
-  "show_slug": "visim",
+  "show": "visim",
   "title": "Вісім люблячих жінок",
-  "datetime": "2025-12-28T16:00:00+02:00",
+  "date": "2025-12-28",
+  "time": "16:00",
+  "hall_id": "shevchenko-big",
 
   "prices": {
     "p_parter_1_6": 200,
@@ -16,17 +16,39 @@
   },
 
   "places": {
-    /* формат ключа: "<row>-<seat>" або "boxA-5" */
+    "_comment": "ключ = '<row>-<seat>' або 'boxA-5', 'boxB-3'",
 
-    "1-1": { "status": "sold", "channel": "online", "order_id": "ORD-1001" },
-    "1-2": { "status": "reserved", "channel": "cash", "comment": "бронь режисер" },
+    "1-1": {
+      "status": "sold",
+      "channel": "online",
+      "order_id": "ORD-1001"
+    },
 
-    "9-6": { "status": "sold", "channel": "boxoffice", "order_id": "ORD-1002" },
+    "1-2": {
+      "status": "reserved",
+      "channel": "cash",
+      "comment": "бронь режисер"
+    },
 
-    "19-5": { "status": "blocked", "comment": "звукорежисер" },
+    "9-6": {
+      "status": "sold",
+      "channel": "boxoffice",
+      "order_id": "ORD-1002"
+    },
 
-    "boxA-1": { "status": "sold", "channel": "agent", "agent": "Ірина" },
+    "19-5": {
+      "status": "blocked",
+      "comment": "звукорежисер"
+    },
 
-    "23-11": { "status": "free" }
+    "boxA-1": {
+      "status": "sold",
+      "channel": "agent",
+      "agent": "Ірина"
+    },
+
+    "23-11": {
+      "status": "free"
+    }
   }
 }
