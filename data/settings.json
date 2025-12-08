@@ -1,0 +1,28 @@
+{
+  "theatre": {
+    "name": "Театр ім. Т. Г. Шевченка",
+    "address": "м. Кривий Ріг, просп. ...",
+    "phone": "+38 (000) 000-00-00",
+    "email": "kassa@example.com",
+    "offer_url": "https://example.com/oferta",
+    "currency": "грн",
+    "ticket_prefix": "ORD-",
+    "ticket_start": 1000
+  },
+  "payments": {
+    "provider": "liqpay",
+    "liqpay_public_key": "",
+    "liqpay_private_key": "",
+    "mode": "offline_only",
+    "demo": true
+  },
+  "pricing_defaults": {
+    "p_parter_1_6": 200,
+    "p_parter_7_12": 180,
+    "p_parter_13_18": 160,
+    "p_amphi_all": 140,
+    "p_balcony_1_5": 120,
+    "p_balcony_6": 100,
+    "p_boxes": 200
+  }
+}
