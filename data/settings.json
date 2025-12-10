@@ -5,9 +5,7 @@
     "phone": "+38 (000) 000-00-00",
     "email": "kassa@example.com",
     "offer_url": "https://example.com/oferta",
-    "currency": "грн",
-    "ticket_prefix": "ORD-",
-    "ticket_start": 1000
+    "currency": "грн"
   },
   "payments": {
     "provider": "liqpay",
