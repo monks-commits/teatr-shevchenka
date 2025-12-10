@@ -3,46 +3,32 @@
 <head>
   <meta charset="utf-8" />
   <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- общие стили сайта -->
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../styles.css" />
-
   <style>
     body {
       background:#f3f4f6;
     }
-
-    .admin-shell {
-      display:flex;
-      flex-direction:column;
-      min-height:100vh;
+    .admin-page {
+      max-width: 1200px;
+      margin: 16px auto 40px;
+      padding: 0 16px;
     }
-
     .admin-header {
-      background:#111827;
-      color:#f9fafb;
-      padding:10px 24px;
       display:flex;
-      align-items:center;
       justify-content:space-between;
+      align-items:flex-start;
+      margin-bottom:16px;
+      gap:16px;
     }
     .admin-header__title {
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:600;
+      font-size:20px;
+      font-weight:700;
     }
     .admin-header__subtitle {
-      font-size:13px;
-      color:#9ca3af;
+      font-size:14px;
+      color:#6b7280;
     }
-
-    .admin-main {
-      flex:1 1 auto;
-      padding:16px 24px 24px;
-    }
-
     .admin-layout {
       display:flex;
       gap:16px;
@@ -57,14 +43,22 @@
       flex:0 0 320px;
     }
 
-    /* контейнер схемы */
-    .admin-hall-box {
-      background:#ffffff;
+    /* Блок схемы зала (как в hall.html) */
+    .hall-card{
+      background:#fff;
       border-radius:16px;
-      box-shadow:0 10px 25px rgba(15,23,42,0.05);
       padding:16px;
+      box-shadow:0 10px 25px rgba(15,23,42,0.05);
     }
-
+    .hall-layout{
+      display:flex;
+      gap:24px;
+      align-items:flex-start;
+    }
+    .hall-left{
+      flex:1 1 auto;
+      min-width:0;
+    }
     .hall-scroll{
       background:#e5e7eb;
       border-radius:16px;
@@ -76,7 +70,6 @@
     .hall-inner{
       width:max(980px,100%);
     }
-
     .hall-section{
       margin-bottom:18px;
     }
@@ -87,11 +80,6 @@
       letter-spacing:.08em;
       color:#6b7280;
       margin:4px 0 6px;
-    }
-.hall-center{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
     }
     .row-line{
       display:flex;
@@ -111,7 +99,6 @@
       gap:4px;
       flex-wrap:nowrap;
     }
-
     .seat{
       width:24px;
       height:24px;
@@ -126,13 +113,6 @@
       padding:0;
       user-select:none;
     }
-    .seat--parter-front{ background:#fef9c3; }
-    .seat--parter-mid{ background:#dbeafe; }
-    .seat--parter-back{ background:#e5e7eb; }
-    .seat--amphi{ background:#e0f2fe; }
-    .seat--balcony{ background:#f3e8ff; }
-    .seat--lodge{ background:#fee2e2; }
-
     .seat--gap-right{
       margin-right:16px;
     }
@@ -140,31 +120,26 @@
       width:24px;
       flex:0 0 24px;
     }
-    .seat--empty{
-      visibility:hidden;
-      pointer-events:none;
-      border:none;
-      background:transparent;
-    }
+    .seat--parter-front{ background:#fef9c3; }
+    .seat--parter-mid{   background:#dbeafe; }
+    .seat--parter-back{  background:#e5e7eb; }
+    .seat--amphi{        background:#e0f2fe; }
+    .seat--balcony{      background:#f3e8ff; }
+    .seat--lodge{        background:#fee2e2; }
 
+    .seat--selected{
+      background:#2563eb !important;
+      color:#fff;
+      border-color:#2563eb;
+    }
     .seat--sold{
       background:#9ca3af !important;
       color:#fff;
-      border-color:#9ca3af;
       cursor:not-allowed;
     }
-    .seat--hold{
+    .seat--reserved{
       background:#facc15 !important;
-      border-color:#eab308;
-    }
-    .seat--service{
-      background:#ef4444 !important;
-      border-color:#b91c1c;
-      color:#fff;
-      cursor:not-allowed;
-    }
-    .seat--basket{
-      box-shadow:0 0 0 2px #2563eb;
+      color:#1f2937;
     }
 
     .parter-wrap{
@@ -190,102 +165,91 @@
       gap:4px;
     }
 
-    .hall-legend{
-      margin-top:8px;
-      font-size:13px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
-      align-items:center;
-      color:#4b5563;
-    }
-    .legend-item{
-      display:flex;
-      align-items:center;
-      gap:4px;
-    }
-    .legend-dot{
-      width:14px;
-      height:14px;
-      border-radius:4px;
-      border:1px solid #d1d5db;
+    /* Справа — корзина и кнопки */
+    .admin-card {
       background:#fff;
-    }
-    .legend-dot--basket{ box-shadow:0 0 0 2px #2563eb; }
-    .legend-dot--sold{ background:#9ca3af; }
-    .legend-dot--hold{ background:#facc15; }
-    .legend-dot--service{ background:#ef4444; }
-
-    /* правая колонка */
-    .admin-card{
-      background:#ffffff;
       border-radius:16px;
-      box-shadow:0 10px 25px rgba(15,23,42,0.05);
       padding:16px;
-      margin-bottom:14px;
+      box-shadow:0 10px 25px rgba(15,23,42,0.05);
+      margin-bottom:16px;
     }
-    .admin-card h2{
-      margin:0 0 8px;
-      font-size:18px;
+    .admin-card h3{
+      margin-top:0;
+      margin-bottom:8px;
+      font-size:16px;
     }
     .admin-meta{
       font-size:13px;
       color:#6b7280;
-      margin-bottom:10px;
     }
-
-    .basket-table{
-      width:100%;
-      border-collapse:collapse;
+    .basket-list{
+      font-size:14px;
+      margin:8px 0;
+      max-height:160px;
+      overflow-y:auto;
+    }
+    .basket-empty{
       font-size:13px;
+      color:#9ca3af;
     }
-    .basket-table th,
-    .basket-table td{
-      padding:4px 6px;
-      border-bottom:1px solid #e5e7eb;
-      text-align:left;
-      white-space:nowrap;
-    }
-    .basket-table th{
-      font-weight:600;
-      font-size:12px;
-      color:#6b7280;
-    }
-
-    .basket-summary{
-      margin-top:6px;
-      font-size:14px;
-      font-weight:600;
-    }
-
-    .admin-btn{
-      width:100%;
-      border-radius:999px;
-      padding:10px 14px;
-      font-size:14px;
-      font-weight:600;
-      border:none;
-      cursor:pointer;
+    .basket-total{
       margin-top:8px;
+      font-weight:600;
     }
-    .admin-btn--primary{
-      background:#2563eb;
+    .admin-buttons{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    }
+    .btn-admin{
+      border:none;
+      border-radius:999px;
+      padding:7px 14px;
+      font-size:14px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-sell{
+      background:#16a34a;
       color:#fff;
     }
-    .admin-btn--primary:disabled{
-      background:#9ca3af;
-      cursor:not-allowed;
+    .btn-reserve{
+      background:#facc15;
+      color:#1f2937;
     }
-    .admin-btn--secondary{
+    .btn-unreserve{
       background:#e5e7eb;
       color:#111827;
     }
+    .btn-clear{
+      background:#f3f4f6;
+      color:#4b5563;
+    }
 
-    .admin-note{
-      margin-top:8px;
+    .legend{
       font-size:12px;
       color:#6b7280;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:8px;
     }
+    .legend__item{
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+    .legend-sample{
+      width:14px;
+      height:14px;
+      border-radius:4px;
+      border:1px solid #d1d5db;
+    }
+    .legend-sample--free{ background:#fff; }
+    .legend-sample--selected{ background:#2563eb; }
+    .legend-sample--sold{ background:#9ca3af; }
+    .legend-sample--reserved{ background:#facc15; }
 
     @media (max-width:960px){
       .admin-layout{
@@ -298,103 +262,96 @@
   </style>
 </head>
 <body>
-<div class="admin-shell">
-  <header class="admin-header">
-    <div class="admin-header__title">
-      <span>Театр ім. Т. Г. Шевченка</span>
-      <span class="admin-header__subtitle">Панель касира / адміністратора</span>
-    </div>
-    <div>
-      <select id="mode-select" class="form-control" style="width:auto;height:32px;font-size:13px;">
-        <option value="offline" selected>Офлайн-режим (демо)</option>
-      </select>
-    </div>
-  </header>
+  <div class="admin-page">
+    <header class="admin-header">
+      <div>
+        <div class="admin-header__title" id="admin-theatre-name">
+          Театр ім. Т. Г. Шевченка
+        </div>
+        <div class="admin-header__subtitle" id="admin-theatre-subtitle">
+          Панель касира / адміністратора
+        </div>
+      </div>
+      <div class="admin-meta">
+        <div id="admin-current-show">Сеанс: (не обрано)</div>
+        <div id="admin-current-date"></div>
+      </div>
+    </header>
 
-  <main class="admin-main">
     <div class="admin-layout">
-      <!-- левая часть: схема -->
-      <section class="admin-left">
-        <div class="admin-hall-box">
-          <div style="margin-bottom:8px;font-size:14px;color:#4b5563;">
-            Клік по місцю → додати / прибрати до кошика. Продані / заблоковані місця недоступні.
-          </div>
-
-          <div id="hall-root" class="hall-scroll">
-            <div class="hall-inner" id="hall-inner">
-              <!-- сюда рендерится схема зала -->
+      <!-- Левая часть: схема -->
+      <div class="admin-left">
+        <div class="hall-card">
+          <h2 style="margin:0 0 8px;font-size:16px;">Схема залу</h2>
+          <p class="admin-meta" style="margin:0 0 8px;">
+            Натискайте на місця, щоб додати їх до кошика. Далі — «Продати» або «Поставити на бронь».
+          </p>
+          <div class="hall-layout">
+            <div class="hall-left">
+              <div class="hall-scroll">
+                <div class="hall-inner" id="hall-root">
+                  <!-- сюда JS отрисует партер / амфитеатр / балкон / ложі -->
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="hall-legend">
-            <div class="legend-item">
-              <span class="legend-dot"></span><span>вільно</span>
+          <div class="legend">
+            <div class="legend__item">
+              <span class="legend-sample legend-sample--free"></span> вільно
             </div>
-            <div class="legend-item">
-              <span class="legend-dot legend-dot--basket"></span><span>у кошику</span>
+            <div class="legend__item">
+              <span class="legend-sample legend-sample--selected"></span> обрано (кошик)
             </div>
-            <div class="legend-item">
-              <span class="legend-dot legend-dot--sold"></span><span>продано</span>
+            <div class="legend__item">
+              <span class="legend-sample legend-sample--sold"></span> продано
             </div>
-            <div class="legend-item">
-              <span class="legend-dot legend-dot--hold"></span><span>бронь</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot legend-dot--service"></span><span>службові / заблок.</span>
+            <div class="legend__item">
+              <span class="legend-sample legend-sample--reserved"></span> бронь
             </div>
           </div>
         </div>
-      </section>
+      </div>
 
-      <!-- правая часть: корзина кассы -->
+      <!-- Правая часть: корзина, суммы, кнопки -->
       <aside class="admin-right">
-        <div class="admin-card">
-          <h2>Кошик каси</h2>
-          <div class="admin-meta">
-            Сеанс: <span id="session-title">Вісім люблячих жінок — 2025-12-28, 16:00</span><br>
-            Дата та час: <span id="session-datetime">28.12.2025 16:00</span>
+        <section class="admin-card">
+          <h3>Обрані місця</h3>
+          <div id="basket-list" class="basket-list">
+            <div class="basket-empty">Поки що нічого не обрано.</div>
+          </div>
+          <div class="basket-total">
+            Сума: <span id="basket-total">0</span>
+            <span id="basket-currency">грн</span>
           </div>
 
-          <table class="basket-table">
-            <thead>
-            <tr>
-              <th>#</th>
-              <th>Зона</th>
-              <th>Ряд / Ложа</th>
-              <th>Місце</th>
-              <th>Ціна, грн</th>
-            </tr>
-            </thead>
-            <tbody id="basket-body"></tbody>
-          </table>
-
-          <div class="basket-summary">
-            Квитків: <span id="basket-count">0</span>,
-            на суму: <span id="basket-amount">0</span> грн
+          <div class="admin-buttons">
+            <button type="button" class="btn-admin btn-sell" id="btn-sell">
+              Продати (каса)
+            </button>
+            <button type="button" class="btn-admin btn-reserve" id="btn-reserve">
+              Поставити на бронь
+            </button>
+            <button type="button" class="btn-admin btn-unreserve" id="btn-unreserve">
+              Скасувати бронь
+            </button>
+            <button type="button" class="btn-admin btn-clear" id="btn-clear">
+              Очистити кошик
+            </button>
           </div>
+        </section>
 
-          <button id="btn-sell" class="admin-btn admin-btn--primary" disabled>
-            Продати (каса)
-          </button>
-          <button id="btn-hold" class="admin-btn admin-btn--secondary" disabled>
-            Поставити на бронь
-          </button>
-          <button id="btn-unhold" class="admin-btn admin-btn--secondary" disabled>
-            Скасувати бронь
-          </button>
-          <button id="btn-clear" class="admin-btn admin-btn--secondary">
-            Очистити кошик
-          </button>
-
-          <div class="admin-note">
-            ⚠ Поки що це демо-режим: дані не відправляються на сервер. В офлайн-режимі зміни дублюються у цьому браузері (localStorage).
-          </div>
-        </div>
+        <section class="admin-card">
+          <h3>Примітка</h3>
+          <p class="admin-meta">
+            Дані в цій демо-версії зберігаються лише в браузері касира (localStorage).
+            Після оновлення сторінки місця знову стануть вільними.
+          </p>
+        </section>
       </aside>
     </div>
-  </main>
-</div>
+  </div>
 
-<script src="admin.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>
