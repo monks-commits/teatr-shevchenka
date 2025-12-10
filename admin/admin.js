@@ -1,4 +1,35 @@
 // admin/admin.js
+// === Глобальные настройки театра / платежей ===
+let SETTINGS = null;
+let CURRENCY = 'грн'; // значение по умолчанию, если settings.json не загрузится
+
+async function loadSettings() {
+  if (SETTINGS) return SETTINGS;
+
+  try {
+    // admin/ -> ../data/settings.json
+    const res = await fetch('../data/settings.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    SETTINGS = await res.json();
+
+    if (SETTINGS && SETTINGS.theatre && SETTINGS.theatre.currency) {
+      CURRENCY = SETTINGS.theatre.currency;
+    }
+  } catch (e) {
+    console.warn(
+      'Не вдалося завантажити settings.json, використаємо значення за замовчуванням.',
+      e
+    );
+    SETTINGS = {};
+  }
+
+  return SETTINGS;
+}
+
+// Стартуем загрузку настроек «на фоне» — это не ломает остальной код
+loadSettings();
+
 // Простая офлайн-панель кассира для великої сцени Театру Шевченка
 
 (() => {
