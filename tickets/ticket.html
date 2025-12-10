@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Квиток</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    /* Формат «термобілета»: узький вертикальний */
+    @page {
+      size: 80mm 200mm;
+      margin: 5mm;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 16px;
+    }
+
+    .ticket {
+      width: 260px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(15,23,42,0.15);
+      padding: 14px 16px 12px;
+      box-sizing: border-box;
+    }
+
+    .ticket-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #111827;
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .brand-text {
+      margin-left: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .brand-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.1;
+    }
+
+    .brand-tagline {
+      font-size: 10px;
+      color: #6b7280;
+      line-height: 1.1;
+    }
+
+    .ticket-meta-top {
+      margin-top: 4px;
+      font-size: 10px;
+      color: #6b7280;
+      text-align: right;
+    }
+
+    .ticket-title {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      text-transform: uppercase;
+    }
+
+    .ticket-sub {
+      font-size: 11px;
+      color: #374151;
+      margin-top: 2px;
+    }
+
+    .ticket-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #111827;
+      margin-top: 6px;
+    }
+
+    .ticket-row strong {
+      font-weight: 600;
+    }
+
+    .ticket-divider {
+      margin: 8px 0;
+      border-bottom: 1px dashed #d1d5db;
+    }
+
+    .ticket-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .ticket-grid-item span.label {
+      display: block;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+    }
+
+    .ticket-grid-item span.value {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .ticket-footer {
+      margin-top: 8px;
+      font-size: 9px;
+      color: #6b7280;
+      line-height: 1.2;
+    }
+
+    .qr-placeholder {
+      margin-top: 8px;
+      height: 64px;
+      border-radius: 8px;
+      border: 1px dashed #d1d5db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #9ca3af;
+    }
+
+    /* В режимі друку — без сірого фону і тіней */
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .ticket {
+        box-shadow: none;
+        border-radius: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="ticket-header">
+      <div style="display:flex;align-items:center;">
+        <div class="logo-mark">Ш</div>
+        <div class="brand-text">
+          <div class="brand-name" id="brandName">Театр ім. Т. Г. Шевченка</div>
+          <div class="brand-tagline" id="brandTagline">Офіційний онлайн-продаж квитків</div>
+        </div>
+      </div>
+      <div class="ticket-meta-top" id="ticketNumber">ORD-0001</div>
+    </div>
+
+    <div class="ticket-title" id="showTitle">Назва вистави</div>
+    <div class="ticket-sub" id="showSubtitle">Велика сцена</div>
+
+    <div class="ticket-row">
+      <span id="showDate">28.12.2025, 16:00</span>
+      <span><strong id="zoneName">Партер</strong></span>
+    </div>
+
+    <div class="ticket-divider"></div>
+
+    <div class="ticket-grid">
+      <div class="ticket-grid-item">
+        <span class="label">Ряд</span>
+        <span class="value" id="rowValue">10</span>
+      </div>
+      <div class="ticket-grid-item">
+        <span class="label">Місце</span>
+        <span class="value" id="seatValue">12</span>
+      </div>
+      <div class="ticket-grid-item">
+        <span class="label">Ціна</span>
+        <span class="value" id="priceValue">200 грн</span>
+      </div>
+      <div class="ticket-grid-item">
+        <span class="label">Канал</span>
+        <span class="value" id="channelValue">Каса</span>
+      </div>
+    </div>
+
+    <div class="ticket-divider"></div>
+
+    <div class="ticket-footer" id="legalText">
+      Квиток дійсний на одну особу. Повернення та обмін квитків
+      відбувається згідно з правилами театру. Зберігайте квиток до кінця вистави.
+    </div>
+
+    <div class="qr-placeholder" id="qrPlaceholder">
+      QR / штрих-код (пізніше можна буде підставити з системи)
+    </div>
+  </div>
+
+  <script>
+    // Допоміжна функція для читання параметрів з URL
+    function getQueryParams() {
+      const params = {};
+      const search = window.location.search.substring(1);
+      if (!search) return params;
+      for (const part of search.split("&")) {
+        const [k, v] = part.split("=");
+        if (!k) continue;
+        params[decodeURIComponent(k)] = decodeURIComponent(v || "");
+      }
+      return params;
+    }
+
+    (function initTicket() {
+      const qp = getQueryParams();
+
+      // Підставляємо значення, якщо вони є в URL, інакше залишаємо дефолт
+      if (qp.title) document.getElementById("showTitle").textContent = qp.title;
+      if (qp.subtitle) document.getElementById("showSubtitle").textContent = qp.subtitle;
+      if (qp.date) document.getElementById("showDate").textContent = qp.date;
+      if (qp.zone) document.getElementById("zoneName").textContent = qp.zone;
+      if (qp.row) document.getElementById("rowValue").textContent = qp.row;
+      if (qp.seat) document.getElementById("seatValue").textContent = qp.seat;
+
+      if (qp.price) {
+        const currency = qp.curr || "грн";
+        document.getElementById("priceValue").textContent = qp.price + " " + currency;
+      }
+
+      if (qp.channel) document.getElementById("channelValue").textContent = qp.channel;
+      if (qp.order) document.getElementById("ticketNumber").textContent = qp.order;
+
+      if (qp.brand) document.getElementById("brandName").textContent = qp.brand;
+      if (qp.tagline) document.getElementById("brandTagline").textContent = qp.tagline;
+
+      if (qp.autoPrint === "1") {
+        // Невелика затримка, щоб браузер встиг відрендерити
+        setTimeout(() => window.print(), 400);
+      }
+    })();
+  </script>
+</body>
+</html>
