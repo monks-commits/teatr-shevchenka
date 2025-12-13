@@ -409,6 +409,7 @@ function updateBasketUI() {
 // === Кнопки дій ===
 function applySell() {
   if (!basket.length) return;
+
   for (const item of basket) {
     const key = item.key;
     seatState.set(key, 'sold');
@@ -418,10 +419,15 @@ function applySell() {
       btn.classList.remove('seat--selected', 'seat--reserved');
       btn.classList.add('seat--sold');
     }
+
+    // ✅ ВОТ ТУТ: открыть печать билета после продажи
+    openTicketPrintPage(item);
   }
+
   basket = [];
   updateBasketUI();
 }
+
 
 function applyReserve() {
   if (!basket.length) return;
