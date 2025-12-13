@@ -67,9 +67,8 @@ function getZoneLabel(zone) {
 }
 // === ДРУК КВИТКА (каса) ===
 function openTicketPrintPage(item) {
-  // item: {row, seat, zone, price, ...}
-
-  const base = "/teatr-shevchenka/tickets/ticket.html";
+  // admin/ -> tickets/
+  const url = new URL("../tickets/ticket.html", window.location.href);
 
   // тут можно позже заменить на реальные данные сеанса из админки/URL
   const params = new URLSearchParams({
@@ -86,9 +85,20 @@ function openTicketPrintPage(item) {
     autoPrint: "1"
   });
 
-  const url = base + "?" + params.toString();
-  window.open(url, "_blank");
+  url.search = params.toString();
+
+  const w = window.open(url.toString(), "_blank");
+
+  // Fallback: если pop-up заблокирован
+  if (!w) {
+    alert(
+      "Браузер заблокував відкриття квитка у новій вкладці.\n" +
+      "Дозвольте pop-ups для цього сайту або відкрийте квиток вручну:\n\n" +
+      url.toString()
+    );
+  }
 }
+
 
 // === Робота з DOM (схема) ===
 function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
