@@ -65,6 +65,30 @@ function getZoneLabel(zone) {
     default: return zone;
   }
 }
+// === ДРУК КВИТКА (каса) ===
+function openTicketPrintPage(item) {
+  // item: {row, seat, zone, price, ...}
+
+  const base = "/teatr-shevchenka/tickets/ticket.html";
+
+  // тут можно позже заменить на реальные данные сеанса из админки/URL
+  const params = new URLSearchParams({
+    title: "НАЗВА ВИСТАВИ",
+    subtitle: "Велика сцена",
+    date: new Date().toLocaleString("uk-UA"),
+    zone: getZoneLabel(item.zone || ""),
+    row: String(item.row),
+    seat: String(item.seat),
+    price: String(item.price ?? 0),
+    curr: CURRENCY || "грн",
+    channel: "Каса",
+    order: "ORD-" + Date.now(),
+    autoPrint: "1"
+  });
+
+  const url = base + "?" + params.toString();
+  window.open(url, "_blank");
+}
 
 // === Робота з DOM (схема) ===
 function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
