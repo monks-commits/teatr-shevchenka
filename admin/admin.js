@@ -1,6 +1,5 @@
 // admin/admin.js
 
-// ===== Глобальні налаштування =====
 let SETTINGS = null;
 let CURRENCY = 'грн';
 let PRICING_DEFAULTS = {};
@@ -8,38 +7,21 @@ let PRICE_PALETTE = {}; // "200" -> "seat--p200"
 
 const LS_PREFIX = 'shev_admin_v3_';
 
-// Пам'ять
 let hallSchema = null;
 let afisha = [];
-let currentShowId = '';  // выбранный спектакль
+let currentShowId = '';
 
-// состояние мест: per-show
-// key = "row-seat-zone" -> 'free' | 'sold' | 'reserved' | 'inactive'
-const seatState = new Map();
-
-// корзина: [{key,row,seat,zone,price,label}]
+const seatState = new Map(); // key -> status
 let basket = [];
-
-// реестр брони: per-show
-// [{id, showId, who, seats:[{row,seat,zone,price,key,label}], total, createdAt}]
 let reserves = [];
-
-// журнал операций (export): per-show
-// [{ts, showId, action, who, seats, total}]
 let ops = [];
 
-// ===== Utils =====
-function nowIso() { return new Date().toISOString(); }
+function nowIso(){ return new Date().toISOString(); }
 function fmtDT(ts){ try { return new Date(ts).toLocaleString('uk-UA'); } catch { return ts; } }
 
+// ключ места
 function seatKey(row, seat, zone){
   return `${zone}:${row}-${seat}`;
-}
-function parseSeatKey(key){
-  // "parter:10-12"
-  const [zone, rs] = key.split(':');
-  const [row, seat] = rs.split('-').map(Number);
-  return { zone, row, seat };
 }
 
 function lsKey(name){
@@ -57,7 +39,6 @@ function downloadText(filename, text){
   setTimeout(()=>URL.revokeObjectURL(a.href), 500);
 }
 
-// ===== Load settings.json =====
 async function loadSettings(){
   if (SETTINGS) return SETTINGS;
 
@@ -74,10 +55,24 @@ async function loadSettings(){
     console.warn('settings.json не прочитался, используем дефолты', e);
     SETTINGS = {};
   }
+
+  // ✅ ДЕФОЛТНАЯ “РОДНАЯ” ПАЛИТРА (если не задана в settings.json)
+  if (!PRICE_PALETTE || Object.keys(PRICE_PALETTE).length === 0){
+    PRICE_PALETTE = {
+      "70":  "seat--p70",
+      "100": "seat--p100",
+      "120": "seat--p120",
+      "140": "seat--p140",
+      "160": "seat--p160",
+      "170": "seat--p170",
+      "180": "seat--p180",
+      "200": "seat--p200"
+    };
+  }
+
   return SETTINGS;
 }
 
-// ===== Load hall schema =====
 async function loadHallSchema(){
   if (hallSchema) return hallSchema;
   const res = await fetch('../data/halls/shevchenko-big.json', {cache:'no-store'});
@@ -86,7 +81,6 @@ async function loadHallSchema(){
   return hallSchema;
 }
 
-// ===== Load afisha =====
 async function loadAfisha(){
   const res = await fetch('../data/afisha.json', {cache:'no-store'});
   if(!res.ok) throw new Error('Cannot load afisha: ' + res.status);
@@ -94,12 +88,30 @@ async function loadAfisha(){
   return afisha;
 }
 
-// ===== Price helpers =====
-function getPriceForRow(rowInfo){
-  // приоритет: rowInfo.price -> pricing_defaults[group]
+// ==== Цена ====
+// 1) если есть rowInfo.price -> берём
+// 2) если есть price_group и pricing_defaults совпадает -> берём
+// 3) если цена = 0 -> Fallback по ряду партера (чтобы не было белого)
+function getPriceForRow(rowInfo, zone, rowNumber){
   if (rowInfo.price != null) return Number(rowInfo.price) || 0;
+
   const g = rowInfo.price_group;
   if (g && PRICING_DEFAULTS[g] != null) return Number(PRICING_DEFAULTS[g]) || 0;
+
+  // fallback только для партера/лож
+  if (zone === 'parter'){
+    // под твой пример (можно потом править)
+    if (rowNumber <= 2) return 200;
+    if (rowNumber <= 4) return 180;
+    if (rowNumber <= 6) return 170;
+    if (rowNumber <= 8) return 160;
+    if (rowNumber <= 12) return 140;
+    if (rowNumber <= 15) return 120;
+    return 100;
+  }
+  if (zone === 'lodge'){
+    return 200;
+  }
   return 0;
 }
 
@@ -118,19 +130,16 @@ function getZoneLabel(zone){
   }
 }
 
-// ===== Sellable policy (ВАЖНО: как ты сказал) =====
-// В Театре Шевченко продаём ТОЛЬКО партер.
-// Амфи/балкон показываем серыми и НЕ продаём.
+// ✅ теперь ложи тоже продаём
 function isSellable(zone){
-  return zone === 'parter' || zone === 'lodge'; // если ложи у вас в партере — разрешаем
+  return zone === 'parter' || zone === 'lodge';
 }
 
-// ===== Ticket printing (batch = одна страница) =====
+// ===== Batch print =====
 function openPrintBatch(items, show){
-  // делаем отдельное окно с пачкой билетов (одна печать)
   const orderPrefix = 'ORD-' + Date.now();
-
   const safe = (s)=>String(s ?? '').replace(/[<>]/g,'');
+
   const showTitle = safe(show?.title || 'Назва вистави');
   const showStage = safe(show?.stage || '');
   const showDT = safe(`${show?.date || ''} ${show?.time || ''}`.trim());
@@ -241,7 +250,7 @@ function openPrintBatch(items, show){
   w.document.close();
 }
 
-// ===== DOM helpers =====
+// ===== DOM =====
 function findSeatButtonByKey(key){
   return document.querySelector(`.seat[data-key="${CSS.escape(key)}"]`);
 }
@@ -282,7 +291,6 @@ function renderPriceLegend(){
   const el = document.getElementById('priceLegend');
   if(!el) return;
 
-  // показываем только те цены, которые есть в palette (и которые реально используем)
   const prices = Object.keys(PRICE_PALETTE || {}).map(Number).sort((a,b)=>a-b);
   el.innerHTML = '';
   for (const p of prices){
@@ -298,14 +306,20 @@ function renderPriceLegend(){
   }
 }
 
-// ===== Seat element =====
-function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos){
+function applyStatusClass(btn, status){
+  btn.classList.remove('seat--sold','seat--reserved','seat--inactive');
+  if (status === 'sold') btn.classList.add('seat--sold');
+  else if (status === 'reserved') btn.classList.add('seat--reserved');
+  else if (status === 'inactive') btn.classList.add('seat--inactive');
+}
+
+function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos, extraLabel){
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'seat';
   btn.textContent = seatNumber;
 
-  const price = getPriceForRow(rowInfo);
+  const price = getPriceForRow(rowInfo, zone, rowNumber);
   const key = seatKey(rowNumber, seatNumber, zone);
 
   btn.dataset.row = String(rowNumber);
@@ -314,37 +328,32 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos){
   btn.dataset.price = String(price);
   btn.dataset.key = key;
 
-  // базовый цвет по цене (только для продаваемых зон)
-  if (isSellable(zone)){
-    const pc = getPriceClass(price);
-    if (pc) btn.classList.add(pc);
-  }else{
-    btn.classList.add('seat--inactive');
-  }
+  // ✅ цвет по цене
+  const pc = getPriceClass(price);
+  if (pc) btn.classList.add(pc);
 
   // проходы
   if (zone === 'parter' && rowInfo.aisle_after && pos === rowInfo.aisle_after){
     btn.classList.add('seat--gap-right');
   }
-  if (zone === 'balcony' && rowInfo.aisle_after && pos === rowInfo.aisle_after){
-    btn.classList.add('seat--gap-right');
-  }
 
-  // статус из карты
-  const st = seatState.get(key) || (isSellable(zone) ? 'free' : 'inactive');
+  // статус
+  const st = seatState.get(key) || 'free';
   applyStatusClass(btn, st);
 
-  // click
   btn.addEventListener('click', ()=>{
-    const status = seatState.get(key) || (isSellable(zone) ? 'free' : 'inactive');
-    if (status === 'sold' || status === 'inactive') return;
+    const status = seatState.get(key) || 'free';
+    if (status === 'sold') return;
 
     const idx = basket.findIndex(x=>x.key===key);
     if (idx >= 0){
       basket.splice(idx,1);
       btn.classList.remove('seat--selected');
     }else{
-      const label = `${getZoneLabel(zone)}: ряд ${rowNumber}, місце ${seatNumber}`;
+      const label = extraLabel
+        ? `${extraLabel}, місце ${seatNumber}`
+        : `${getZoneLabel(zone)}: ряд ${rowNumber}, місце ${seatNumber}`;
+
       basket.push({ key, row: rowNumber, seat: seatNumber, zone, price, label });
       btn.classList.add('seat--selected');
     }
@@ -355,14 +364,7 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos){
   return btn;
 }
 
-function applyStatusClass(btn, status){
-  btn.classList.remove('seat--sold','seat--reserved','seat--inactive');
-  if (status === 'sold') btn.classList.add('seat--sold');
-  else if (status === 'reserved') btn.classList.add('seat--reserved');
-  else if (status === 'inactive') btn.classList.add('seat--inactive');
-}
-
-// ===== Render zones =====
+// ===== Render =====
 function renderParter(container, rows){
   const section = document.createElement('section');
   section.className = 'hall-section';
@@ -375,17 +377,20 @@ function renderParter(container, rows){
   const wrap = document.createElement('div');
   wrap.className = 'parter-wrap';
 
-  // Ложа Б (зліва) — как “службові/не продаються” если нет данных
+  // ✅ Ложа Б (продаётся)
   const lodgeB = document.createElement('div');
   lodgeB.className = 'hall-lodge';
-  lodgeB.innerHTML = `<div class="hall-lodge-label">Ложа Б</div>`;
+  const lodgeBLabel = document.createElement('div');
+  lodgeBLabel.className = 'hall-lodge-label';
+  lodgeBLabel.textContent = 'Ложа Б';
+  lodgeB.appendChild(lodgeBLabel);
+
   const lodgeBSeats = document.createElement('div');
   lodgeBSeats.className = 'hall-lodge-seats';
   for (let i=1;i<=18;i++){
-    const b = document.createElement('div');
-    b.className = 'seat seat--inactive';
-    b.textContent = i;
-    lodgeBSeats.appendChild(b);
+    // row=0 (демо), seat=i
+    const fakeRowInfo = { price: 200, aisle_after: null, price_group: null };
+    lodgeBSeats.appendChild(createSeatElement(fakeRowInfo, 0, i, 'lodge', i, 'Ложа Б'));
   }
   lodgeB.appendChild(lodgeBSeats);
 
@@ -412,17 +417,19 @@ function renderParter(container, rows){
     center.appendChild(line);
   }
 
-  // Ложа А (справа)
+  // ✅ Ложа А (продаётся)
   const lodgeA = document.createElement('div');
   lodgeA.className = 'hall-lodge';
-  lodgeA.innerHTML = `<div class="hall-lodge-label">Ложа А</div>`;
+  const lodgeALabel = document.createElement('div');
+  lodgeALabel.className = 'hall-lodge-label';
+  lodgeALabel.textContent = 'Ложа А';
+  lodgeA.appendChild(lodgeALabel);
+
   const lodgeASeats = document.createElement('div');
   lodgeASeats.className = 'hall-lodge-seats';
   for (let i=1;i<=18;i++){
-    const b = document.createElement('div');
-    b.className = 'seat seat--inactive';
-    b.textContent = i;
-    lodgeASeats.appendChild(b);
+    const fakeRowInfo = { price: 200, aisle_after: null, price_group: null };
+    lodgeASeats.appendChild(createSeatElement(fakeRowInfo, 0, i, 'lodge', i, 'Ложа А'));
   }
   lodgeA.appendChild(lodgeASeats);
 
@@ -440,9 +447,10 @@ function renderAmphi(container, rows){
 
   const title = document.createElement('div');
   title.className = 'hall-section-title';
-  title.textContent = 'Амфітеатр';
+  title.textContent = 'Амфітеатр (не продається)';
   section.appendChild(title);
 
+  // показываем серым “для вида”
   for (const r of rows){
     const line = document.createElement('div');
     line.className = 'row-line';
@@ -455,26 +463,14 @@ function renderAmphi(container, rows){
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    // если у вас есть split
-    if (r.seats_left != null || r.seats_right != null){
-      const left = r.seats_left || 0;
-      const right = r.seats_right || 0;
-
-      for (let i=1;i<=left;i++) sr.appendChild(createSeatElement(r, r.row, i, 'amphi', i));
-
-      const gap = document.createElement('div');
-      gap.className = 'amphi-gap';
-      sr.appendChild(gap);
-
-      for (let i=1;i<=right;i++){
-        const sn = left + i;
-        sr.appendChild(createSeatElement(r, r.row, sn, 'amphi', sn));
-      }
-    }else{
-      const seatsCount = r.seats || 0;
-      for (let i=1;i<=seatsCount;i++){
-        sr.appendChild(createSeatElement(r, r.row, i, 'amphi', i));
-      }
+    const seatsCount = r.seats || 0;
+    for (let i=1;i<=seatsCount;i++){
+      const fake = { price: 0, aisle_after: null };
+      const b = createSeatElement(fake, r.row, i, 'amphi', i);
+      b.classList.add('seat--inactive');
+      b.onclick = null;
+      b.addEventListener('click', (e)=>e.preventDefault());
+      sr.appendChild(b);
     }
 
     line.appendChild(sr);
@@ -490,7 +486,7 @@ function renderBalcony(container, rows){
 
   const title = document.createElement('div');
   title.className = 'hall-section-title';
-  title.textContent = 'Балкон';
+  title.textContent = 'Балкон (не продається)';
   section.appendChild(title);
 
   for (const r of rows){
@@ -505,25 +501,14 @@ function renderBalcony(container, rows){
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    if (r.seats_left != null && r.seats_right != null){
-      const left = r.seats_left;
-      const right = r.seats_right;
-
-      for (let i=1;i<=left;i++) sr.appendChild(createSeatElement(r, r.row, i, 'balcony', i));
-
-      const gap = document.createElement('div');
-      gap.className = 'amphi-gap';
-      sr.appendChild(gap);
-
-      for (let i=1;i<=right;i++){
-        const sn = left + i;
-        sr.appendChild(createSeatElement(r, r.row, sn, 'balcony', sn));
-      }
-    }else{
-      const seatsCount = r.seats || 0;
-      for (let i=1;i<=seatsCount;i++){
-        sr.appendChild(createSeatElement(r, r.row, i, 'balcony', i));
-      }
+    const seatsCount = r.seats || 0;
+    for (let i=1;i<=seatsCount;i++){
+      const fake = { price: 0, aisle_after: null };
+      const b = createSeatElement(fake, r.row, i, 'balcony', i);
+      b.classList.add('seat--inactive');
+      b.onclick = null;
+      b.addEventListener('click', (e)=>e.preventDefault());
+      sr.appendChild(b);
     }
 
     line.appendChild(sr);
@@ -554,7 +539,6 @@ function loadStateForShow(){
   reserves = [];
   ops = [];
 
-  // seat statuses
   try{
     const raw = localStorage.getItem(lsKey('seatState'));
     if(raw){
@@ -565,13 +549,11 @@ function loadStateForShow(){
     }
   }catch(e){ console.warn(e); }
 
-  // reserves
   try{
     const raw = localStorage.getItem(lsKey('reserves'));
     if(raw) reserves = JSON.parse(raw) || [];
   }catch(e){ console.warn(e); reserves=[]; }
 
-  // ops
   try{
     const raw = localStorage.getItem(lsKey('ops'));
     if(raw) ops = JSON.parse(raw) || [];
@@ -586,16 +568,12 @@ function saveSeatState(){
   for (const [k,v] of seatState.entries()) obj[k]=v;
   localStorage.setItem(lsKey('seatState'), JSON.stringify(obj));
 }
-function saveReserves(){
-  localStorage.setItem(lsKey('reserves'), JSON.stringify(reserves));
-}
-function saveOps(){
-  localStorage.setItem(lsKey('ops'), JSON.stringify(ops));
-}
+function saveReserves(){ localStorage.setItem(lsKey('reserves'), JSON.stringify(reserves)); }
+function saveOps(){ localStorage.setItem(lsKey('ops'), JSON.stringify(ops)); }
 
 // ===== Registry =====
 function groupReserves(){
-  const map = new Map(); // who -> items[]
+  const map = new Map();
   for (const r of reserves){
     const key = r.who || '—';
     if(!map.has(key)) map.set(key, []);
@@ -621,7 +599,6 @@ function renderRegistry(){
 
   const groups = groupReserves();
   for (const [who, items] of groups.entries()){
-    // агрегируем
     const allSeats = items.flatMap(x=>x.seats);
     const total = allSeats.reduce((s,i)=>s+(i.price||0),0);
 
@@ -633,7 +610,7 @@ function renderRegistry(){
     head.innerHTML = `
       <div>
         <div class="registry-who">${who}</div>
-        <div class="registry-meta">Броней: ${items.length} • Місць: ${allSeats.length} • Сума: ${total} ${CURRENCY}</div>
+        <div class="registry-meta">Місць: ${allSeats.length} • Сума: ${total} ${CURRENCY}</div>
       </div>
       <div class="registry-meta">${fmtDT(items[0]?.createdAt || '')}</div>
     `;
@@ -651,21 +628,18 @@ function renderRegistry(){
     btnSell.className = 'btn btn-primary';
     btnSell.textContent = 'Продати + друк';
     btnSell.addEventListener('click', ()=>{
-      // продать все места из группы и распечатать пачкой
       const show = afisha.find(x=>x.id===currentShowId);
       for (const s of allSeats){
         seatState.set(s.key, 'sold');
       }
       saveSeatState();
 
-      // удалить эти брони
       reserves = reserves.filter(r => r.who !== who);
       saveReserves();
 
       ops.push({ ts: nowIso(), showId: currentShowId, action:'sell_from_reserve', who, seats: allSeats, total });
       saveOps();
 
-      // обновить UI
       for (const s of allSeats){
         const btn = findSeatButtonByKey(s.key);
         if(btn){
@@ -687,10 +661,6 @@ function renderRegistry(){
         const btn = findSeatButtonByKey(s.key);
         if(btn){
           btn.classList.remove('seat--reserved','seat--selected','seat--sold');
-          // вернуть цвет цены (если sellable)
-          if(!isSellable(s.zone)){
-            btn.classList.add('seat--inactive');
-          }
         }
       }
       saveSeatState();
@@ -729,13 +699,7 @@ function applyReserve(){
   const who = prompt('Хто бронює? (ПІБ / телефон / організація)', '');
   if(!who) return;
 
-  const sellableOnly = basket.filter(x=>isSellable(x.zone));
-  if(!sellableOnly.length){
-    alert('У кошику немає місць, доступних до продажу/бронювання.');
-    return;
-  }
-
-  for (const it of sellableOnly){
+  for (const it of basket){
     seatState.set(it.key, 'reserved');
     const btn = findSeatButtonByKey(it.key);
     if(btn){
@@ -745,18 +709,18 @@ function applyReserve(){
   }
   saveSeatState();
 
-  const total = sellableOnly.reduce((s,i)=>s+(i.price||0),0);
+  const total = basket.reduce((s,i)=>s+(i.price||0),0);
   reserves.push({
     id: 'R-' + Date.now(),
     showId: currentShowId,
     who,
-    seats: sellableOnly.map(x=>({ ...x })),
+    seats: basket.map(x=>({ ...x })),
     total,
     createdAt: nowIso()
   });
   saveReserves();
 
-  ops.push({ ts: nowIso(), showId: currentShowId, action:'reserve', who, seats: sellableOnly, total });
+  ops.push({ ts: nowIso(), showId: currentShowId, action:'reserve', who, seats: basket, total });
   saveOps();
 
   basket = [];
@@ -768,8 +732,7 @@ function applyUnreserve(){
   if(!currentShowId){ alert('Спочатку оберіть спектакль.'); return; }
   if(!basket.length) return;
 
-  // снимаем бронь только с reserved
-  const targets = basket.map(x=>x).filter(x=>seatState.get(x.key)==='reserved');
+  const targets = basket.filter(x=>seatState.get(x.key)==='reserved');
   if(!targets.length){ clearBasketOnly(); return; }
 
   for (const it of targets){
@@ -777,8 +740,6 @@ function applyUnreserve(){
     const btn = findSeatButtonByKey(it.key);
     if(btn){
       btn.classList.remove('seat--selected','seat--reserved','seat--sold');
-      // восстановить цвет цены (если sellable)
-      if(!isSellable(it.zone)) btn.classList.add('seat--inactive');
     }
   }
   saveSeatState();
@@ -797,14 +758,7 @@ function applySell(){
 
   const show = afisha.find(x=>x.id===currentShowId);
 
-  // продаём только sellable
-  const items = basket.filter(x=>isSellable(x.zone));
-  if(!items.length){
-    alert('У кошику немає місць, доступних до продажу.');
-    return;
-  }
-
-  for (const it of items){
+  for (const it of basket){
     seatState.set(it.key, 'sold');
     const btn = findSeatButtonByKey(it.key);
     if(btn){
@@ -814,14 +768,14 @@ function applySell(){
   }
   saveSeatState();
 
-  const total = items.reduce((s,i)=>s+(i.price||0),0);
-  ops.push({ ts: nowIso(), showId: currentShowId, action:'sell', who:'', seats: items, total });
+  const total = basket.reduce((s,i)=>s+(i.price||0),0);
+  ops.push({ ts: nowIso(), showId: currentShowId, action:'sell', who:'', seats: basket, total });
   saveOps();
 
+  const items = basket;
   basket = [];
   updateBasketUI();
 
-  // печать пачкой одной страницей
   openPrintBatch(items, show);
 }
 
@@ -886,7 +840,6 @@ function fillShowSelect(){
     currentShowId = sel.value || '';
     setCurrentShowHeader();
     loadStateForShow();
-    // перерисовать зал с нужными статусами
     renderHall(hallSchema);
     renderPriceLegend();
   });
@@ -904,38 +857,26 @@ function setCurrentShowHeader(){
   showEl.textContent = `Сеанс: ${s.title} — ${s.date}, ${s.time}`;
 }
 
-// ===== Init =====
 async function initAdminPage(){
   await loadSettings();
   await loadAfisha();
   const schema = await loadHallSchema();
 
-  // header
   const nameEl = document.getElementById('admin-theatre-name');
   if(nameEl && SETTINGS.theatre?.name) nameEl.textContent = SETTINGS.theatre.name;
 
   const dateEl = document.getElementById('admin-current-date');
   if(dateEl) dateEl.textContent = new Date().toLocaleString('uk-UA');
 
-  // show dropdown
   fillShowSelect();
-
-  // start: if only 2 shows – можно авто выбрать первый (опционально)
-  // currentShowId = afisha[0]?.id || '';
-  // document.getElementById('showSelect').value = currentShowId;
-
   setCurrentShowHeader();
-
-  // load show state
   loadStateForShow();
 
-  // render
   renderHall(schema);
   renderPriceLegend();
   updateBasketUI();
   renderRegistry();
 
-  // buttons
   document.getElementById('btn-sell')?.addEventListener('click', applySell);
   document.getElementById('btn-reserve')?.addEventListener('click', applyReserve);
   document.getElementById('btn-unreserve')?.addEventListener('click', applyUnreserve);
