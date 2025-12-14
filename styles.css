@@ -204,3 +204,20 @@ body {
 #balcony-block{
   min-width:420px;
 }
+/* === Admin seat statuses === */
+.seat--sold{
+  background:#9ca3af !important;
+  color:#fff !important;
+  border-color:#9ca3af !important;
+  cursor:not-allowed !important;
+}
+.seat--reserved{
+  background:#f59e0b !important; /* жовта бронь */
+  color:#111827 !important;
+  border-color:#f59e0b !important;
+}
+.seat--selected{
+  background:#2563eb !important;
+  color:#fff !important;
+  border-color:#2563eb !important;
+}
