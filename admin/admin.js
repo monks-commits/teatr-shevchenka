@@ -1,21 +1,17 @@
 // admin/admin.js
 
-// === Глобальні налаштування ===
 let SETTINGS = null;
 let CURRENCY = 'грн';
 let PRICING_DEFAULTS = {};
-let CURRENT_SUBJECT = ''; // активний суб’єкт броні
+let CURRENT_SUBJECT = '';
 
-// localStorage
 const LS_KEY_STATE = 'shev_admin_state_v1';
 
-// Структури в пам'яті
-let hallSchema = null;          // data/halls/shevchenko-big.json
-const seatState = new Map();    // key -> 'free'|'sold'|'reserved'
-const seatMeta  = new Map();    // key -> meta {status, subject, ts, price, zone, row, seat}
-let basket = [];                // [{key,row,seat,zone,price,label}]
+let hallSchema = null;
+const seatState = new Map(); // key -> 'free'|'sold'|'reserved'
+const seatMeta  = new Map(); // key -> {status, subject, ts, price, zone, row, seat}
+let basket = [];
 
-// === Завантаження settings.json ===
 async function loadSettings() {
   if (SETTINGS) return SETTINGS;
 
@@ -24,20 +20,15 @@ async function loadSettings() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     SETTINGS = await res.json();
 
-    if (SETTINGS.theatre && SETTINGS.theatre.currency) {
-      CURRENCY = SETTINGS.theatre.currency;
-    }
-    if (SETTINGS.pricing_defaults) {
-      PRICING_DEFAULTS = SETTINGS.pricing_defaults;
-    }
+    if (SETTINGS.theatre && SETTINGS.theatre.currency) CURRENCY = SETTINGS.theatre.currency;
+    if (SETTINGS.pricing_defaults) PRICING_DEFAULTS = SETTINGS.pricing_defaults;
   } catch (e) {
-    console.warn('Не вдалося завантажити settings.json, використаємо значення за замовчуванням.', e);
+    console.warn('Не вдалося завантажити settings.json.', e);
     SETTINGS = {};
   }
   return SETTINGS;
 }
 
-// === Завантаження схеми залу ===
 async function loadHallSchema() {
   if (hallSchema) return hallSchema;
   const res = await fetch('../data/halls/shevchenko-big.json', { cache: 'no-store' });
@@ -46,7 +37,6 @@ async function loadHallSchema() {
   return hallSchema;
 }
 
-// === localStorage state ===
 function saveStateToLS() {
   try {
     const obj = {
@@ -72,7 +62,6 @@ function loadStateFromLS() {
       seatMeta.clear();
       for (const [k, v] of obj.seatMeta) seatMeta.set(k, v);
 
-      // відновлюємо seatState
       seatState.clear();
       for (const [k, v] of seatMeta.entries()) seatState.set(k, v?.status || 'free');
     }
@@ -81,10 +70,7 @@ function loadStateFromLS() {
   }
 }
 
-// === Допоміжні ===
-function seatKey(row, seat) {
-  return `${row}-${seat}`;
-}
+function seatKey(row, seat) { return `${row}-${seat}`; }
 
 function getPriceForRow(rowInfo) {
   const group = rowInfo.price_group;
@@ -101,25 +87,18 @@ function getZoneLabel(zone) {
   }
 }
 
-// === ДРУК: черга квитків (одна сторінка на всі квитки) ===
 function b64EncodeUnicode(str) {
-  // safe base64 for unicode
   return btoa(unescape(encodeURIComponent(str)));
 }
 
 function openPrintQueue(items, ctx = {}) {
-  // items: [{row,seat,zone,price,label,key}]
-  // ctx: {title, subtitle, date, channel, orderPrefix}
   const base = "/teatr-shevchenka/tickets/print-queue.html";
 
-  const theatreName = SETTINGS?.theatre?.name || "Театр";
-  const theatreTagline = SETTINGS?.theatre?.tagline || "Панель касира";
+  const theatreName = SETTINGS?.theatre?.name || "Театр ім. Т. Г. Шевченка";
+  const theatreTagline = SETTINGS?.theatre?.tagline || "Офіційний онлайн-продаж квитків";
 
   const payload = {
-    theatre: {
-      name: theatreName,
-      tagline: theatreTagline
-    },
+    theatre: { name: theatreName, tagline: theatreTagline },
     show: {
       title: ctx.title || "НАЗВА ВИСТАВИ",
       subtitle: ctx.subtitle || "Велика сцена",
@@ -133,17 +112,14 @@ function openPrintQueue(items, ctx = {}) {
       seat: it.seat,
       zone: getZoneLabel(it.zone),
       price: Number(it.price || 0),
-      // можно передавать "order" на каждый билет, но пока генерим в queue
     }))
   };
 
   const encoded = b64EncodeUnicode(JSON.stringify(payload));
   const url = base + "?data=" + encodeURIComponent(encoded);
-
   window.open(url, "_blank");
 }
 
-// === DOM (схема) ===
 function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -157,7 +133,6 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
   btn.dataset.zone = zone;
   btn.dataset.price = String(price);
 
-  // базові кольори зон
   if (zone === 'parter') {
     if (rowNumber <= 6) btn.classList.add('seat--parter-front');
     else if (rowNumber <= 12) btn.classList.add('seat--parter-mid');
@@ -168,25 +143,22 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
     btn.classList.add('seat--balcony');
   }
 
-  // вертикальний прохід (партер) — якщо задано aisle_after
   if (rowInfo.zone === 'parter' && rowInfo.aisle_after && pos === rowInfo.aisle_after) {
     btn.classList.add('seat--gap-right');
   }
 
-  // відновлення статусу з LS
   const key = seatKey(rowNumber, seatNumber);
   const status = seatState.get(key) || 'free';
   if (status === 'sold') btn.classList.add('seat--sold');
   if (status === 'reserved') btn.classList.add('seat--reserved');
 
-  // клік по місцю
   btn.addEventListener('click', () => {
     const row = Number(btn.dataset.row);
     const seat = Number(btn.dataset.seat);
     const k = seatKey(row, seat);
 
     const st = seatState.get(k) || 'free';
-    if (st === 'sold') return; // продане не чіпаємо
+    if (st === 'sold') return;
 
     const inBasketIndex = basket.findIndex(i => i.key === k);
     if (inBasketIndex >= 0) {
@@ -210,20 +182,14 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos) {
   return btn;
 }
 
-// === Рендер зон ===
 function renderParter(container, rows) {
   const section = document.createElement('section');
   section.className = 'hall-section';
-
-  const title = document.createElement('div');
-  title.className = 'hall-section-title';
-  title.textContent = 'Партер';
-  section.appendChild(title);
+  section.appendChild(Object.assign(document.createElement('div'), { className:'hall-section-title', textContent:'Партер' }));
 
   const wrap = document.createElement('div');
   wrap.className = 'parter-wrap';
 
-  // Ложа Б (зліва)
   const lodgeB = document.createElement('div');
   lodgeB.className = 'hall-lodge';
   lodgeB.appendChild(Object.assign(document.createElement('div'), { className:'hall-lodge-label', textContent:'Ложа Б' }));
@@ -237,7 +203,6 @@ function renderParter(container, rows) {
   }
   lodgeB.appendChild(lodgeBSeats);
 
-  // Центр
   const center = document.createElement('div');
   for (const r of rows) {
     const line = document.createElement('div');
@@ -250,14 +215,12 @@ function renderParter(container, rows) {
 
     const sr = document.createElement('div');
     sr.className = 'seats-row';
-    for (let i = 1; i <= (r.seats || 0); i++) {
-      sr.appendChild(createSeatElement(r, r.row, i, 'parter', i));
-    }
+    for (let i = 1; i <= (r.seats || 0); i++) sr.appendChild(createSeatElement(r, r.row, i, 'parter', i));
+
     line.appendChild(sr);
     center.appendChild(line);
   }
 
-  // Ложа А (справа)
   const lodgeA = document.createElement('div');
   lodgeA.className = 'hall-lodge';
   lodgeA.appendChild(Object.assign(document.createElement('div'), { className:'hall-lodge-label', textContent:'Ложа А' }));
@@ -323,7 +286,6 @@ function renderBalcony(container, rows) {
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    // 6-й ряд спец: seats_left + gap + seats_right (если задано)
     if (r.seats_left != null && r.seats_right != null) {
       for (let i = 1; i <= r.seats_left; i++) sr.appendChild(createSeatElement(r, r.row, i, 'balcony', i));
 
@@ -336,7 +298,6 @@ function renderBalcony(container, rows) {
         sr.appendChild(createSeatElement(r, r.row, seatNumber, 'balcony', seatNumber));
       }
     } else {
-      // обычные ряды 1–5: 28 и aisle_after=14
       for (let i = 1; i <= (r.seats || 0); i++) {
         const seatEl = createSeatElement(r, r.row, i, 'balcony', i);
         if (r.aisle_after && i === r.aisle_after) seatEl.classList.add('seat--gap-right');
@@ -377,7 +338,6 @@ function renderHall(schema) {
   root.appendChild(balconySection);
 }
 
-// === UI кошика ===
 function updateBasketUI() {
   const listEl = document.getElementById('basket-list');
   const totalEl = document.getElementById('basket-total');
@@ -405,7 +365,6 @@ function updateBasketUI() {
   if (curEl) curEl.textContent = CURRENCY;
 }
 
-// === Поиск seat button ===
 function findSeatButton(row, seat) {
   const buttons = document.querySelectorAll('.seat');
   for (const b of buttons) {
@@ -414,12 +373,11 @@ function findSeatButton(row, seat) {
   return null;
 }
 
-// === Реєстр броней ===
 function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m]));}
 function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;');}
 
 function buildReserveRegistry() {
-  const groups = new Map(); // subject -> {subject, seats[], total, count}
+  const groups = new Map();
   for (const [key, meta] of seatMeta.entries()) {
     if (!meta || meta.status !== 'reserved') continue;
     const subject = meta.subject || 'Без суб’єкта';
@@ -458,7 +416,7 @@ function renderReserveRegistryUI() {
 
     card.innerHTML = `
       <div style="min-width:0;">
-        <div style="font-weight:800; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+        <div style="font-weight:900; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
           ${escapeHtml(g.subject)}
         </div>
         <div style="font-size:12px; color:#6b7280; margin-top:2px;">
@@ -471,12 +429,12 @@ function renderReserveRegistryUI() {
         <div style="display:flex; gap:8px; margin-top:10px;">
           <button type="button" class="btn-reg-sell"
                   data-subject="${escapeAttr(g.subject)}"
-                  style="flex:1; padding:10px 12px; border-radius:12px; border:0; background:#16a34a; color:#fff; font-weight:800;">
+                  style="flex:1; padding:10px 12px; border-radius:12px; border:0; background:#16a34a; color:#fff; font-weight:900;">
             Продати + друк
           </button>
           <button type="button" class="btn-reg-unreserve"
                   data-subject="${escapeAttr(g.subject)}"
-                  style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800;">
+                  style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:900;">
             Зняти бронь
           </button>
         </div>
@@ -501,7 +459,6 @@ function sellReservationBySubject(subject) {
     if ((meta.subject || 'Без суб’єкта') !== subject) continue;
 
     meta.status = 'sold';
-    meta.subject = meta.subject || subject;
     meta.ts = Date.now();
     seatMeta.set(key, meta);
     seatState.set(key, 'sold');
@@ -513,21 +470,19 @@ function sellReservationBySubject(subject) {
     }
 
     itemsToPrint.push({
+      key,
       row: meta.row,
       seat: meta.seat,
       zone: meta.zone,
       price: meta.price || 0,
       label: `${meta.row} ряд, місце ${meta.seat} (${getZoneLabel(meta.zone)})`,
-      key
     });
   }
 
   saveStateToLS();
   renderReserveRegistryUI();
 
-  if (itemsToPrint.length) {
-    openPrintQueue(itemsToPrint, { channel: "Каса" });
-  }
+  if (itemsToPrint.length) openPrintQueue(itemsToPrint, { channel: "Каса" });
 }
 
 function unreserveBySubject(subject) {
@@ -546,7 +501,6 @@ function unreserveBySubject(subject) {
   renderReserveRegistryUI();
 }
 
-// === Дії кнопок ===
 function applySell() {
   if (!basket.length) return;
 
@@ -555,7 +509,6 @@ function applySell() {
   for (const item of basket) {
     seatState.set(item.key, 'sold');
 
-    // meta (история)
     seatMeta.set(item.key, {
       status: 'sold',
       subject: 'Каса',
@@ -580,7 +533,6 @@ function applySell() {
   saveStateToLS();
   renderReserveRegistryUI();
 
-  // Открываем окно подтверждения печати
   openPrintQueue(itemsToPrint, { channel: "Каса" });
 }
 
@@ -649,14 +601,11 @@ function clearBasketOnly() {
   updateBasketUI();
 }
 
-// === Ініціалізація ===
 async function initAdminPage() {
   await loadSettings();
   loadStateFromLS();
-
   const schema = await loadHallSchema();
 
-  // Шапка
   const nameEl = document.getElementById('admin-theatre-name');
   if (nameEl && SETTINGS.theatre && SETTINGS.theatre.name) nameEl.textContent = SETTINGS.theatre.name;
 
@@ -669,7 +618,6 @@ async function initAdminPage() {
   const dateEl = document.getElementById('admin-current-date');
   if (dateEl) dateEl.textContent = new Date().toLocaleString('uk-UA');
 
-  // Суб’єкт броні UI (если вставил блок)
   const subjInput = document.getElementById('reserve-subject');
   const subjBtn = document.getElementById('btn-set-subject');
   if (subjInput) subjInput.value = CURRENT_SUBJECT || '';
@@ -679,10 +627,8 @@ async function initAdminPage() {
     renderReserveRegistryUI();
   });
 
-  // Рендер зала
   renderHall(schema);
 
-  // Кнопки
   const btnSell = document.getElementById('btn-sell');
   const btnReserve = document.getElementById('btn-reserve');
   const btnUnreserve = document.getElementById('btn-unreserve');
