@@ -89,37 +89,37 @@
 .hall-lodge-label{ font-size:11px; color:#6b7280; margin-bottom:4px; }
 .hall-lodge-seats{ display:flex; flex-direction:column; gap:4px; }
 
-/* Слои статусов */
+/* Статусы */
 .seat--selected{
   background:#2563eb !important;
-  color:#fff;
-  border-color:#2563eb;
+  color:#fff !important;
+  border-color:#2563eb !important;
 }
 .seat--sold{
   background:#9ca3af !important;
-  color:#fff;
-  cursor:not-allowed;
+  color:#fff !important;
+  cursor:not-allowed !important;
 }
 .seat--reserved{
   background:#facc15 !important;
-  color:#111827;
-  border-color:#f59e0b;
+  color:#111827 !important;
+  border-color:#f59e0b !important;
 }
 .seat--inactive{
   background:#d1d5db !important;
-  color:#6b7280;
-  cursor:not-allowed;
+  color:#6b7280 !important;
+  cursor:not-allowed !important;
 }
 
-/* ===== ЦЕНА -> “родные цвета театра” (как на скрине) ===== */
-.seat--p70  { background:#2e7d32; color:#fff; border-color:#2e7d32; } /* зелёный */
-.seat--p100 { background:#e91e63; color:#fff; border-color:#e91e63; } /* розовый */
-.seat--p120 { background:#00796b; color:#fff; border-color:#00796b; } /* бирюзовый */
-.seat--p140 { background:#c0b000; color:#111827; border-color:#c0b000; } /* оливковый */
-.seat--p160 { background:#f2b500; color:#111827; border-color:#f2b500; } /* жёлтый */
-.seat--p170 { background:#b6c000; color:#111827; border-color:#b6c000; } /* салатовый */
-.seat--p180 { background:#9e9d24; color:#fff; border-color:#9e9d24; } /* тёмно-оливковый */
-.seat--p200 { background:#4fc3f7; color:#111827; border-color:#4fc3f7; } /* голубой */
+/* ===== ЦЕНА -> “родные цвета театра” (ВАЖНО: с !important чтобы не перебивалось styles.css) ===== */
+.seat--p70  { background:#2e7d32 !important; color:#fff !important; border-color:#2e7d32 !important; }
+.seat--p100 { background:#e91e63 !important; color:#fff !important; border-color:#e91e63 !important; }
+.seat--p120 { background:#00796b !important; color:#fff !important; border-color:#00796b !important; }
+.seat--p140 { background:#c0b000 !important; color:#111827 !important; border-color:#c0b000 !important; }
+.seat--p160 { background:#f2b500 !important; color:#111827 !important; border-color:#f2b500 !important; }
+.seat--p170 { background:#b6c000 !important; color:#111827 !important; border-color:#b6c000 !important; }
+.seat--p180 { background:#9e9d24 !important; color:#fff !important; border-color:#9e9d24 !important; }
+.seat--p200 { background:#4fc3f7 !important; color:#111827 !important; border-color:#4fc3f7 !important; }
 
 /* Легенда */
 .admin-legend{
@@ -150,7 +150,7 @@
   align-items:flex-start;
   flex-wrap:wrap;
   justify-content:flex-end;
-  max-width: 240px;
+  max-width: 260px;
 }
 .price-chip{
   display:flex;
