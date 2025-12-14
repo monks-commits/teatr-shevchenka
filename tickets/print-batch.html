@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Друк квитків</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    @page { size: A4; margin: 10mm; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:#f3f4f6;
+      padding:16px;
+    }
+    .sheet{
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      align-items:center;
+    }
+    .ticket{
+      width: 520px;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 6px 20px rgba(15,23,42,0.12);
+      padding:14px 16px;
+      box-sizing:border-box;
+    }
+    .top{
+      display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+      margin-bottom:8px;
+    }
+    .brand{ font-size:12px; color:#111827; font-weight:700; }
+    .tagline{ font-size:10px; color:#6b7280; margin-top:2px; }
+    .order{ font-size:11px; color:#6b7280; text-align:right; }
+
+    .title{ font-size:14px; font-weight:800; margin-top:6px; text-transform:uppercase; }
+    .sub{ font-size:11px; color:#374151; margin-top:2px; }
+
+    .meta{
+      display:flex; justify-content:space-between; gap:10px; margin-top:8px;
+      font-size:11px; color:#111827;
+    }
+    .divider{ border-bottom:1px dashed #d1d5db; margin:10px 0; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:6px 12px;
+      font-size:11px;
+    }
+    .lbl{ font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; }
+    .val{ font-weight:700; color:#111827; }
+
+    .legal{
+      font-size:9px; color:#6b7280; line-height:1.25;
+      margin-top:10px;
+    }
+
+    .pb{ page-break-after: always; }
+
+    @media print{
+      body{ background:#fff; padding:0; }
+      .ticket{ box-shadow:none; border-radius:0; width:100%; }
+      .sheet{ gap:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet" id="root"></div>
+
+  <script>
+    const LS_KEY_PRINT = 'shev_admin_v2_print_payload';
+
+    function qp(name){
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+
+    function el(tag, cls, txt){
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (txt != null) e.textContent = txt;
+      return e;
+    }
+
+    function render(payload){
+      const root = document.getElementById('root');
+      root.innerHTML = '';
+
+      if (!payload || !payload.items || !payload.items.length){
+        root.appendChild(el('div', '', 'Немає даних для друку.'));
+        return;
+      }
+
+      payload.items.forEach((it, idx) => {
+        const t = el('div', 'ticket' + (idx === payload.items.length-1 ? '' : ' pb'));
+
+        const top = el('div','top');
+        const left = el('div');
+        left.appendChild(el('div','brand', payload.theatre || 'Театр'));
+        left.appendChild(el('div','tagline', payload.tagline || ''));
+
+        const right = el('div','order', it.order || '');
+        top.appendChild(left); top.appendChild(right);
+
+        t.appendChild(top);
+        t.appendChild(el('div','title', payload.showTitle || 'Назва вистави'));
+        t.appendChild(el('div','sub', payload.stage || ''));
+
+        const meta = el('div','meta');
+        meta.appendChild(el('div','', payload.dateTime || ''));
+        meta.appendChild(el('div','', it.zone || ''));
+        t.appendChild(meta);
+
+        t.appendChild(el('div','divider'));
+
+        const g = el('div','grid');
+        const currency = payload.currency || 'грн';
+
+        const a = (label,value) => {
+          const wrap = el('div');
+          wrap.appendChild(el('div','lbl', label));
+          wrap.appendChild(el('div','val', value));
+          return wrap;
+        };
+
+        g.appendChild(a('Ряд', String(it.row)));
+        g.appendChild(a('Місце', String(it.seat)));
+        g.appendChild(a('Ціна', `${it.price} ${currency}`));
+        g.appendChild(a('Канал', payload.channel || 'Каса'));
+
+        t.appendChild(g);
+
+        t.appendChild(el('div','divider'));
+        t.appendChild(el('div','legal',
+          'Квиток дійсний на одну особу. Повернення та обмін квитків відбувається згідно з правилами театру. Зберігайте квиток до кінця вистави.'
+        ));
+
+        root.appendChild(t);
+      });
+
+      if (qp('autoPrint') === '1'){
+        setTimeout(() => window.print(), 400);
+      }
+    }
+
+    try{
+      const payload = JSON.parse(localStorage.getItem(LS_KEY_PRINT) || 'null');
+      render(payload);
+    }catch(e){
+      render(null);
+    }
+  </script>
+</body>
+</html>
