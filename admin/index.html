@@ -1,64 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
   <link rel="stylesheet" href="../styles.css" />
   <style>
-    body {
-      background:#f3f4f6;
+    .admin-top{
+      display:flex;justify-content:space-between;gap:16px;align-items:flex-start;
+      margin: 18px 0 16px;
     }
-    .admin-page {
-      max-width: 1200px;
-      margin: 16px auto 40px;
-      padding: 0 16px;
-    }
-    .admin-header {
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      margin-bottom:16px;
+    .admin-title h1{ margin:0; font-size:28px; }
+    .admin-title .sub{ color:#6b7280; margin-top:4px; }
+
+    .admin-meta{ text-align:right; color:#6b7280; font-size:14px; }
+    .admin-meta .line{ margin:2px 0; }
+
+    .admin-grid{
+      display:grid;
+      grid-template-columns: 1.6fr 1fr;
       gap:16px;
-    }
-    .admin-header__title {
-      font-size:20px;
-      font-weight:700;
-    }
-    .admin-header__subtitle {
-      font-size:14px;
-      color:#6b7280;
-    }
-    .admin-layout {
-      display:flex;
-      gap:16px;
-      align-items:flex-start;
-    }
-    .admin-left {
-      flex:1 1 auto;
-      min-width:0;
-    }
-    .admin-right {
-      width:320px;
-      flex:0 0 320px;
+      align-items:start;
     }
 
-    /* Блок схемы зала (как в hall.html) */
-    .hall-card{
-      background:#fff;
-      border-radius:16px;
+    .card{
+      background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(15,23,42,.08);
       padding:16px;
-      box-shadow:0 10px 25px rgba(15,23,42,0.05);
     }
-    .hall-layout{
-      display:flex;
-      gap:24px;
-      align-items:flex-start;
-    }
-    .hall-left{
-      flex:1 1 auto;
-      min-width:0;
-    }
+
     .hall-scroll{
       background:#e5e7eb;
       border-radius:16px;
@@ -67,291 +36,189 @@
       overflow-y:visible;
       -webkit-overflow-scrolling:touch;
     }
-    .hall-inner{
-      width:max(980px,100%);
-    }
-    .hall-section{
-      margin-bottom:18px;
-    }
+    .hall-inner{ width:max(980px,100%); }
+
+    .hall-section{ margin-bottom:18px; }
     .hall-section-title{
-      text-align:center;
-      font-size:14px;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      color:#6b7280;
-      margin:4px 0 6px;
+      text-align:center;font-size:14px;text-transform:uppercase;letter-spacing:.08em;
+      color:#6b7280;margin:4px 0 6px;
     }
-    .row-line{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:4px;
-    }
-    .row-label{
-      width:22px;
-      text-align:right;
-      font-size:11px;
-      color:#6b7280;
-      flex:0 0 22px;
-    }
-    .seats-row{
-      display:flex;
-      gap:4px;
-      flex-wrap:nowrap;
-    }
+
+    .row-line{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .row-label{ width:22px; text-align:right; font-size:11px; color:#6b7280; flex:0 0 22px; }
+    .seats-row{ display:flex; gap:4px; flex-wrap:nowrap; }
+
     .seat{
-      width:24px;
-      height:24px;
-      border-radius:6px;
-      border:1px solid #d1d5db;
-      background:#fff;
-      font-size:11px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      padding:0;
+      width:24px;height:24px;border-radius:6px;border:1px solid #d1d5db;background:#fff;
+      font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
       user-select:none;
     }
-    .seat--gap-right{
-      margin-right:16px;
-    }
-    .amphi-gap{
-      width:24px;
-      flex:0 0 24px;
-    }
     .seat--parter-front{ background:#fef9c3; }
-    .seat--parter-mid{   background:#dbeafe; }
-    .seat--parter-back{  background:#e5e7eb; }
-    .seat--amphi{        background:#e0f2fe; }
-    .seat--balcony{      background:#f3e8ff; }
-    .seat--lodge{        background:#fee2e2; }
+    .seat--parter-mid{ background:#dbeafe; }
+    .seat--parter-back{ background:#e5e7eb; }
+    .seat--amphi{ background:#e0f2fe; }
+    .seat--balcony{ background:#f3e8ff; }
+    .seat--lodge{ background:#fee2e2; }
 
-    .seat--selected{
-      background:#2563eb !important;
-      color:#fff;
-      border-color:#2563eb;
-    }
-    .seat--sold{
-      background:#9ca3af !important;
-      color:#fff;
-      cursor:not-allowed;
-    }
-    .seat--reserved{
-      background:#facc15 !important;
-      color:#1f2937;
-    }
+    .seat--selected{ background:#2563eb !important; color:#fff; border-color:#2563eb; }
+    .seat--sold{ background:#9ca3af !important; color:#fff; cursor:not-allowed; }
+    .seat--reserved{ background:#facc15 !important; color:#111827; border-color:#f59e0b; }
 
-    .parter-wrap{
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      gap:24px;
-    }
-    .hall-lodge{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:4px;
-    }
-    .hall-lodge-label{
-      font-size:11px;
-      color:#6b7280;
-      margin-bottom:4px;
-    }
-    .hall-lodge-seats{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
+    .seat--gap-right{ margin-right:16px; }
+    .amphi-gap{ width:24px; flex:0 0 24px; }
 
-    /* Справа — корзина и кнопки */
-    .admin-card {
-      background:#fff;
-      border-radius:16px;
-      padding:16px;
-      box-shadow:0 10px 25px rgba(15,23,42,0.05);
-      margin-bottom:16px;
-    }
-    .admin-card h3{
-      margin-top:0;
-      margin-bottom:8px;
-      font-size:16px;
-    }
-    .admin-meta{
-      font-size:13px;
-      color:#6b7280;
-    }
-    .basket-list{
+    .parter-wrap{ display:flex; justify-content:center; align-items:flex-start; gap:24px; }
+    .hall-lodge{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .hall-lodge-label{ font-size:11px; color:#6b7280; margin-bottom:4px; }
+    .hall-lodge-seats{ display:flex; flex-direction:column; gap:4px; }
+
+    .legend{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:10px; color:#6b7280; font-size:13px; }
+    .dot{ width:14px; height:14px; border-radius:4px; display:inline-block; border:1px solid #d1d5db; vertical-align:middle; margin-right:6px; }
+    .dot.free{ background:#fff; }
+    .dot.sel{ background:#2563eb; border-color:#2563eb; }
+    .dot.sold{ background:#9ca3af; border-color:#9ca3af; }
+    .dot.res{ background:#facc15; border-color:#f59e0b; }
+
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:10px 12px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;
       font-size:14px;
-      margin:8px 0;
-      max-height:160px;
-      overflow-y:auto;
     }
-    .basket-empty{
-      font-size:13px;
-      color:#9ca3af;
-    }
-    .basket-total{
-      margin-top:8px;
-      font-weight:600;
-    }
-    .admin-buttons{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:12px;
-    }
-    .btn-admin{
-      border:none;
-      border-radius:999px;
-      padding:7px 14px;
-      font-size:14px;
+    .pill select{ border:none; outline:none; background:transparent; font-size:14px; }
+
+    .basket-title{ font-size:22px; margin:0 0 8px; }
+    .basket-empty{ color:#9ca3af; }
+
+    .btn{
+      width:100%;
+      border:0;border-radius:999px;
+      padding:12px 14px;
+      font-size:15px;font-weight:600;
       cursor:pointer;
-      font-weight:600;
+      margin-top:10px;
     }
-    .btn-sell{
-      background:#16a34a;
-      color:#fff;
-    }
-    .btn-reserve{
-      background:#facc15;
-      color:#1f2937;
-    }
-    .btn-unreserve{
-      background:#e5e7eb;
-      color:#111827;
-    }
-    .btn-clear{
-      background:#f3f4f6;
-      color:#4b5563;
-    }
+    .btn.green{ background:#16a34a; color:#fff; }
+    .btn.yellow{ background:#facc15; color:#111827; }
+    .btn.gray{ background:#e5e7eb; color:#111827; }
+    .btn.light{ background:#f3f4f6; color:#111827; }
 
-    .legend{
-      font-size:12px;
-      color:#6b7280;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:8px;
-    }
-    .legend__item{
-      display:flex;
-      align-items:center;
-      gap:4px;
-    }
-    .legend-sample{
-      width:14px;
-      height:14px;
-      border-radius:4px;
-      border:1px solid #d1d5db;
-    }
-    .legend-sample--free{ background:#fff; }
-    .legend-sample--selected{ background:#2563eb; }
-    .legend-sample--sold{ background:#9ca3af; }
-    .legend-sample--reserved{ background:#facc15; }
+    .two-btn{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px; }
+    .note{ color:#6b7280; font-size:13px; line-height:1.35; margin-top:12px; }
 
-    @media (max-width:960px){
-      .admin-layout{
-        flex-direction:column;
-      }
-      .admin-right{
-        width:auto;
-      }
+    .reservations h3{ margin:0 0 8px; font-size:18px; }
+    .res-table{ width:100%; border-collapse:collapse; font-size:13px; }
+    .res-table th,.res-table td{ border-bottom:1px solid #eef2f7; padding:8px 6px; vertical-align:top; }
+    .res-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+    .mini{
+      border:1px solid #e5e7eb; background:#fff; border-radius:10px; padding:6px 8px;
+      cursor:pointer; font-size:12px;
+    }
+    .mini.primary{ background:#111827; color:#fff; border-color:#111827; }
+
+    @media (max-width: 980px){
+      .admin-grid{ grid-template-columns: 1fr; }
+      .admin-meta{ text-align:left; }
     }
   </style>
 </head>
 <body>
-  <div class="admin-page">
-    <header class="admin-header">
-      <div>
-        <div class="admin-header__title" id="admin-theatre-name">
-          Театр ім. Т. Г. Шевченка
-        </div>
-        <div class="admin-header__subtitle" id="admin-theatre-subtitle">
-          Панель касира / адміністратора
-        </div>
-      </div>
-      <div class="admin-meta">
-        <div id="admin-current-show">Сеанс: (не обрано)</div>
-        <div id="admin-current-date"></div>
-      </div>
-    </header>
+  <main class="main">
+    <div class="container">
 
-    <div class="admin-layout">
-      <!-- Левая часть: схема -->
-      <div class="admin-left">
-        <div class="hall-card">
-          <h2 style="margin:0 0 8px;font-size:16px;">Схема залу</h2>
-          <p class="admin-meta" style="margin:0 0 8px;">
+      <div class="admin-top">
+        <div class="admin-title">
+          <h1 id="admin-theatre-name">Театр ім. Т. Г. Шевченка</h1>
+          <div class="sub" id="admin-theatre-subtitle">Панель касира / адміністратора</div>
+        </div>
+
+        <div class="admin-meta">
+          <div class="line">
+            <span class="pill">
+              <span>Сеанс:</span>
+              <select id="show-select">
+                <option value="">(не обрано)</option>
+              </select>
+            </span>
+          </div>
+          <div class="line" id="admin-current-date">—</div>
+        </div>
+      </div>
+
+      <div class="admin-grid">
+
+        <!-- LEFT: HALL -->
+        <div class="card">
+          <h2 style="margin:0 0 6px;">Схема залу</h2>
+          <div style="color:#6b7280;margin-bottom:10px;">
             Натискайте на місця, щоб додати їх до кошика. Далі — «Продати» або «Поставити на бронь».
-          </p>
-          <div class="hall-layout">
-            <div class="hall-left">
-              <div class="hall-scroll">
-                <div class="hall-inner" id="hall-root">
-                  <!-- сюда JS отрисует партер / амфитеатр / балкон / ложі -->
-                </div>
-              </div>
-            </div>
+          </div>
+
+          <div class="hall-scroll">
+            <div class="hall-inner" id="hall-root"></div>
           </div>
 
           <div class="legend">
-            <div class="legend__item">
-              <span class="legend-sample legend-sample--free"></span> вільно
-            </div>
-            <div class="legend__item">
-              <span class="legend-sample legend-sample--selected"></span> обрано (кошик)
-            </div>
-            <div class="legend__item">
-              <span class="legend-sample legend-sample--sold"></span> продано
-            </div>
-            <div class="legend__item">
-              <span class="legend-sample legend-sample--reserved"></span> бронь
-            </div>
+            <span><span class="dot free"></span>вільно</span>
+            <span><span class="dot sel"></span>обрано (кошик)</span>
+            <span><span class="dot sold"></span>продано</span>
+            <span><span class="dot res"></span>бронь</span>
           </div>
         </div>
+
+        <!-- RIGHT: BASKET + RESERVATIONS -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card">
+            <div class="basket-title">Обрані місця</div>
+            <div id="basket-list" class="basket-empty">Поки що нічого не обрано.</div>
+
+            <div style="margin-top:10px;font-size:18px;">
+              Сума: <strong><span id="basket-total">0</span> <span id="basket-currency">грн</span></strong>
+            </div>
+
+            <button class="btn green" id="btn-sell">Продати (каса)</button>
+            <button class="btn yellow" id="btn-reserve">Поставити на бронь</button>
+
+            <div class="two-btn">
+              <button class="btn gray" id="btn-unreserve">Скасувати бронь</button>
+              <button class="btn light" id="btn-clear">Очистити кошик</button>
+            </div>
+
+            <div class="note">
+              Дані в цій демо-версії зберігаються в браузері касира (localStorage).
+              Після оновлення сторінки місця залишаться у ваших станах для кожного сеансу окремо.
+            </div>
+          </div>
+
+          <div class="card reservations">
+            <h3>Реєстр броней</h3>
+            <div style="color:#6b7280;margin-bottom:10px;">
+              Показує броні по <strong>обраному</strong> сеансу.
+            </div>
+
+            <div id="reservations-empty" class="basket-empty">Поки що броней немає.</div>
+
+            <div style="overflow:auto;">
+              <table class="res-table" id="reservations-table" style="display:none;">
+                <thead>
+                  <tr>
+                    <th>Хто</th>
+                    <th>К-сть</th>
+                    <th>Місця</th>
+                    <th>Сума</th>
+                    <th>Дії</th>
+                  </tr>
+                </thead>
+                <tbody id="reservations-body"></tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+
       </div>
-
-      <!-- Правая часть: корзина, суммы, кнопки -->
-      <aside class="admin-right">
-        <section class="admin-card">
-          <h3>Обрані місця</h3>
-          <div id="basket-list" class="basket-list">
-            <div class="basket-empty">Поки що нічого не обрано.</div>
-          </div>
-          <div class="basket-total">
-            Сума: <span id="basket-total">0</span>
-            <span id="basket-currency">грн</span>
-          </div>
-
-          <div class="admin-buttons">
-            <button type="button" class="btn-admin btn-sell" id="btn-sell">
-              Продати (каса)
-            </button>
-            <button type="button" class="btn-admin btn-reserve" id="btn-reserve">
-              Поставити на бронь
-            </button>
-            <button type="button" class="btn-admin btn-unreserve" id="btn-unreserve">
-              Скасувати бронь
-            </button>
-            <button type="button" class="btn-admin btn-clear" id="btn-clear">
-              Очистити кошик
-            </button>
-          </div>
-        </section>
-
-        <section class="admin-card">
-          <h3>Примітка</h3>
-          <p class="admin-meta">
-            Дані в цій демо-версії зберігаються лише в браузері касира (localStorage).
-            Після оновлення сторінки місця знову стануть вільними.
-          </p>
-        </section>
-      </aside>
     </div>
-  </div>
+  </main>
 
-  <script src="admin.js"></script>
+  <script src="./admin.js"></script>
 </body>
 </html>
