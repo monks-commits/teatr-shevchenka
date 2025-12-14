@@ -221,3 +221,45 @@ body {
   color:#fff !important;
   border-color:#2563eb !important;
 }
+/* === ЦЕНА → ЦВЕТ === */
+.seat--p200 { background:#55c3f1; color:#0f172a; } /* 200 */
+.seat--p180 { background:#f59e0b; color:#111827; } /* 180 */
+.seat--p170 { background:#fbbf24; color:#111827; } /* 170 */
+.seat--p160 { background:#facc15; color:#111827; } /* 160 */
+.seat--p140 { background:#a3e635; color:#0f172a; } /* 140 */
+.seat--p120 { background:#2dd4bf; color:#0f172a; } /* 120 */
+.seat--p100 { background:#ec4899; color:#fff; }    /* 100 */
+.seat--p70  { background:#15803d; color:#fff; }    /* 70 */
+.seat--p0   { background:#e5e7eb; }
+
+/* === СТАТУС ПОВЕРХ ЦЕНЫ === */
+.seat--selected{
+  outline:2px solid #2563eb;
+  background:#2563eb !important;
+  color:#fff;
+}
+
+.seat--reserved{
+  outline:2px solid #f59e0b;
+  background:#f59e0b !important;
+  color:#111827;
+}
+
+.seat--sold{
+  background:#9ca3af !important;
+  color:#fff;
+  cursor:not-allowed;
+}
+
+/* места Карабас */
+.seat--external{
+  background: repeating-linear-gradient(
+    45deg,
+    #e5e7eb,
+    #e5e7eb 6px,
+    #f3f4f6 6px,
+    #f3f4f6 12px
+  ) !important;
+  color:#6b7280;
+  cursor:not-allowed;
+}
