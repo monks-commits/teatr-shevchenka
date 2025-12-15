@@ -6,169 +6,160 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
-    /* Формат «термобілета»: узький вертикальний */
-    @page {
-      size: 80mm 200mm;
-      margin: 5mm;
+    @page { size: 80mm 200mm; margin: 5mm; }
+
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:#f3f4f6;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      padding:16px;
     }
 
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f3f4f6;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 16px;
+    .ticket{
+      width:260px;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 6px 20px rgba(15,23,42,0.15);
+      padding:14px 16px 12px;
+      box-sizing:border-box;
     }
 
-    .ticket {
-      width: 260px;
-      background: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(15,23,42,0.15);
-      padding: 14px 16px 12px;
-      box-sizing: border-box;
+    .ticket-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .brand-left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+    }
+    .logo-mark{
+      width:32px;height:32px;border-radius:999px;
+      background:#111827;color:#f9fafb;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:14px;flex:0 0 32px;
+    }
+    .brand-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
+    .brand-name{font-size:12px;font-weight:600;color:#111827;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .brand-tagline{font-size:10px;color:#6b7280;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .ticket-meta-top{
+      font-size:10px;color:#6b7280;text-align:right;white-space:nowrap;
     }
 
-    .ticket-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
+    .ticket-title{
+      margin-top:8px;
+      font-size:13px;
+      font-weight:700;
+      color:#111827;
+      text-transform:uppercase;
+    }
+    .ticket-sub{font-size:11px;color:#374151;margin-top:2px;}
+
+    .ticket-row{
+      display:flex;justify-content:space-between;align-items:center;
+      font-size:11px;color:#111827;margin-top:6px;gap:10px;
+    }
+    .ticket-row strong{font-weight:600;}
+
+    .ticket-divider{margin:8px 0;border-bottom:1px dashed #d1d5db;}
+
+    .ticket-grid{
+      display:grid;grid-template-columns:1fr 1fr;
+      gap:4px 10px;font-size:11px;margin-top:4px;
+    }
+    .ticket-grid-item span.label{
+      display:block;font-size:9px;text-transform:uppercase;
+      letter-spacing:0.08em;color:#6b7280;
+    }
+    .ticket-grid-item span.value{font-weight:600;color:#111827;}
+
+    .codes{
+      margin-top:10px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
     }
 
-    .logo-mark {
-      width: 32px;
-      height: 32px;
-      border-radius: 999px;
-      background: #111827;
-      color: #f9fafb;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 14px;
+    /* QR */
+    #qr{
+      width:118px;height:118px;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      display:flex;align-items:center;justify-content:center;
+      background:#fff;
+    }
+    #qr canvas, #qr img{width:110px;height:110px;}
+
+    /* Barcode */
+    #barcode-wrap{
+      width:100%;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      padding:6px 6px 2px;
+      box-sizing:border-box;
+      background:#fff;
+      text-align:center;
+    }
+    #barcode{
+      width:100%;
+      height:46px;
+    }
+    .barcode-text{
+      margin-top:2px;
+      font-size:10px;
+      color:#374151;
+      letter-spacing:0.02em;
+      word-break:break-all;
     }
 
-    .brand-text {
-      margin-left: 8px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 2px;
+    .ticket-footer{
+      margin-top:10px;
+      font-size:9px;color:#6b7280;line-height:1.2;
+      text-align:left;
     }
 
-    .brand-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: #111827;
-      line-height: 1.1;
+    .print-actions{
+      margin-top:10px;
+      display:flex;
+      gap:8px;
     }
-
-    .brand-tagline {
-      font-size: 10px;
-      color: #6b7280;
-      line-height: 1.1;
+    .btn{
+      flex:1;
+      border:none;
+      border-radius:999px;
+      padding:9px 10px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:13px;
     }
+    .btn-primary{background:#111827;color:#fff;}
+    .btn-secondary{background:#e5e7eb;color:#111827;}
 
-    .ticket-meta-top {
-      margin-top: 4px;
-      font-size: 10px;
-      color: #6b7280;
-      text-align: right;
-    }
-
-    .ticket-title {
-      margin-top: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #111827;
-      text-transform: uppercase;
-    }
-
-    .ticket-sub {
-      font-size: 11px;
-      color: #374151;
-      margin-top: 2px;
-    }
-
-    .ticket-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: #111827;
-      margin-top: 6px;
-    }
-
-    .ticket-row strong {
-      font-weight: 600;
-    }
-
-    .ticket-divider {
-      margin: 8px 0;
-      border-bottom: 1px dashed #d1d5db;
-    }
-
-    .ticket-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 4px 10px;
-      font-size: 11px;
-      margin-top: 4px;
-    }
-
-    .ticket-grid-item span.label {
-      display: block;
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #6b7280;
-    }
-
-    .ticket-grid-item span.value {
-      font-weight: 600;
-      color: #111827;
-    }
-
-    .ticket-footer {
-      margin-top: 8px;
-      font-size: 9px;
-      color: #6b7280;
-      line-height: 1.2;
-    }
-
-    .qr-placeholder {
-      margin-top: 8px;
-      height: 64px;
-      border-radius: 8px;
-      border: 1px dashed #d1d5db;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 9px;
-      color: #9ca3af;
-    }
-
-    /* В режимі друку — без сірого фону і тіней */
-    @media print {
-      body {
-        background: #ffffff;
-        padding: 0;
-      }
-      .ticket {
-        box-shadow: none;
-        border-radius: 0;
-        width: 100%;
-      }
+    @media print{
+      body{background:#fff;padding:0;}
+      .ticket{box-shadow:none;border-radius:0;width:100%;}
+      .print-actions{display:none;}
     }
   </style>
+
+  <!-- QR + Barcode libs (позже перенесём локально в /vendor для оффлайна) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
+
 <body>
   <div class="ticket">
     <div class="ticket-header">
-      <div style="display:flex;align-items:center;">
+      <div class="brand-left">
         <div class="logo-mark">Ш</div>
         <div class="brand-text">
           <div class="brand-name" id="brandName">Театр ім. Т. Г. Шевченка</div>
@@ -207,57 +198,129 @@
       </div>
     </div>
 
+    <div class="codes">
+      <div id="qr" title="QR-код квитка"></div>
+
+      <div id="barcode-wrap">
+        <svg id="barcode"></svg>
+        <div class="barcode-text" id="barcodeText">—</div>
+      </div>
+    </div>
+
     <div class="ticket-divider"></div>
 
     <div class="ticket-footer" id="legalText">
-      Квиток дійсний на одну особу. Повернення та обмін квитків
-      відбувається згідно з правилами театру. Зберігайте квиток до кінця вистави.
+      Квиток дійсний на одну особу. Повернення та обмін квитків відбувається згідно з правилами театру.
+      Зберігайте квиток до кінця вистави.
     </div>
 
-    <div class="qr-placeholder" id="qrPlaceholder">
-      QR / штрих-код (пізніше можна буде підставити з системи)
+    <div class="print-actions">
+      <button class="btn btn-primary" id="btnPrint">Друкувати</button>
+      <button class="btn btn-secondary" id="btnClose">Закрити</button>
     </div>
   </div>
 
   <script>
-    // Допоміжна функція для читання параметрів з URL
-    function getQueryParams() {
-      const params = {};
-      const search = window.location.search.substring(1);
-      if (!search) return params;
-      for (const part of search.split("&")) {
-        const [k, v] = part.split("=");
-        if (!k) continue;
-        params[decodeURIComponent(k)] = decodeURIComponent(v || "");
+    function qp(){
+      const out = {};
+      const s = window.location.search.substring(1);
+      if(!s) return out;
+      for(const part of s.split("&")){
+        const [k,v] = part.split("=");
+        if(!k) continue;
+        out[decodeURIComponent(k)] = decodeURIComponent(v || "");
       }
-      return params;
+      return out;
     }
 
-    (function initTicket() {
-      const qp = getQueryParams();
+    function safeText(x){ return (x || "").toString().trim(); }
 
-      // Підставляємо значення, якщо вони є в URL, інакше залишаємо дефолт
-      if (qp.title) document.getElementById("showTitle").textContent = qp.title;
-      if (qp.subtitle) document.getElementById("showSubtitle").textContent = qp.subtitle;
-      if (qp.date) document.getElementById("showDate").textContent = qp.date;
-      if (qp.zone) document.getElementById("zoneName").textContent = qp.zone;
-      if (qp.row) document.getElementById("rowValue").textContent = qp.row;
-      if (qp.seat) document.getElementById("seatValue").textContent = qp.seat;
+    function buildPayload(p){
+      // Сейчас делаем простой payload (для демо и контроля).
+      // Потом заменим на ticket_id + подпись (HMAC) без изменения дизайна.
+      const order = safeText(p.order) || ("ORD-" + Date.now());
+      const date  = safeText(p.date)  || new Date().toLocaleString("uk-UA");
+      const row   = safeText(p.row)   || "";
+      const seat  = safeText(p.seat)  || "";
+      const price = safeText(p.price) || "";
+      const zone  = safeText(p.zone)  || "";
+      return `${order}|${date}|R${row}S${seat}|${price}|${zone}`;
+    }
 
-      if (qp.price) {
-        const currency = qp.curr || "грн";
-        document.getElementById("priceValue").textContent = qp.price + " " + currency;
+    async function renderCodes(payload){
+      // QR
+      const qrBox = document.getElementById("qr");
+      qrBox.innerHTML = "";
+      try{
+        await QRCode.toCanvas(payload, {
+          errorCorrectionLevel: "M",
+          margin: 1,
+          width: 110
+        }, (err, canvas) => {
+          if(err) throw err;
+          qrBox.appendChild(canvas);
+        });
+      }catch(e){
+        qrBox.textContent = "QR недоступний";
+        console.warn("QR error:", e);
       }
 
-      if (qp.channel) document.getElementById("channelValue").textContent = qp.channel;
-      if (qp.order) document.getElementById("ticketNumber").textContent = qp.order;
+      // Barcode (Code128)
+      try{
+        JsBarcode("#barcode", payload, {
+          format: "CODE128",
+          lineColor: "#111827",
+          width: 1.2,
+          height: 42,
+          displayValue: false,
+          margin: 0
+        });
+        document.getElementById("barcodeText").textContent = payload;
+      }catch(e){
+        document.getElementById("barcodeText").textContent = "Штрих-код недоступний";
+        console.warn("Barcode error:", e);
+      }
+    }
 
-      if (qp.brand) document.getElementById("brandName").textContent = qp.brand;
-      if (qp.tagline) document.getElementById("brandTagline").textContent = qp.tagline;
+    (function init(){
+      const p = qp();
 
-      if (qp.autoPrint === "1") {
-        // Невелика затримка, щоб браузер встиг відрендерити
-        setTimeout(() => window.print(), 400);
+      // Подстановка полей
+      const title = safeText(p.title);
+      const subtitle = safeText(p.subtitle);
+      const date = safeText(p.date);
+      const zone = safeText(p.zone);
+      const row = safeText(p.row);
+      const seat = safeText(p.seat);
+      const price = safeText(p.price);
+      const curr = safeText(p.curr) || "грн";
+      const channel = safeText(p.channel) || "Каса";
+      const order = safeText(p.order) || ("ORD-" + Date.now());
+
+      if(title) document.getElementById("showTitle").textContent = title;
+      if(subtitle) document.getElementById("showSubtitle").textContent = subtitle;
+      if(date) document.getElementById("showDate").textContent = date;
+      if(zone) document.getElementById("zoneName").textContent = zone;
+      if(row) document.getElementById("rowValue").textContent = row;
+      if(seat) document.getElementById("seatValue").textContent = seat;
+
+      if(price) document.getElementById("priceValue").textContent = price + " " + curr;
+      document.getElementById("channelValue").textContent = channel;
+      document.getElementById("ticketNumber").textContent = order;
+
+      if(p.brand) document.getElementById("brandName").textContent = p.brand;
+      if(p.tagline) document.getElementById("brandTagline").textContent = p.tagline;
+
+      const payload = safeText(p.payload) || buildPayload({ order, date, row, seat, price, zone });
+      renderCodes(payload);
+
+      // Кнопки
+      document.getElementById("btnPrint").addEventListener("click", ()=>window.print());
+      document.getElementById("btnClose").addEventListener("click", ()=>window.close());
+
+      // Автопечать
+      if (p.autoPrint === "1") {
+        setTimeout(() => window.print(), 450);
       }
     })();
   </script>
