@@ -54,5 +54,52 @@
     document.getElementById("order-amount").textContent = "Сума до сплати: " + amount + " грн";
     document.getElementById("order-id").textContent     = order_id;
   </script>
+
+<form id="liqpay-form" method="POST">
+  <input type="hidden" name="data" id="liqpay-data">
+  <input type="hidden" name="signature" id="liqpay-signature">
+  <button type="submit" style="
+    margin-top:16px;
+    padding:12px 20px;
+    font-size:16px;
+    background:#1f7ae0;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+  ">
+    Оплатити LiqPay
+  </button>
+</form>
+
+<script>
+(async () => {
+  const params = new URLSearchParams(window.location.search);
+
+  const payload = {
+    order_id: params.get("order_id"),
+    amount: params.get("amount"),
+    description: "Квитки до театру",
+    email: params.get("email"),
+  };
+
+  const res = await fetch(
+    "https://yqhzekifwxotizsmaeaf.supabase.co/functions/v1/liqpay-create-index-ts",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const json = await res.json();
+
+  document.getElementById("liqpay-form").action = json.url;
+  document.getElementById("liqpay-data").value = json.data;
+  document.getElementById("liqpay-signature").value = json.signature;
+})();
+</script>
+
+
 </body>
 </html>
