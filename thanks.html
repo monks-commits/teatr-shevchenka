@@ -1,185 +1,48 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Дякуємо за замовлення</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <style>
-    .wrap { max-width: 860px; margin: 0 auto; padding: 18px 14px; }
-    .card { background:#fff; border-radius:14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding:16px; margin-bottom:14px; }
-    .muted { opacity:.75; font-size:14px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; }
-    .title { font-size:22px; font-weight:800; margin:0 0 6px 0; }
-    .big { font-size:16px; font-weight:700; }
-    .ok { color:#0a7a2e; font-weight:700; }
-    .warn { color:#b06a00; font-weight:700; }
-    .err { color:#b00020; font-weight:700; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer; font-weight:600; }
-    .btn-primary { background:#7a1c1c; color:#fff; text-decoration:none; }
-    .btn-ghost { background:transparent; border:1px solid rgba(0,0,0,.15); text-decoration:none; color:inherit; }
-    .divider { height:1px; background:rgba(0,0,0,.08); margin:12px 0; }
-    code.small { font-size:12px; opacity:.75; word-break:break-all; }
-    ul { margin: 8px 0 0 18px; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Дякуємо за оплату!</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="row">
-        <div>
-          <h1 class="title">Дякуємо! Замовлення прийнято</h1>
-          <div class="muted">Якщо оплата пройшла успішно — місця вже зафіксовані.</div>
-        </div>
-        <div>
-          <a class="btn btn-ghost" href="./afisha.html">← До афіші</a>
-        </div>
-      </div>
-    </div>
+  <div id="site-header"></div>
+  <script type="module" src="scripts/include.js"></script>
 
-    <div class="card">
-      <div class="row">
-        <div style="flex:1; min-width:260px;">
-          <div class="muted">Номер замовлення:</div>
-          <div class="big" id="orderIdView">—</div>
+  <main class="main">
+    <section class="section">
+      <div class="container" style="max-width: 920px;">
+        <div class="card" style="padding: 22px;">
+          <h1 style="margin-top:0;">Дякуємо за оплату!</h1>
+          <p class="meta">
+            Ми отримали ваше замовлення. Якщо квиток не прийшов на email — перевірте «Спам» або напишіть нам.
+          </p>
 
-          <div class="divider"></div>
+          <div style="margin-top:14px;">
+            <div><strong>Номер замовлення:</strong> <span id="oid">—</span></div>
+            <div><strong>Сума:</strong> <span id="amt">—</span></div>
+          </div>
 
-          <div class="muted">Вистава:</div>
-          <div class="big" id="showView">—</div>
+          <div style="margin-top:18px;">
+            <a class="button-primary" href="./index.html">Повернутися на сайт</a>
+          </div>
 
-          <div style="margin-top:10px;" class="muted">Місця:</div>
-          <div id="seatsView" class="big">—</div>
-
-          <div style="margin-top:10px;" class="muted">Сума:</div>
-          <div class="big"><span id="amountView">0</span> грн</div>
-        </div>
-
-        <div style="flex:1; min-width:260px;">
-          <div class="muted">Статус:</div>
-          <div id="statusView" class="warn">Перевіряємо оплату…</div>
-
-          <div class="divider"></div>
-
-          <div class="muted">Квитки в системі:</div>
-          <div id="ticketsView" class="muted">Перевіряємо…</div>
-
-          <div class="divider"></div>
-
-          <div class="muted">Що далі:</div>
-          <ul class="muted">
-            <li>Збережіть номер замовлення.</li>
-            <li>Якщо ви вказали email — квитки надійдуть на пошту (коли ми підключимо розсилку).</li>
-            <li>За потреби звертайтесь до каси/адміністратора.</li>
-          </ul>
+          <div class="meta" style="margin-top:14px;">
+            Якщо ви бачите 404 після LiqPay — перевірте, що <code>LIQPAY_RESULT_URL</code> веде саме на
+            <code>/teatr-shevchenka/thanks.html</code>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="card">
-      <div class="muted">Технічна довідка:</div>
-      <code class="small" id="debug">—</code>
-    </div>
+  <div id="site-footer"></div>
 
-    <div class="card">
-      <a class="btn btn-primary" href="./afisha.html">Повернутися до афіші</a>
-    </div>
-  </div>
-
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
-    // =========================
-    // CONFIG (ОБОВʼЯЗКОВО ЗАМІНИТИ!)
-    // =========================
-    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    function qs(name) {
-      return new URLSearchParams(location.search).get(name);
-    }
-
-    function ls(key, fallback="") {
-      try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
-    }
-
-    function lsJson(key, fallback) {
-      try { return JSON.parse(localStorage.getItem(key) || ""); } catch { return fallback; }
-    }
-
-    const order_id = qs("order_id") || ls("last_order_id", "");
-    const amount = Number(qs("amount") || ls("last_amount", "0") || 0);
-    const title = ls("last_title", "");
-    const show_slug = ls("last_show_slug", "");
-    const seats = lsJson("last_seats", []);
-
-    document.getElementById("orderIdView").textContent = order_id || "—";
-    document.getElementById("amountView").textContent = String(amount || 0);
-    document.getElementById("showView").textContent = title || show_slug || "—";
-    document.getElementById("seatsView").textContent = Array.isArray(seats) && seats.length ? seats.join("; ") : "—";
-
-    document.getElementById("debug").textContent =
-      `SUPABASE_URL=${SUPABASE_URL} | order_id=${order_id} | amount=${amount}`;
-
-    const statusEl = document.getElementById("statusView");
-    const ticketsEl = document.getElementById("ticketsView");
-
-    if (!order_id) {
-      statusEl.className = "err";
-      statusEl.textContent = "Немає order_id. Поверніться на афішу та спробуйте ще раз.";
-      ticketsEl.textContent = "—";
-      throw new Error("no order_id");
-    }
-
-    async function checkOnce() {
-      // 1) orders
-      const { data: order, error: orderErr } = await supabase
-        .from("orders")
-        .select("status, show_slug")
-        .eq("order_id", order_id)
-        .maybeSingle();
-
-      if (orderErr) {
-        statusEl.className = "err";
-        statusEl.textContent = "Помилка перевірки замовлення.";
-        console.error(orderErr);
-      } else {
-        const st = order?.status || "created";
-        if (st === "paid") {
-          statusEl.className = "ok";
-          statusEl.textContent = "Оплату підтверджено ✅";
-        } else {
-          statusEl.className = "warn";
-          statusEl.textContent = "Оплату ще не підтверджено (якщо щойно сплатили — зачекайте 10–30 секунд).";
-        }
-      }
-
-      // 2) tickets
-      const { data: tickets, error: tErr } = await supabase
-        .from("tickets")
-        .select("seat_label, price, pdf_url")
-        .eq("order_id", order_id);
-
-      if (tErr) {
-        ticketsEl.textContent = "Помилка перевірки квитків.";
-        console.error(tErr);
-      } else if (tickets && tickets.length) {
-        const seatsList = tickets.map(t => t.seat_label).filter(Boolean);
-        ticketsEl.innerHTML =
-          `<div class="ok">Квитки створені ✅</div>` +
-          `<div class="muted" style="margin-top:6px;">${seatsList.join("; ")}</div>`;
-      } else {
-        ticketsEl.textContent = "Квитків поки немає (оновіть сторінку через кілька секунд).";
-      }
-    }
-
-    // проверяем несколько раз (пока callback допишет tickets)
-    await checkOnce();
-    setTimeout(checkOnce, 4000);
-    setTimeout(checkOnce, 9000);
+  <script>
+    const p = new URLSearchParams(location.search);
+    document.getElementById("oid").textContent = p.get("order_id") || "—";
+    document.getElementById("amt").textContent = (p.get("amount") || "—") + " грн";
   </script>
 </body>
 </html>
