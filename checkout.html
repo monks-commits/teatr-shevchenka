@@ -1,280 +1,175 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Оформлення замовлення</title>
-  <link rel="stylesheet" href="./styles.css" />
-  <style>
-    .wrap { max-width: 860px; margin: 0 auto; padding: 18px 14px; }
-    .card { background:#fff; border-radius:14px; box-shadow: 0 2px 12px rgba(0,0,0,.08); padding:16px; margin-bottom:14px; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    .grid1 { display:grid; grid-template-columns: 1fr; gap:12px; }
-    label { display:block; font-size:14px; margin-bottom:6px; opacity:.85; }
-    input { width:100%; padding:10px 12px; border:1px solid rgba(0,0,0,.15); border-radius:10px; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer; font-weight:600; }
-    .btn-primary { background:#7a1c1c; color:#fff; }
-    .btn-ghost { background:transparent; border:1px solid rgba(0,0,0,.15); }
-    .muted { opacity:.75; font-size:14px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
-    .seats { font-weight:600; }
-    .error { color:#b00020; font-size:14px; margin-top:8px; }
-    .ok { color:#0a7a2e; font-size:14px; margin-top:8px; }
-    .divider { height:1px; background:rgba(0,0,0,.08); margin:12px 0; }
-    code.small { font-size:12px; opacity:.75; }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Підтвердження та оплата</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
-
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="row">
-        <div>
-          <h1 style="margin:0 0 6px 0;">Оформлення замовлення</h1>
-          <div class="muted">Перевірте місця та заповніть контактні дані. Оплата — через LiqPay.</div>
-        </div>
-        <div>
-          <a class="btn btn-ghost" href="./afisha.html">← До афіші</a>
-        </div>
-      </div>
-    </div>
+  <div id="site-header"></div>
+  <script type="module" src="scripts/include.js"></script>
 
-    <div class="card">
-      <div class="row">
-        <div>
-          <div class="muted">Спектакль (show_slug):</div>
-          <div style="font-weight:700; font-size:16px;" id="showSlugView">—</div>
-        </div>
-        <div style="text-align:right;">
-          <div class="muted">Сума до сплати:</div>
-          <div style="font-weight:800; font-size:18px;">
-            <span id="amountView">0</span> <span id="currencyView">UAH</span>
-          </div>
-        </div>
-      </div>
+  <main class="main">
+    <section class="section">
+      <div class="container" style="max-width: 920px;">
+        <h1>Підтвердження та оплата</h1>
 
-      <div class="divider"></div>
-
-      <div class="muted">Обрані місця (для квитка):</div>
-      <div class="seats" id="seatsView" style="margin-top:6px;">—</div>
-      <div class="muted" style="margin-top:10px;">
-        Формат: <strong>Ряд №, місце №</strong>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin:0 0 10px 0; font-size:18px;">Контактні дані</h2>
-
-      <form id="checkoutForm" class="grid1" autocomplete="on">
-        <div class="grid">
-          <div>
-            <label for="buyerName">Імʼя та прізвище</label>
-            <input id="buyerName" name="buyerName" placeholder="Напр.: Олександр Р." required />
-          </div>
-          <div>
-            <label for="buyerEmail">Email</label>
-            <input id="buyerEmail" name="buyerEmail" type="email" placeholder="name@example.com" required />
+        <div class="card" style="margin-bottom: 16px;">
+          <div class="grid" style="display:grid; gap:10px;">
+            <div><strong>Спектакль (show_slug):</strong> <span id="showSlug">—</span></div>
+            <div><strong>Сума до оплати:</strong> <span id="amountLine">—</span></div>
+            <div><strong>Обрані місця (для квитка):</strong><br><span id="seatsLine">—</span></div>
+            <div class="meta">Формат: <strong>Ряд №, місце №</strong></div>
           </div>
         </div>
 
-        <div class="grid">
-          <div>
-            <label for="buyerPhone">Телефон</label>
-            <input id="buyerPhone" name="buyerPhone" placeholder="+380..." required />
-          </div>
-          <div>
-            <label> </label>
-            <div class="muted" style="padding:10px 0;">
-              Після оплати сторінка LiqPay поверне вас на «Дякуємо».
+        <div class="card">
+          <h2 style="margin-top:0;">Контактні дані</h2>
+
+          <form id="payForm" class="form" style="display:grid; gap:12px;">
+            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+              <div>
+                <label>Ім’я та прізвище</label>
+                <input class="form-control" name="buyer_name" required placeholder="Іван Іванов" />
+              </div>
+              <div>
+                <label>Email (куди надійде квиток)</label>
+                <input class="form-control" type="email" name="buyer_email" required placeholder="name@example.com" />
+              </div>
             </div>
-          </div>
+
+            <div class="grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+              <div>
+                <label>Телефон</label>
+                <input class="form-control" name="buyer_phone" required placeholder="+380..." />
+              </div>
+              <div style="display:flex; align-items:flex-end;">
+                <div class="meta">Після оплати сторінка LiqPay поверне вас на «Дякуємо».</div>
+              </div>
+            </div>
+
+            <label class="checkbox" style="display:flex; gap:10px; align-items:center;">
+              <input type="checkbox" required />
+              Погоджуюсь з публічною офертою та умовами повернення.
+            </label>
+
+            <button class="button-primary" id="btnPay" type="submit">Оплатити через LiqPay</button>
+
+            <div id="errBox" style="color:#b00020; display:none;">Помилка</div>
+
+            <details class="meta" style="margin-top:8px;">
+              <summary>Технічна довідка (для тесту)</summary>
+              <pre id="debug" style="white-space:pre-wrap;"></pre>
+            </details>
+          </form>
         </div>
-
-        <div class="row" style="margin-top:4px;">
-          <button class="btn btn-primary" type="submit" id="payBtn">Перейти до оплати</button>
-          <div class="muted">
-            Натискаючи «Перейти до оплати», ви погоджуєтесь з публічною офертою та умовами повернення.
-          </div>
-        </div>
-
-        <div id="msg" class="error" style="display:none;"></div>
-        <div id="ok" class="ok" style="display:none;"></div>
-      </form>
-
-      <div class="divider"></div>
-      <div class="muted">
-        Якщо щось пішло не так — оновіть сторінку та спробуйте ще раз.
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="card">
-      <div class="muted">
-        Технічна довідка (для тесту):<br/>
-        <code class="small" id="debugInfo">—</code>
-      </div>
-    </div>
-  </div>
+  <div id="site-footer"></div>
 
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
-    // =========================
-    // CONFIG (ОБОВʼЯЗКОВО ЗАМІНИТИ!)
-    // =========================
-    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.coo";
+    // ========= CONFIG (ЗАМІНИТИ ПІД СВІЙ НОВИЙ SUPABASE) =========
+    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
-    // Edge Function (НОВИЙ Supabase):
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
+    // ============================================================
 
-    // =========================
-    // Helpers
-    // =========================
-    function qs(name) {
-      return new URLSearchParams(location.search).get(name);
-    }
-
-    function showMessage(text, ok=false) {
-      const elErr = document.getElementById("msg");
-      const elOk  = document.getElementById("ok");
-      if (ok) {
-        elErr.style.display = "none";
-        elOk.style.display = "block";
-        elOk.textContent = text;
-      } else {
-        elOk.style.display = "none";
-        elErr.style.display = "block";
-        elErr.textContent = text;
-      }
-    }
-
-    function safeJsonParse(v, fallback) {
-      try { return JSON.parse(v); } catch { return fallback; }
-    }
-
-    // Единый формат для билета: "Ряд X, місце Y"
-    function normalizeSeatLabel(s) {
-      const str = String(s || "").trim();
-      if (!str) return "";
-
-      // "2_5" -> "Ряд 2, місце 5"
-      const mu = str.match(/^(\d+)\s*_\s*(\d+)$/);
-      if (mu) return `Ряд ${parseInt(mu[1], 10)}, місце ${parseInt(mu[2], 10)}`;
-
-      // "ряд 2, місце 5"
-      const m1 = str.match(/ряд\s*([0-9]+)\s*[, ]\s*місце\s*([0-9]+)/i);
-      if (m1) return `Ряд ${parseInt(m1[1],10)}, місце ${parseInt(m1[2],10)}`;
-
-      // "P14-M17" (если вдруг где-то встретится)
-      const m2 = str.match(/^P(\d+)-M(\d+)$/i);
-      if (m2) return `Ряд ${parseInt(m2[1],10)}, місце ${parseInt(m2[2],10)}`;
-
-      // "2-5" или "2:5"
-      const m3 = str.match(/^(\d+)\s*[-:]\s*(\d+)$/);
-      if (m3) return `Ряд ${parseInt(m3[1],10)}, місце ${parseInt(m3[2],10)}`;
-
-      return str;
-    }
-
-    function getShowSlug() {
-      // из order.html приходит ?show=
-      return qs("show") || qs("show_slug") || "";
-    }
-
-    function getTitle() {
-      return qs("title") || "";
-    }
-
-    function getOrderId() {
-      return qs("order_id") || ("TS-" + Date.now());
-    }
-
-    function getAmount() {
-      const v = qs("amount");
-      const n = Number(v || 0);
-      return Number.isFinite(n) ? n : 0;
-    }
-
-    function getSeatsFromQuery() {
-      // из order.html приходит seats="2_5,2_6"
-      const seatsRaw = qs("seats") || "";
-      return seatsRaw
-        .split(",")
-        .map(x => x.trim())
-        .filter(Boolean)
-        .map(normalizeSeatLabel)
-        .filter(Boolean);
-    }
-
-    // =========================
-    // Init
-    // =========================
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const show_slug = getShowSlug();
-    const title = getTitle();
-    const order_id = getOrderId();
-    const amount = getAmount();
-    const currency = "UAH";
-    const seats = getSeatsFromQuery();
+    function qs(name) { return new URLSearchParams(location.search).get(name) || ""; }
 
-    document.getElementById("showSlugView").textContent = title || show_slug || "—";
-    document.getElementById("amountView").textContent = String(amount || 0);
-    document.getElementById("currencyView").textContent = currency;
-    document.getElementById("seatsView").textContent = seats.length ? seats.join("; ") : "—";
-
-    document.getElementById("debugInfo").textContent =
-      `SUPABASE_URL=${SUPABASE_URL} | init=${LIQPAY_INIT_URL} | show_slug=${show_slug} | seats=${seats.length} | amount=${amount} | order_id=${order_id}`;
-
-    // Prefill from order.html query params
-    const qName  = qs("name")  || "";
-    const qEmail = qs("email") || "";
-    const qPhone = qs("phone") || "";
-    if (qName)  document.getElementById("buyerName").value  = qName;
-    if (qEmail) document.getElementById("buyerEmail").value = qEmail;
-    if (qPhone) document.getElementById("buyerPhone").value = qPhone;
-
-    if (!SUPABASE_URL.includes("supabase.co") || SUPABASE_ANON_KEY === "YOUR_NEW_ANON_KEY") {
-      showMessage("Потрібно підставити SUPABASE_URL та SUPABASE_ANON_KEY нового проєкту (CONFIG на початку файлу).");
+    // seat_key -> "Ряд X, місце Y"
+    // Поддерживаем: P2-M17, A3-M10, B1-M25
+    function seatKeyToHuman(seatKey) {
+      const m = String(seatKey).trim().match(/^([PAB])(\d+)-M(\d+)$/i);
+      if (!m) return seatKey;
+      const row = m[2];
+      const seat = m[3];
+      return `Ряд ${row}, місце ${seat}`;
     }
 
-    // =========================
-    // Submit: call liqpay-init -> redirect to LiqPay
-    // =========================
-    const form = document.getElementById("checkoutForm");
-    const payBtn = document.getElementById("payBtn");
+    // Нормализуем вход:
+    // - если пришло "P2-M17,P2-M18" -> ок
+    // - если пришло "ряд 2, місце 17; ряд 2, місце 18" -> превратим в P2-M17...
+    function normalizeSeats(raw) {
+      if (!raw) return [];
+      let s = decodeURIComponent(raw);
+
+      // 1) если уже похоже на seat_key
+      const maybeKeys = s.split(/[;,]/).map(x => x.trim()).filter(Boolean);
+      const allKeys = maybeKeys.every(x => /^[PAB]\d+-M\d+$/i.test(x));
+      if (allKeys) return maybeKeys.map(x => x.toUpperCase());
+
+      // 2) пробуем вытащить "ряд N" и "місце M" из текста
+      // разделим по ; (как у вас было)
+      const chunks = s.split(";").map(x => x.trim()).filter(Boolean);
+      const keys = [];
+      for (const ch of chunks) {
+        const rm = ch.match(/ряд\s*(\d+)/i);
+        const sm = ch.match(/місце\s*(\d+)/i);
+        if (rm && sm) keys.push(`P${rm[1]}-M${sm[1]}`);
+      }
+      return keys;
+    }
+
+    const show_slug = qs("show") || qs("show_slug");
+    const title = qs("title");
+    const amount = Number(qs("amount") || "0");
+    const order_id = qs("order_id") || ("ORD-" + Date.now());
+
+    const seatsRaw = qs("seats");
+    const seats = normalizeSeats(seatsRaw);
+
+    // UI
+    document.getElementById("showSlug").textContent = show_slug || "—";
+    document.getElementById("amountLine").textContent = `${amount.toFixed(2)} UAH`;
+    document.getElementById("seatsLine").textContent = seats.length
+      ? seats.map(seatKeyToHuman).join("; ")
+      : "—";
+
+    document.getElementById("debug").textContent =
+`SUPABASE_URL=${SUPABASE_URL}
+init=${LIQPAY_INIT_URL}
+show_slug=${show_slug}
+seats=${JSON.stringify(seats)}
+amount=${amount}
+order_id=${order_id}`;
+
+    // submit
+    const form = document.getElementById("payForm");
+    const errBox = document.getElementById("errBox");
+    const btnPay = document.getElementById("btnPay");
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-
-      if (!show_slug) return showMessage("Не визначено спектакль (show_slug). Поверніться назад та спробуйте ще раз.");
-      if (!seats.length) return showMessage("Не знайдено обрані місця. Поверніться до схеми залу та оберіть місця.");
-      if (!amount || amount <= 0) return showMessage("Сума замовлення не визначена. Перевірте вибір місць/цін.");
-
-      payBtn.disabled = true;
-      showMessage("Готуємо платіж…", true);
-
-      const buyer_name = document.getElementById("buyerName").value.trim();
-      const buyer_email = document.getElementById("buyerEmail").value.trim();
-      const buyer_phone = document.getElementById("buyerPhone").value.trim();
-
-      // сохраняем для thanks.html
-      localStorage.setItem("last_order_id", order_id);
-      localStorage.setItem("last_show_slug", show_slug);
-      localStorage.setItem("last_title", title);
-      localStorage.setItem("last_seats", JSON.stringify(seats));
-      localStorage.setItem("last_amount", String(amount));
-      localStorage.setItem("last_email", buyer_email);
+      errBox.style.display = "none";
+      btnPay.disabled = true;
 
       try {
+        if (!show_slug) throw new Error("Не передано show_slug");
+        if (!seats.length) throw new Error("Не передано seats");
+
+        const fd = new FormData(form);
+        const buyer_name = String(fd.get("buyer_name") || "").trim();
+        const buyer_email = String(fd.get("buyer_email") || "").trim();
+        const buyer_phone = String(fd.get("buyer_phone") || "").trim();
+
+        // Важно: в init отправляем seats как seat_key[]
         const payload = {
           order_id,
           amount,
-          currency,
+          currency: "UAH",
           show_slug,
-          seats, // ВАЖНО: человекочитаемо "Ряд X, місце Y"
+          seats,
           buyer_name,
           buyer_email,
           buyer_phone,
+          // result_url / server_url можно не передавать — берутся из Secrets
         };
 
         const res = await fetch(LIQPAY_INIT_URL, {
@@ -283,38 +178,36 @@
           body: JSON.stringify(payload),
         });
 
-        const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || `liqpay-init error (${res.status})`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
         const { data, signature } = json;
-        if (!data || !signature) throw new Error("liqpay-init повернув порожні data/signature");
+        if (!data || !signature) throw new Error("init не повернув data/signature");
 
-        // redirect to LiqPay checkout
+        // Редирект на LiqPay (form POST)
         const f = document.createElement("form");
         f.method = "POST";
         f.action = "https://www.liqpay.ua/api/3/checkout";
         f.acceptCharset = "utf-8";
 
-        const i1 = document.createElement("input");
-        i1.type = "hidden";
-        i1.name = "data";
-        i1.value = data;
+        const in1 = document.createElement("input");
+        in1.type = "hidden";
+        in1.name = "data";
+        in1.value = data;
 
-        const i2 = document.createElement("input");
-        i2.type = "hidden";
-        i2.name = "signature";
-        i2.value = signature;
+        const in2 = document.createElement("input");
+        in2.type = "hidden";
+        in2.name = "signature";
+        in2.value = signature;
 
-        f.appendChild(i1);
-        f.appendChild(i2);
+        f.appendChild(in1);
+        f.appendChild(in2);
         document.body.appendChild(f);
-
-        showMessage("Перенаправляємо на оплату LiqPay…", true);
         f.submit();
       } catch (err) {
-        console.error(err);
-        showMessage(err?.message || "Помилка під час ініціалізації платежу.");
-        payBtn.disabled = false;
+        errBox.textContent = String(err?.message || err);
+        errBox.style.display = "block";
+        btnPay.disabled = false;
       }
     });
   </script>
