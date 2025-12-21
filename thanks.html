@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Дякуємо за оплату!</title>
+  <title>Дякуємо за оплату</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -12,26 +12,22 @@
 
   <main class="main">
     <section class="section">
-      <div class="container" style="max-width: 920px;">
-        <div class="card" style="padding: 22px;">
-          <h1 style="margin-top:0;">Дякуємо за оплату!</h1>
-          <p class="meta">
-            Ми отримали ваше замовлення. Якщо квиток не прийшов на email — перевірте «Спам» або напишіть нам.
+      <div class="container">
+        <div class="card" style="max-width:640px;">
+          <h1>Дякуємо за оплату!</h1>
+
+          <p>
+            Ми отримали ваше замовлення.
+            Якщо квиток не прийшов на email — перевірте «Спам»
+            або звʼяжіться з нами.
           </p>
 
-          <div style="margin-top:14px;">
-            <div><strong>Номер замовлення:</strong> <span id="oid">—</span></div>
-            <div><strong>Сума:</strong> <span id="amt">—</span></div>
-          </div>
+          <p><b>Номер замовлення:</b> <span id="orderId">—</span></p>
+          <p><b>Сума:</b> <span id="amount">— грн</span></p>
 
-          <div style="margin-top:18px;">
-            <a class="button-primary" href="./index.html">Повернутися на сайт</a>
-          </div>
-
-          <div class="meta" style="margin-top:14px;">
-            Якщо ви бачите 404 після LiqPay — перевірте, що <code>LIQPAY_RESULT_URL</code> веде саме на
-            <code>/teatr-shevchenka/thanks.html</code>
-          </div>
+          <a href="index.html" class="button-primary" style="margin-top:16px;display:inline-block;">
+            Повернутися на сайт
+          </a>
         </div>
       </div>
     </section>
@@ -41,8 +37,26 @@
 
   <script>
     const p = new URLSearchParams(location.search);
-    document.getElementById("oid").textContent = p.get("order_id") || "—";
-    document.getElementById("amt").textContent = (p.get("amount") || "—") + " грн";
+
+    let orderId = p.get("order_id");
+    let amount  = p.get("amount");
+
+    // fallback — если нет параметров в URL
+    if (!orderId) {
+      orderId = sessionStorage.getItem("last_paid_order");
+    }
+
+    if (!amount) {
+      amount = sessionStorage.getItem("last_paid_amount");
+    }
+
+    if (orderId) {
+      document.getElementById("orderId").textContent = orderId;
+    }
+
+    if (amount) {
+      document.getElementById("amount").textContent = `${amount} грн`;
+    }
   </script>
 </body>
 </html>
