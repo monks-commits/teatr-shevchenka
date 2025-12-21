@@ -64,12 +64,10 @@
   <div id="site-footer"></div>
 
   <script>
-    // === НАСТРОЙКИ (проверь, что URL твоего НОВОГО supabase проекта) ===
-    // Например: https://xxxx.supabase.co
-    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co"; // <-- если у тебя другой project id, замени
+    // === ВАЖНО: проверь, что это URL НОВОГО Supabase, где tickets/orders/payments ===
+    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co"; // <-- если другой project id, замени
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
 
-    // === читаем параметры ===
     const p = new URLSearchParams(location.search);
     const show   = p.get("show")  || "";
     const title  = p.get("title") || "";
@@ -77,8 +75,8 @@
     const amountStr = p.get("amount") || "0";
     const amount = Number(amountStr || 0);
 
-    // seatsRaw у нас уже "P2-M2,P4-M4" (из hall.html)
-    // для отображения делаем "Ряд 2, місце 2"
+    const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
+
     function seatHuman(key) {
       const m = String(key).match(/^([PAB])(\d+)-M(\d+)$/i);
       if (!m) return key;
@@ -87,30 +85,27 @@
       return `Ряд ${row}, місце ${seat}`;
     }
 
-    const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
-
     document.getElementById("showSlug").textContent = show || "—";
     document.getElementById("amount").textContent = `${amount.toFixed(2)} UAH`;
-    document.getElementById("seatsPretty").textContent = seats.length ? seats.map(seatHuman).join("; ") : "—";
+    document.getElementById("seatsPretty").textContent =
+      seats.length ? seats.map(seatHuman).join("; ") : "—";
 
     const debugEl = document.getElementById("debug");
     const errEl = document.getElementById("err");
+    const btnPay = document.getElementById("btnPay");
 
     function setError(msg) {
       errEl.textContent = msg || "";
     }
 
-    function makeIdempotencyKey() {
-      // стабильный ключ на время оформления (на 1 вкладку)
-      const k = sessionStorage.getItem("idempotency_key");
-      if (k) return k;
-      const v = "idem_" + (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random());
-      sessionStorage.setItem("idempotency_key", v);
-      return v;
+    function newIdempotencyKey() {
+      // ✅ каждый клик — новый ключ → новый order_id → никаких дублей в LiqPay
+      const uuid = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random());
+      return "idem_" + uuid;
     }
 
     function submitToLiqPay(data, signature) {
-      // ✅ Самый стабильный вариант: обычный POST, без iframe
+      // ✅ стабильный вариант: обычный POST, без iframe
       const form = document.createElement("form");
       form.method = "POST";
       form.action = "https://www.liqpay.ua/api/3/checkout";
@@ -145,7 +140,7 @@
       const buyer_email = document.getElementById("buyer_email").value.trim();
       const buyer_phone = document.getElementById("buyer_phone").value.trim();
 
-      const idempotency_key = makeIdempotencyKey();
+      const idempotency_key = newIdempotencyKey();
 
       const payload = {
         idempotency_key,
@@ -161,7 +156,7 @@
       debugEl.textContent = "liqpay-init payload:\n" + JSON.stringify(payload, null, 2);
 
       try {
-        document.getElementById("btnPay").disabled = true;
+        btnPay.disabled = true;
 
         const r = await fetch(LIQPAY_INIT_URL, {
           method: "POST",
@@ -174,15 +169,14 @@
 
         if (!r.ok || !j.data || !j.signature) {
           setError(j?.error || "Помилка ініціалізації оплати (liqpay-init).");
-          document.getElementById("btnPay").disabled = false;
+          btnPay.disabled = false;
           return;
         }
 
-        // ✅ уходим на LiqPay обычным POST (без iframe)
         submitToLiqPay(j.data, j.signature);
       } catch (err) {
         setError("Помилка мережі або блокування браузером. Спробуйте ще раз.");
-        document.getElementById("btnPay").disabled = false;
+        btnPay.disabled = false;
       }
     });
   </script>
