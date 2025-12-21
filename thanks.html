@@ -39,44 +39,46 @@
   <div id="site-footer"></div>
 
   <script>
-    // === ВСТАВЬ СВОИ ДАННЫЕ (из Supabase -> Project Settings -> API) ===
-    const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co"; // <-- проверь project id
-    const SUPABASE_ANON_KEY = "PASTE_ANON_KEY_HERE"; // <-- вставь anon public key
+    // ===== ВСТАВЬ СЮДА ДВА ЗНАЧЕНИЯ ИЗ SUPABASE -> Project Settings -> API =====
+    const SUPABASE_URL = "PASTE_SUPABASE_URL_HERE";        // например: https://fhusjlkneckbvnrdhbil.supabase.co
+    const SUPABASE_ANON_KEY = "PASTE_SUPABASE_ANON_HERE";  // anon public key
+    // ========================================================================
 
     const orderEl = document.getElementById("order");
     const amountEl = document.getElementById("amount");
     const debugEl = document.getElementById("debug");
     const msgEl = document.getElementById("msg");
 
-    function headers() {
+    function supaHeaders() {
       return {
         apikey: SUPABASE_ANON_KEY,
         Authorization: "Bearer " + SUPABASE_ANON_KEY,
       };
     }
 
-    async function loadLastPaidOrder() {
-      // Берем самый свежий paid заказ
-      const url = `${SUPABASE_URL}/rest/v1/orders`
-        + `?status=eq.paid`
-        + `&select=order_id,amount,currency,updated_at,created_at`
-        + `&order=updated_at.desc`
-        + `&limit=1`;
+    async function loadLastPaid() {
+      // берём самый свежий paid заказ
+      const url =
+        `${SUPABASE_URL}/rest/v1/orders` +
+        `?status=eq.paid` +
+        `&select=order_id,amount,currency,updated_at` +
+        `&order=updated_at.desc` +
+        `&limit=1`;
 
-      const r = await fetch(url, { headers: headers() });
+      const r = await fetch(url, { headers: supaHeaders() });
       const text = await r.text();
+
       debugEl.textContent =
         `GET ${url}\nstatus=${r.status}\n\nresponse:\n${text}`;
 
       if (!r.ok) {
-        msgEl.textContent = "Оплату отримано, але не вдалося завантажити дані замовлення. Спробуйте оновити сторінку.";
+        msgEl.textContent = "Оплату отримано, але дані замовлення не завантажились. Оновіть сторінку або зверніться до підтримки.";
         return;
       }
 
       const rows = JSON.parse(text || "[]");
       if (!rows.length) {
-        msgEl.textContent =
-          "Оплату отримано. Дані замовлення ще обробляються. Оновіть сторінку за 10–20 секунд.";
+        msgEl.textContent = "Оплату отримано. Дані замовлення ще обробляються. Оновіть сторінку через 10–20 секунд.";
         return;
       }
 
@@ -85,9 +87,9 @@
       amountEl.textContent = `${Number(o.amount || 0).toFixed(2)} ${o.currency || "UAH"}`;
     }
 
-    loadLastPaidOrder().catch((e) => {
+    loadLastPaid().catch((e) => {
       debugEl.textContent += "\n\nerror:\n" + String(e);
-      msgEl.textContent = "Сталася помилка при завантаженні даних. Спробуйте оновити сторінку.";
+      msgEl.textContent = "Сталася помилка при завантаженні даних. Оновіть сторінку.";
     });
   </script>
 </body>
