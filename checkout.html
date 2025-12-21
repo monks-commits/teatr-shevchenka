@@ -54,7 +54,9 @@
               Погоджуюсь з публічною офертою та умовами повернення.
             </label>
 
-            <button class="button-primary" id="btnPay" type="submit">Оплатити через LiqPay</button>
+            <button class="button-primary" id="btnPay" type="submit">
+              Оплатити через LiqPay
+            </button>
 
             <div id="errBox" style="color:#b00020; display:none;">Помилка</div>
 
@@ -73,40 +75,40 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
-    // ========= CONFIG (ЗАМІНИТИ ПІД СВІЙ НОВИЙ SUPABASE) =========
+    // ========= CONFIG =========
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
-    // ============================================================
+    // ==========================
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function qs(name) { return new URLSearchParams(location.search).get(name) || ""; }
+    function qs(name) {
+      return new URLSearchParams(location.search).get(name) || "";
+    }
 
-    // seat_key -> "Ряд X, місце Y"
-    // Поддерживаем: P2-M17, A3-M10, B1-M25
+    // ---------- IDEMPOTENCY ----------
+    let idempotency_key =
+      sessionStorage.getItem("idempotency_key") ||
+      crypto.randomUUID();
+
+    sessionStorage.setItem("idempotency_key", idempotency_key);
+    // ---------------------------------
+
     function seatKeyToHuman(seatKey) {
       const m = String(seatKey).trim().match(/^([PAB])(\d+)-M(\d+)$/i);
       if (!m) return seatKey;
-      const row = m[2];
-      const seat = m[3];
-      return `Ряд ${row}, місце ${seat}`;
+      return `Ряд ${m[2]}, місце ${m[3]}`;
     }
 
-    // Нормализуем вход:
-    // - если пришло "P2-M17,P2-M18" -> ок
-    // - если пришло "ряд 2, місце 17; ряд 2, місце 18" -> превратим в P2-M17...
     function normalizeSeats(raw) {
       if (!raw) return [];
       let s = decodeURIComponent(raw);
 
-      // 1) если уже похоже на seat_key
       const maybeKeys = s.split(/[;,]/).map(x => x.trim()).filter(Boolean);
       const allKeys = maybeKeys.every(x => /^[PAB]\d+-M\d+$/i.test(x));
       if (allKeys) return maybeKeys.map(x => x.toUpperCase());
 
-      // 2) пробуем вытащить "ряд N" и "місце M" из текста
-      // разделим по ; (как у вас было)
       const chunks = s.split(";").map(x => x.trim()).filter(Boolean);
       const keys = [];
       for (const ch of chunks) {
@@ -118,35 +120,32 @@
     }
 
     const show_slug = qs("show") || qs("show_slug");
-    const title = qs("title");
     const amount = Number(qs("amount") || "0");
-    const order_id = qs("order_id") || ("ORD-" + Date.now());
-
-    const seatsRaw = qs("seats");
-    const seats = normalizeSeats(seatsRaw);
+    const seats = normalizeSeats(qs("seats"));
 
     // UI
     document.getElementById("showSlug").textContent = show_slug || "—";
     document.getElementById("amountLine").textContent = `${amount.toFixed(2)} UAH`;
-    document.getElementById("seatsLine").textContent = seats.length
-      ? seats.map(seatKeyToHuman).join("; ")
-      : "—";
+    document.getElementById("seatsLine").textContent =
+      seats.length ? seats.map(seatKeyToHuman).join("; ") : "—";
 
     document.getElementById("debug").textContent =
-`SUPABASE_URL=${SUPABASE_URL}
-init=${LIQPAY_INIT_URL}
+`idempotency_key=${idempotency_key}
 show_slug=${show_slug}
 seats=${JSON.stringify(seats)}
-amount=${amount}
-order_id=${order_id}`;
+amount=${amount}`;
 
-    // submit
     const form = document.getElementById("payForm");
     const errBox = document.getElementById("errBox");
     const btnPay = document.getElementById("btnPay");
 
+    let isSubmitting = false;
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (isSubmitting) return;
+
+      isSubmitting = true;
       errBox.style.display = "none";
       btnPay.disabled = true;
 
@@ -155,21 +154,16 @@ order_id=${order_id}`;
         if (!seats.length) throw new Error("Не передано seats");
 
         const fd = new FormData(form);
-        const buyer_name = String(fd.get("buyer_name") || "").trim();
-        const buyer_email = String(fd.get("buyer_email") || "").trim();
-        const buyer_phone = String(fd.get("buyer_phone") || "").trim();
 
-        // Важно: в init отправляем seats как seat_key[]
         const payload = {
-          order_id,
+          idempotency_key,
           amount,
           currency: "UAH",
           show_slug,
           seats,
-          buyer_name,
-          buyer_email,
-          buyer_phone,
-          // result_url / server_url можно не передавать — берутся из Secrets
+          buyer_name: String(fd.get("buyer_name") || "").trim(),
+          buyer_email: String(fd.get("buyer_email") || "").trim(),
+          buyer_phone: String(fd.get("buyer_phone") || "").trim(),
         };
 
         const res = await fetch(LIQPAY_INIT_URL, {
@@ -184,30 +178,31 @@ order_id=${order_id}`;
         const { data, signature } = json;
         if (!data || !signature) throw new Error("init не повернув data/signature");
 
-        // Редирект на LiqPay (form POST)
         const f = document.createElement("form");
         f.method = "POST";
         f.action = "https://www.liqpay.ua/api/3/checkout";
         f.acceptCharset = "utf-8";
 
-        const in1 = document.createElement("input");
-        in1.type = "hidden";
-        in1.name = "data";
-        in1.value = data;
+        const i1 = document.createElement("input");
+        i1.type = "hidden";
+        i1.name = "data";
+        i1.value = data;
 
-        const in2 = document.createElement("input");
-        in2.type = "hidden";
-        in2.name = "signature";
-        in2.value = signature;
+        const i2 = document.createElement("input");
+        i2.type = "hidden";
+        i2.name = "signature";
+        i2.value = signature;
 
-        f.appendChild(in1);
-        f.appendChild(in2);
+        f.appendChild(i1);
+        f.appendChild(i2);
         document.body.appendChild(f);
         f.submit();
+
       } catch (err) {
         errBox.textContent = String(err?.message || err);
         errBox.style.display = "block";
         btnPay.disabled = false;
+        isSubmitting = false;
       }
     });
   </script>
