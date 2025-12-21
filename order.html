@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Замовлення квитків — шаблон</title>
+  <title>Замовлення квитків</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,32 +13,28 @@
   <main class="main">
     <section class="section">
       <div class="container">
-        <h1>Дані для замовлення</h1>
+        <h1>Підтвердження вибору</h1>
         <p id="show-line" class="meta"></p>
 
-        <form id="orderForm" class="card" style="max-width:520px">
-          <div class="form-row">
-            <label>Ім’я та Прізвище</label>
-            <input type="text" name="fullname" required placeholder="Іван Іванов" class="form-control" />
-          </div>
-          <div class="form-row">
-            <label>Електронна пошта</label>
-            <input type="email" name="email" required placeholder="name@example.com" class="form-control" />
-          </div>
-          <div class="form-row">
-            <label>Телефон</label>
-            <input type="tel" name="phone" required placeholder="+380..." class="form-control" />
+        <div class="card" style="max-width:520px; display:grid; gap:12px;">
+          <div>
+            <div class="meta">Обрані місця</div>
+            <div id="seats-line" style="font-weight:700;"></div>
           </div>
 
-          <label class="checkbox">
-            <input type="checkbox" name="agree" required />
-            Погоджуюсь з публічною офертою та умовами повернення.
-          </label>
+          <div>
+            <div class="meta">Сума</div>
+            <div id="amount-line" style="font-weight:700;"></div>
+          </div>
 
-          <button type="submit" class="button-primary" id="payBtn">
+          <div class="meta">
+            Далі ви введете контактні дані та перейдете до оплати через LiqPay.
+          </div>
+
+          <button type="button" class="button-primary" id="goPayBtn">
             Перейти до оплати
           </button>
-        </form>
+        </div>
       </div>
     </section>
   </main>
@@ -47,41 +43,37 @@
 
   <script>
     const p = new URLSearchParams(location.search);
-    const show   = p.get("show")   || "";
-    const title  = p.get("title")  || "";
-    const seatsRaw = p.get("seats")|| "";
+    const show = p.get("show") || "";
+    const title = p.get("title") || "";
+    const seatsRaw = p.get("seats") || "";
     const amount = p.get("amount") || "0";
-    const order_id = p.get("order_id") || ("ORD-" + Date.now());
 
+    // Красиво показать seats, если формат "2_17,2_18"
     const seatsPretty = seatsRaw
-      .split(",")
-      .filter(Boolean)
-      .map(x => {
-        const [r,s] = x.split("_");
-        return `Ряд ${r}, місце ${s}`;
-      })
-      .join("; ");
+      ? seatsRaw
+          .split(",")
+          .map(x => x.trim())
+          .filter(Boolean)
+          .map(x => {
+            const [r, s] = x.split("_");
+            if (r && s) return `Ряд ${r}, місце ${s}`;
+            return x;
+          })
+          .join("; ")
+      : "—";
 
     document.getElementById("show-line").textContent =
-      `Вистава: ${title || show} • ${seatsPretty} • Сума: ${amount} грн`;
+      `Вистава: ${title || show}`;
 
-    document.getElementById("orderForm").addEventListener("submit", (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.currentTarget);
-      const fullname = String(fd.get("fullname") || "").trim();
-      const email    = String(fd.get("email")    || "").trim();
-      const phone    = String(fd.get("phone")    || "").trim();
+    document.getElementById("seats-line").textContent = seatsPretty;
+    document.getElementById("amount-line").textContent = `${Number(amount || 0).toFixed(2)} грн`;
 
+    document.getElementById("goPayBtn").addEventListener("click", () => {
       const url = new URL("checkout.html", location.href);
       url.searchParams.set("show", show);
-      url.searchParams.set("title", title);
+      if (title) url.searchParams.set("title", title);
       url.searchParams.set("seats", seatsRaw);
       url.searchParams.set("amount", amount);
-      url.searchParams.set("order_id", order_id);
-      url.searchParams.set("name", fullname);
-      url.searchParams.set("email", email);
-      url.searchParams.set("phone", phone);
-
       location.href = url.toString();
     });
   </script>
