@@ -314,4 +314,16 @@
   font-size:12px;
   word-break:break-all;
 }
+/* ===== РЕЖИМ КОНТРОЛЕРА: только сканер ===== */
+body.scanner-only .site-header,
+body.scanner-only .admin-layout {
+  display: none !important;
+}
+
+/* если модалка у тебя рендерится в body и видна через класс/атрибут —
+   ничего больше не надо. Если у модалки есть отдельный класс — можно усилить: */
+body.scanner-only .modal,
+body.scanner-only .scanner-modal {
+  display: block !important;
+}
 
