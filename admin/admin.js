@@ -885,6 +885,9 @@ async function initAdminPage(){
   document.getElementById('btn-export-reserves')?.addEventListener('click', exportReserves);
   document.getElementById('btn-export-sales')?.addEventListener('click', exportSales);
   document.getElementById('btn-export-ops')?.addEventListener('click', exportOps);
+
+  // ✅ init scanner UI (добавили, не вмешивается в кассу)
+  initScannerUI();
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -893,3 +896,185 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert('Помилка ініціалізації адмінки. Відкрий консоль (F12) і покажи помилку.');
   });
 });
+
+/* =====================================================================
+   ✅ SCANNER (встроенный). Минимально, без отдельной страницы.
+   Требует Edge Function scan-ticket и Secret SCANNER_SECRET на стороне Supabase.
+   ===================================================================== */
+
+const SCAN_LS_SECRET = LS_PREFIX + 'scanner_secret';
+
+function getScanEndpoint(){
+  // 1) если в settings.json есть supabase_url — используем
+  const u = SETTINGS?.supabase_url || SETTINGS?.supabase?.url || '';
+  if (u && typeof u === 'string') {
+    // ожидаем вида https://xxxx.supabase.co
+    return u.replace(/\/+$/,'') + '/functions/v1/scan-ticket';
+  }
+
+  // 2) фолбэк: подставь project ref (если нет в settings.json)
+  const SUPABASE_PROJECT_REF = 'fhusjlkneckbvnrdhbil'; // <-- при желании поменяй
+  return `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/scan-ticket`;
+}
+
+let qrScanner = null;
+let scanCooldown = false;
+let lastQrText = '';
+
+function setScanResult(state, statusText, detailsText, qrText){
+  const box = document.getElementById('scanResult');
+  const st = document.getElementById('scanStatus');
+  const det = document.getElementById('scanDetails');
+  const qr = document.getElementById('scanQr');
+
+  if (st) st.textContent = statusText || '';
+  if (det) det.textContent = detailsText || '—';
+  if (qr) qr.textContent = qrText || '—';
+
+  if (!box) return;
+  box.classList.remove('scan-ok','scan-bad','scan-wait');
+  box.classList.add(state);
+}
+
+function openScanner(){
+  const modal = document.getElementById('scannerModal');
+  if(!modal) return;
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden','false');
+
+  // подставим secret из localStorage
+  const secretInput = document.getElementById('scanSecret');
+  if (secretInput && !secretInput.value){
+    secretInput.value = localStorage.getItem(SCAN_LS_SECRET) || '';
+  }
+
+  setScanResult('scan-wait','очікую…','—','—');
+}
+
+async function closeScanner(){
+  await stopScanner();
+  const modal = document.getElementById('scannerModal');
+  if(!modal) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden','true');
+}
+
+async function startScanner(){
+  if (!window.Html5Qrcode) {
+    alert('Бібліотека сканера не завантажилась. Перевір інтернет/блокування CDN.');
+    return;
+  }
+  if (qrScanner) return;
+
+  const readerId = 'scan-reader';
+  const el = document.getElementById(readerId);
+  if(!el) return;
+
+  qrScanner = new Html5Qrcode(readerId);
+  lastQrText = '';
+
+  try{
+    await qrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText)=>{
+        if (!decodedText) return;
+        if (decodedText === lastQrText) return;
+        lastQrText = decodedText;
+        sendScan(decodedText);
+      }
+    );
+    setScanResult('scan-wait','Камера запущена','Наведіть на QR','');
+  }catch(e){
+    console.error(e);
+    setScanResult('scan-bad','Помилка камери', String(e), '');
+  }
+}
+
+async function stopScanner(){
+  try{
+    if(qrScanner){
+      await qrScanner.stop();
+      qrScanner.clear();
+      qrScanner = null;
+    }
+  }catch(e){
+    console.warn('stopScanner', e);
+  }
+}
+
+async function sendScan(qrText){
+  if (scanCooldown) return;
+  scanCooldown = true;
+  setTimeout(()=>scanCooldown=false, 1200);
+
+  const endpoint = getScanEndpoint();
+
+  const secretEl = document.getElementById('scanSecret');
+  const byEl = document.getElementById('scanBy');
+
+  const secret = (secretEl?.value || '').trim();
+  const checked_in_by = (byEl?.value || 'Вхід-1').trim();
+
+  if (!secret){
+    setScanResult('scan-bad','Потрібен SCANNER_SECRET','Введіть код (разово)', qrText);
+    return;
+  }
+
+  // запомним в браузере
+  localStorage.setItem(SCAN_LS_SECRET, secret);
+
+  setScanResult('scan-wait','Перевіряю…','', qrText);
+
+  try{
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-scanner-secret': secret
+      },
+      body: JSON.stringify({ qr_payload: qrText, checked_in_by })
+    });
+
+    const json = await res.json().catch(()=>({}));
+
+    if (res.ok && json.ok){
+      const t = json.ticket || {};
+      setScanResult(
+        'scan-ok',
+        '✅ ПРОПУСТИТИ',
+        `${t.show_slug || ''} · ${t.seat_label || ''} · ${t.price ?? ''} ${CURRENCY}`,
+        qrText
+      );
+      return;
+    }
+
+    if (json.status === 'already_used'){
+      setScanResult('scan-bad','⛔ ВЖЕ ВИКОРИСТАНО', `Погашено: ${json.checked_in_at || ''}`, qrText);
+      return;
+    }
+
+    setScanResult('scan-bad','⛔ НЕ ДІЙСНИЙ', json.error || (`HTTP ${res.status}`), qrText);
+  }catch(e){
+    console.error(e);
+    setScanResult('scan-bad','⚠️ ПОМИЛКА', String(e), qrText);
+  }
+}
+
+function initScannerUI(){
+  // кнопки
+  document.getElementById('btn-scanner-open')?.addEventListener('click', openScanner);
+  document.getElementById('btn-scanner-close')?.addEventListener('click', closeScanner);
+  document.getElementById('scannerBackdrop')?.addEventListener('click', closeScanner);
+
+  document.getElementById('btn-scan-start')?.addEventListener('click', startScanner);
+  document.getElementById('btn-scan-stop')?.addEventListener('click', stopScanner);
+
+  // ESC закрывает модалку
+  document.addEventListener('keydown', (e)=>{
+    if (e.key === 'Escape'){
+      const modal = document.getElementById('scannerModal');
+      if (modal?.classList.contains('is-open')) closeScanner();
+    }
+  });
+}
