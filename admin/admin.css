@@ -211,3 +211,107 @@
 .registry-meta{ color:#6b7280; font-size: 13px; }
 .registry-rows{ margin-top: 8px; color:#111827; font-size:13px; line-height:1.35; }
 .registry-actions{ margin-top: 10px; display:flex; gap:10px; flex-wrap:wrap; }
+
+/* ====== Scanner modal (добавить в конец admin.css) ====== */
+.admin-scan-btn{ white-space:nowrap; }
+
+.admin-input{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  min-width: 260px;
+}
+
+.scan-modal{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:9999;
+}
+.scan-modal.is-open{ display:block; }
+
+.scan-modal__backdrop{
+  position:absolute;
+  inset:0;
+  background:rgba(0,0,0,.45);
+}
+
+.scan-modal__panel{
+  position:relative;
+  margin: 24px auto;
+  width: min(980px, calc(100% - 24px));
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 10px 40px rgba(0,0,0,.25);
+  padding:16px 16px 18px;
+  z-index:1;
+}
+
+.scan-modal__head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+
+.scan-title{ font-size:20px; font-weight:800; color:#111827; }
+.scan-sub{ font-size:13px; color:#6b7280; margin-top:2px; }
+
+.scan-grid{
+  display:grid;
+  grid-template-columns: 1fr 360px;
+  gap:14px;
+  align-items:start;
+}
+@media (max-width: 880px){
+  .scan-grid{ grid-template-columns: 1fr; }
+  .admin-input{ min-width: 100%; }
+}
+
+.scan-reader{
+  width:100%;
+  max-width:520px;
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid #e5e7eb;
+  background:#111827;
+}
+
+.scan-actions{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+
+.scan-field{ margin-bottom:10px; }
+.scan-mini{ font-size:12px; color:#6b7280; line-height:1.25; margin-top:6px; }
+
+.scan-result{
+  margin-top:10px;
+  border-radius:14px;
+  padding:12px 12px;
+  border:1px solid #e5e7eb;
+  background:#f7f7f8;
+}
+
+.scan-result.scan-ok{
+  background:#e8fff0;
+  border-color:#b7f5cc;
+}
+.scan-result.scan-bad{
+  background:#fff0f0;
+  border-color:#ffbcbc;
+}
+.scan-result.scan-wait{
+  background:#f7f7f8;
+  border-color:#e5e7eb;
+}
+
+.scan-result code{
+  font-size:12px;
+  word-break:break-all;
+}
+
