@@ -1076,5 +1076,46 @@ function initScannerUI(){
       const modal = document.getElementById('scannerModal');
       if (modal?.classList.contains('is-open')) closeScanner();
     }
+    
   });
 }
+(function () {
+  function openScannerModal() {
+    // Вариант 1: если у тебя уже есть кнопка открытия сканера — кликаем её
+    const btn = document.querySelector("#btn-open-scanner, [data-open-scanner]");
+    if (btn) { btn.click(); return true; }
+
+    // Вариант 2: если у тебя есть функция (переименуй под свою, если есть)
+    if (typeof window.showScannerModal === "function") {
+      window.showScannerModal();
+      return true;
+    }
+
+    // Вариант 3: если модалка уже есть в DOM — просто показываем её
+    const modal = document.querySelector("#scannerModal, .scanner-modal, .modal-scanner");
+    if (modal) {
+      modal.style.display = "block";
+      modal.classList.add("open");
+      return true;
+    }
+
+    console.warn("[scanner] не нашёл способ открыть модалку сканера");
+    return false;
+  }
+
+  const params = new URLSearchParams(location.search);
+  if (params.get("mode") === "scanner") {
+    document.body.classList.add("scanner-only");
+
+    // открываем модалку сразу
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        openScannerModal();
+
+        // ВАЖНО: камеру обычно нельзя стартовать без жеста пользователя,
+        // поэтому мы НЕ делаем auto-start.
+        // Контролёр нажимает "Запустити камеру" один раз.
+      }, 200);
+    });
+  }
+})();
