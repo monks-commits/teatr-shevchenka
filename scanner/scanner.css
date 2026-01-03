@@ -1,0 +1,103 @@
+:root{
+  --bg:#f6f7fb;
+  --card:#ffffff;
+  --text:#0f172a;
+  --muted:#64748b;
+  --ok:#16a34a;
+  --warn:#f59e0b;
+  --bad:#dc2626;
+  --border:#e5e7eb;
+  --btn:#2563eb;
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.wrap{ max-width:1100px; margin:0 auto; padding:18px; }
+.top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+.h1{ font-size:22px; font-weight:800; }
+.sub{ color:var(--muted); margin-top:4px; }
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  box-shadow:0 6px 20px rgba(15,23,42,0.06);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap:14px;
+}
+@media (max-width: 900px){
+  .grid{ grid-template-columns: 1fr; }
+}
+
+.reader{
+  width:100%;
+  min-height:320px;
+  border:1px dashed var(--border);
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+}
+
+.btnRow{ display:flex; gap:10px; margin-top:10px; }
+.btn{
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+}
+.btn[disabled]{ opacity:0.55; cursor:not-allowed; }
+.btnPrimary{
+  background:var(--btn);
+  border-color:var(--btn);
+  color:#fff;
+}
+.btnGhost{ background:#fff; }
+
+.label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+.input{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+}
+.small{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+.status{
+  margin-top:12px;
+  border-radius:12px;
+  padding:12px;
+  border:1px solid var(--border);
+}
+.status.ok{ border-color: rgba(22,163,74,0.35); background: rgba(22,163,74,0.07); }
+.status.warn{ border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.10); }
+.status.bad{ border-color: rgba(220,38,38,0.35); background: rgba(220,38,38,0.08); }
+
+.stTitle{ font-weight:900; }
+.stDetails{ margin-top:6px; color:var(--muted); }
+.stQr{ margin-top:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; }
+
+.hint{ margin-top:10px; font-size:12px; color:var(--muted); }
+
+.foot{ margin-top:10px; }
+.link{
+  border:none;
+  background:transparent;
+  color:var(--btn);
+  cursor:pointer;
+  font-weight:800;
+  padding:0;
+}
