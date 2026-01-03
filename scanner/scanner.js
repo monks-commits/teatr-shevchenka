@@ -10,12 +10,34 @@ const $ = (id) => document.getElementById(id);
 
 function setStatus(kind, title, details, qrText) {
   const box = $("statusBox");
-  box.classList.remove("ok","warn","bad");
+  box.classList.remove("ok", "warn", "bad");
   box.classList.add(kind);
 
   $("stText").textContent = title || "";
   $("stDetails").textContent = details || "—";
   $("stQr").textContent = qrText || "—";
+}
+
+/**
+ * Если CDN-скрипт не подгрузился (кеш/блок/глюк),
+ * догружаем html5-qrcode вручную и даём понятную ошибку вместо "тишины".
+ */
+async function ensureHtml5QrcodeLoaded() {
+  if (typeof window.Html5Qrcode !== "undefined") return;
+
+  await new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/html5-qrcode@2.3.10/minified/html5-qrcode.min.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () =>
+      reject(new Error("Не вдалося завантажити html5-qrcode з unpkg (CDN недоступний або заблокований)"));
+    document.head.appendChild(s);
+  });
+
+  if (typeof window.Html5Qrcode === "undefined") {
+    throw new Error("Html5Qrcode не визначено навіть після завантаження скрипта");
+  }
 }
 
 async function loadConfig() {
@@ -51,17 +73,23 @@ async function sendToServer(qr_payload) {
 
   const body = {
     qr_payload,
-    checked_in_by: gate
+    checked_in_by: gate,
   };
 
-  const r = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-scanner-secret": secret
-    },
-    body: JSON.stringify(body)
-  });
+  let r;
+  try {
+    r = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-scanner-secret": secret,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    setStatus("bad", "Немає звʼязку", "Не вдалося звернутися до сервера (інтернет/endpoint).", qr_payload);
+    return;
+  }
 
   const data = await r.json().catch(() => ({}));
 
@@ -90,7 +118,12 @@ async function sendToServer(qr_payload) {
 
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
   const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
-  setStatus("ok", "Пропустити", [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "), qr_payload);
+  setStatus(
+    "ok",
+    "Пропустити",
+    [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "),
+    qr_payload
+  );
 }
 
 async function onScanSuccess(decodedText) {
@@ -117,6 +150,17 @@ async function onScanSuccess(decodedText) {
 async function start() {
   $("btnStart").disabled = true;
 
+  // 1) гарантируем, что библиотека реально загружена
+  try {
+    await ensureHtml5QrcodeLoaded();
+  } catch (e) {
+    $("btnStart").disabled = false;
+    $("btnStop").disabled = true;
+    setStatus("bad", "Не завантажилась бібліотека сканера", String(e?.message || e), "");
+    return;
+  }
+
+  // 2) пробуем запустить камеру
   const readerId = "reader";
   qr = new Html5Qrcode(readerId);
 
@@ -126,7 +170,7 @@ async function start() {
       {
         fps: 12,
         qrbox: { width: 280, height: 280 },
-        disableFlip: false
+        disableFlip: false,
       },
       onScanSuccess
     );
@@ -136,7 +180,14 @@ async function start() {
   } catch (err) {
     $("btnStart").disabled = false;
     $("btnStop").disabled = true;
-    setStatus("bad", "Помилка камери", String(err?.message || err), "");
+
+    // Частые причины:
+    // - нет HTTPS (но у тебя GitHub Pages https)
+    // - не дали разрешение на камеру
+    // - камера занята другим приложением
+    // - на десктопе нет камеры/драйвера
+    const msg = String(err?.message || err);
+    setStatus("bad", "Помилка камери", msg, "");
   }
 }
 
@@ -163,7 +214,22 @@ function clearSecret() {
 }
 
 window.addEventListener("load", async () => {
-  await loadConfig();
+  try {
+    await loadConfig();
+  } catch (e) {
+    setStatus("bad", "Помилка конфіга", String(e?.message || e), "");
+    return;
+  }
+
+  // Подсказка, если CDN ещё не подхватился (клик всё равно попробует догрузить)
+  if (typeof window.Html5Qrcode === "undefined") {
+    setStatus(
+      "warn",
+      "Бібліотека сканера ще не завантажилась",
+      "Натисніть «Запустити камеру» — ми спробуємо підвантажити її вручну.",
+      ""
+    );
+  }
 
   $("btnStart").addEventListener("click", start);
   $("btnStop").addEventListener("click", stop);
