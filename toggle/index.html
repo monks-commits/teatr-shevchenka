@@ -1,1 +1,42 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Онлайн-продажі — перемикач</title>
+  <link rel="stylesheet" href="./toggle.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="h1" id="theatreName">Онлайн-продажі</div>
+      <div class="sub">Аварійний перемикач (каса). Сканер квитків не блокується.</div>
+    </header>
 
+    <section class="card">
+      <label class="label">TOGGLE_SECRET</label>
+      <input id="secret" class="input" placeholder="встав код (разово)" />
+
+      <div class="small">Зберігається у цьому браузері (localStorage).</div>
+
+      <div id="stateBox" class="state unknown">
+        <div class="stTitle">Статус: <span id="stText">—</span></div>
+        <div class="stDetails" id="stDetails">Натисніть “Оновити”, щоб зчитати стан.</div>
+      </div>
+
+      <div class="btnRow">
+        <button id="btnRefresh" class="btn btnGhost">Оновити</button>
+        <button id="btnOn" class="btn btnPrimary">Увімкнути онлайн</button>
+        <button id="btnOff" class="btn btnDanger">Вимкнути онлайн</button>
+      </div>
+
+      <div class="foot">
+        <button id="btnClear" class="link">Очистити збережений secret</button>
+        <div class="small2">Посилання для касира: <b>/toggle/</b></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./toggle.js"></script>
+</body>
+</html>
