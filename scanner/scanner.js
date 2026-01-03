@@ -1,10 +1,59 @@
+// scanner.js (FULL REPLACE)
+
 const LS_SECRET_KEY = "va_scanner_secret_v1";
 
 let cfg = null;
 let qr = null;
 let lastQr = "";
-const cooldownMs = 1400;
+let cooldownMs = 1400;
 let lastScanAt = 0;
+
+// --- Sound (WebAudio) ---
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  // иногда контекст "suspended" пока не будет user gesture
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+}
+
+function beep({ freq = 880, duration = 0.10, type = "sine", gain = 0.12 } = {}) {
+  try {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    setTimeout(() => {
+      try { o.stop(); } catch {}
+    }, duration * 1000);
+  } catch {}
+}
+
+function soundOk() {
+  // красивый короткий "пик"
+  beep({ freq: 1046, duration: 0.08, type: "sine", gain: 0.12 }); // C6
+}
+
+function soundBad() {
+  // грубый двойной низкий сигнал
+  beep({ freq: 220, duration: 0.12, type: "square", gain: 0.10 });
+  setTimeout(() => beep({ freq: 196, duration: 0.14, type: "square", gain: 0.10 }), 140);
+}
+
+function vibrateBad() {
+  try {
+    if (navigator.vibrate) navigator.vibrate([80, 40, 120]);
+  } catch {}
+}
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,24 +74,10 @@ async function loadConfig() {
 
   $("theatreName").textContent = cfg.theatreName || "Сканер квитків";
 
-  // подхватим secret из localStorage
   const saved = localStorage.getItem(LS_SECRET_KEY) || "";
   if (saved) $("secret").value = saved;
 
-  // проверяем библиотеку
-  if (!window.Html5Qrcode) {
-    setStatus(
-      "bad",
-      "Не завантажилась бібліотека сканера",
-      "Не вдалося завантажити html5-qrcode (CDN недоступний або неправильний URL). Перевірте <script> у index.html.",
-      ""
-    );
-    $("btnStart").disabled = true;
-    return;
-  }
-
   setStatus("ok", "Готово", "Запустіть камеру і скануйте QR.", "");
-  $("btnStart").disabled = false;
 }
 
 function normalizeQr(text) {
@@ -56,10 +91,11 @@ async function sendToServer(qr_payload) {
   const secret = ($("secret").value || "").trim();
   if (cfg.requireSecret && !secret) {
     setStatus("warn", "Потрібен secret", "Вставте SCANNER_SECRET і повторіть сканування.", qr_payload);
+    soundBad();
+    vibrateBad();
     throw new Error("secret required");
   }
 
-  // сохранить secret
   if (secret) localStorage.setItem(LS_SECRET_KEY, secret);
 
   const body = { qr_payload, checked_in_by: gate };
@@ -75,30 +111,44 @@ async function sendToServer(qr_payload) {
 
   const data = await r.json().catch(() => ({}));
 
+  // 401
   if (r.status === 401) {
     setStatus("bad", "Доступ заборонено", "Невірний SCANNER_SECRET (401).", qr_payload);
+    soundBad();
+    vibrateBad();
     return;
   }
 
+  // 404
   if (r.status === 404) {
     setStatus("bad", "Недійсний квиток", "Ticket not found (404).", qr_payload);
+    soundBad();
+    vibrateBad();
     return;
   }
 
+  // 409 (already_used / race)
   if (r.status === 409) {
     const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
     setStatus("warn", "Вже використано", at ? `Погашено: ${at}` : "Квиток вже погашений.", qr_payload);
+    soundBad();
+    vibrateBad();
     return;
   }
 
+  // other errors
   if (!r.ok || data?.ok === false) {
     setStatus("bad", "Помилка", data?.error ? String(data.error) : `HTTP ${r.status}`, qr_payload);
+    soundBad();
+    vibrateBad();
     return;
   }
 
+  // OK
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
   const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
   setStatus("ok", "Пропустити", [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "), qr_payload);
+  soundOk();
 }
 
 async function onScanSuccess(decodedText) {
@@ -116,36 +166,36 @@ async function onScanSuccess(decodedText) {
 
   try {
     await sendToServer(text);
-  } catch (e) {
-    // статус уже выставлен выше
+  } catch {
+    // статус уже выставлен
   }
 }
 
 async function start() {
-  // если библиотека не загрузилась
-  if (!window.Html5Qrcode) {
-    setStatus("bad", "Немає бібліотеки", "Html5Qrcode не визначений. Перевірте підключення бібліотеки в index.html.", "");
-    return;
-  }
+  // ВАЖНО: именно тут включаем аудио (после user gesture)
+  ensureAudio();
 
   $("btnStart").disabled = true;
 
-  try {
-    if (!qr) qr = new Html5Qrcode("reader");
+  const readerId = "reader";
+  qr = new Html5Qrcode(readerId);
 
+  try {
     await qr.start(
       { facingMode: "environment" },
       { fps: 12, qrbox: { width: 280, height: 280 }, disableFlip: false },
-      onScanSuccess
+      onScanSuccess,
     );
 
     $("btnStop").disabled = false;
     setStatus("ok", "Камера працює", "Скануйте QR квитка.", "");
+    // маленький стартовый "тик"
+    beep({ freq: 660, duration: 0.05, type: "sine", gain: 0.06 });
   } catch (err) {
     $("btnStart").disabled = false;
     $("btnStop").disabled = true;
     setStatus("bad", "Помилка камери", String(err?.message || err), "");
-    qr = null;
+    soundBad();
   }
 }
 
@@ -172,16 +222,9 @@ function clearSecret() {
 }
 
 window.addEventListener("load", async () => {
-  try {
-    // стартуем с disabled, пока не проверим либу
-    $("btnStart").disabled = true;
+  await loadConfig();
 
-    await loadConfig();
-
-    $("btnStart").addEventListener("click", start);
-    $("btnStop").addEventListener("click", stop);
-    $("btnClear").addEventListener("click", clearSecret);
-  } catch (e) {
-    setStatus("bad", "Помилка ініціалізації", String(e?.message || e), "");
-  }
+  $("btnStart").addEventListener("click", start);
+  $("btnStop").addEventListener("click", stop);
+  $("btnClear").addEventListener("click", clearSecret);
 });
