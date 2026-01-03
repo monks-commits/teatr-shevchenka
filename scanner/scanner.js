@@ -3,7 +3,7 @@ const LS_SECRET_KEY = "va_scanner_secret_v1";
 let cfg = null;
 let qr = null;
 let lastQr = "";
-let cooldownMs = 1400;
+const cooldownMs = 1400;
 let lastScanAt = 0;
 
 const $ = (id) => document.getElementById(id);
@@ -18,28 +18,6 @@ function setStatus(kind, title, details, qrText) {
   $("stQr").textContent = qrText || "—";
 }
 
-/**
- * Если CDN-скрипт не подгрузился (кеш/блок/глюк),
- * догружаем html5-qrcode вручную и даём понятную ошибку вместо "тишины".
- */
-async function ensureHtml5QrcodeLoaded() {
-  if (typeof window.Html5Qrcode !== "undefined") return;
-
-  await new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = "https://unpkg.com/html5-qrcode@2.3.10/minified/html5-qrcode.min.js";
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () =>
-      reject(new Error("Не вдалося завантажити html5-qrcode з unpkg (CDN недоступний або заблокований)"));
-    document.head.appendChild(s);
-  });
-
-  if (typeof window.Html5Qrcode === "undefined") {
-    throw new Error("Html5Qrcode не визначено навіть після завантаження скрипта");
-  }
-}
-
 async function loadConfig() {
   const res = await fetch("./config.json", { cache: "no-store" });
   if (!res.ok) throw new Error("Не вдалося завантажити scanner/config.json");
@@ -51,7 +29,20 @@ async function loadConfig() {
   const saved = localStorage.getItem(LS_SECRET_KEY) || "";
   if (saved) $("secret").value = saved;
 
+  // проверяем библиотеку
+  if (!window.Html5Qrcode) {
+    setStatus(
+      "bad",
+      "Не завантажилась бібліотека сканера",
+      "Не вдалося завантажити html5-qrcode (CDN недоступний або неправильний URL). Перевірте <script> у index.html.",
+      ""
+    );
+    $("btnStart").disabled = true;
+    return;
+  }
+
   setStatus("ok", "Готово", "Запустіть камеру і скануйте QR.", "");
+  $("btnStart").disabled = false;
 }
 
 function normalizeQr(text) {
@@ -71,29 +62,19 @@ async function sendToServer(qr_payload) {
   // сохранить secret
   if (secret) localStorage.setItem(LS_SECRET_KEY, secret);
 
-  const body = {
-    qr_payload,
-    checked_in_by: gate,
-  };
+  const body = { qr_payload, checked_in_by: gate };
 
-  let r;
-  try {
-    r = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-scanner-secret": secret,
-      },
-      body: JSON.stringify(body),
-    });
-  } catch (e) {
-    setStatus("bad", "Немає звʼязку", "Не вдалося звернутися до сервера (інтернет/endpoint).", qr_payload);
-    return;
-  }
+  const r = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-scanner-secret": secret,
+    },
+    body: JSON.stringify(body),
+  });
 
   const data = await r.json().catch(() => ({}));
 
-  // Унифицируем вывод
   if (r.status === 401) {
     setStatus("bad", "Доступ заборонено", "Невірний SCANNER_SECRET (401).", qr_payload);
     return;
@@ -105,7 +86,6 @@ async function sendToServer(qr_payload) {
   }
 
   if (r.status === 409) {
-    // already_used / race
     const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
     setStatus("warn", "Вже використано", at ? `Погашено: ${at}` : "Квиток вже погашений.", qr_payload);
     return;
@@ -118,12 +98,7 @@ async function sendToServer(qr_payload) {
 
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
   const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
-  setStatus(
-    "ok",
-    "Пропустити",
-    [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "),
-    qr_payload
-  );
+  setStatus("ok", "Пропустити", [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "), qr_payload);
 }
 
 async function onScanSuccess(decodedText) {
@@ -134,7 +109,6 @@ async function onScanSuccess(decodedText) {
   const text = normalizeQr(decodedText);
   if (!text) return;
 
-  // антидубль: один и тот же QR подряд не спамим
   if (text === lastQr) return;
   lastQr = text;
 
@@ -148,30 +122,20 @@ async function onScanSuccess(decodedText) {
 }
 
 async function start() {
-  $("btnStart").disabled = true;
-
-  // 1) гарантируем, что библиотека реально загружена
-  try {
-    await ensureHtml5QrcodeLoaded();
-  } catch (e) {
-    $("btnStart").disabled = false;
-    $("btnStop").disabled = true;
-    setStatus("bad", "Не завантажилась бібліотека сканера", String(e?.message || e), "");
+  // если библиотека не загрузилась
+  if (!window.Html5Qrcode) {
+    setStatus("bad", "Немає бібліотеки", "Html5Qrcode не визначений. Перевірте підключення бібліотеки в index.html.", "");
     return;
   }
 
-  // 2) пробуем запустить камеру
-  const readerId = "reader";
-  qr = new Html5Qrcode(readerId);
+  $("btnStart").disabled = true;
 
   try {
+    if (!qr) qr = new Html5Qrcode("reader");
+
     await qr.start(
       { facingMode: "environment" },
-      {
-        fps: 12,
-        qrbox: { width: 280, height: 280 },
-        disableFlip: false,
-      },
+      { fps: 12, qrbox: { width: 280, height: 280 }, disableFlip: false },
       onScanSuccess
     );
 
@@ -180,14 +144,8 @@ async function start() {
   } catch (err) {
     $("btnStart").disabled = false;
     $("btnStop").disabled = true;
-
-    // Частые причины:
-    // - нет HTTPS (но у тебя GitHub Pages https)
-    // - не дали разрешение на камеру
-    // - камера занята другим приложением
-    // - на десктопе нет камеры/драйвера
-    const msg = String(err?.message || err);
-    setStatus("bad", "Помилка камери", msg, "");
+    setStatus("bad", "Помилка камери", String(err?.message || err), "");
+    qr = null;
   }
 }
 
@@ -215,23 +173,15 @@ function clearSecret() {
 
 window.addEventListener("load", async () => {
   try {
+    // стартуем с disabled, пока не проверим либу
+    $("btnStart").disabled = true;
+
     await loadConfig();
+
+    $("btnStart").addEventListener("click", start);
+    $("btnStop").addEventListener("click", stop);
+    $("btnClear").addEventListener("click", clearSecret);
   } catch (e) {
-    setStatus("bad", "Помилка конфіга", String(e?.message || e), "");
-    return;
+    setStatus("bad", "Помилка ініціалізації", String(e?.message || e), "");
   }
-
-  // Подсказка, если CDN ещё не подхватился (клик всё равно попробует догрузить)
-  if (typeof window.Html5Qrcode === "undefined") {
-    setStatus(
-      "warn",
-      "Бібліотека сканера ще не завантажилась",
-      "Натисніть «Запустити камеру» — ми спробуємо підвантажити її вручну.",
-      ""
-    );
-  }
-
-  $("btnStart").addEventListener("click", start);
-  $("btnStop").addEventListener("click", stop);
-  $("btnClear").addEventListener("click", clearSecret);
 });
