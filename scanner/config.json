@@ -1,0 +1,5 @@
+{
+  "theatreName": "Театр ім. Т. Г. Шевченка",
+  "endpoint": "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/scan-ticket",
+  "requireSecret": true
+}
