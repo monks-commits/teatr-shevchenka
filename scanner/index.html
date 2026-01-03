@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Сканер квитків</title>
+  <link rel="stylesheet" href="./scanner.css" />
+  <!-- Библиотека сканирования QR (работает в браузере, без сборки) -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.10/minified/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <div class="h1" id="theatreName">Сканер квитків</div>
+        <div class="sub">Відскануйте QR — система скаже “Пропустити” або “Вже використано / Недійсний”.</div>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="grid">
+        <div>
+          <div id="reader" class="reader"></div>
+
+          <div class="btnRow">
+            <button id="btnStart" class="btn btnPrimary">▶ Запустити камеру</button>
+            <button id="btnStop" class="btn btnGhost" disabled>■ Зупинити</button>
+          </div>
+
+          <div class="hint">
+            Камера працює тільки по <b>HTTPS</b>. На телефоні відкривайте сканер через https-домен (GitHub Pages теж ок).
+          </div>
+        </div>
+
+        <div>
+          <label class="label">Контролер / Вхід</label>
+          <input id="gate" class="input" placeholder="gate-1" value="gate-1"/>
+
+          <label class="label">SCANNER_SECRET</label>
+          <input id="secret" class="input" placeholder="встав код (разово)"/>
+
+          <div class="small">
+            Зберігається в цьому браузері (localStorage). Можна видалити в налаштуваннях браузера.
+          </div>
+
+          <div id="statusBox" class="status ok">
+            <div class="stTitle">Статус: <span id="stText">Готово</span></div>
+            <div class="stDetails" id="stDetails">—</div>
+            <div class="stQr">QR: <span id="stQr">—</span></div>
+          </div>
+
+          <div class="foot">
+            <button id="btnClear" class="link">Очистити збережений secret</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./scanner.js"></script>
+</body>
+</html>
