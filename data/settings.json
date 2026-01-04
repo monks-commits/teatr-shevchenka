@@ -1,5 +1,7 @@
-"supabase_url": "https://fhusjlkneckbvnrdhbil.supabase.co",
 {
+  "supabase_url": "https://fhusjlkneckbvnrdhbil.supabase.co",
+  "cash_sync_endpoint": "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/cash-sync",
+
   "theatre": {
     "name": "Театр ім. Т. Г. Шевченка",
     "address": "м. Кривий Ріг",
@@ -8,6 +10,7 @@
     "offer_url": "https://example.com/oferta",
     "currency": "грн"
   },
+
   "payments": {
     "provider": "liqpay",
     "liqpay_public_key": "",
@@ -15,6 +18,7 @@
     "mode": "offline_only",
     "demo": true
   },
+
   "pricing_defaults": {
     "p_parter_1_6": 200,
     "p_parter_7_12": 180,
@@ -23,13 +27,5 @@
     "p_balcony_1_5": 120,
     "p_balcony_6": 100,
     "p_boxes": 200
-  },
-  {
-  "supabase_url": "https://fhusjlkneckbvnrdhbil.supabase.co",
-  "cash_sync_endpoint": "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/cash-sync",
-
-  "theatre": { ... },
-  "payments": { ... },
-  "pricing_defaults": { ... }
-}
+  }
 }
