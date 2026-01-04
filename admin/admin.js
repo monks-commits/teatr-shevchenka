@@ -1,32 +1,50 @@
-// admin/admin.js
+/* ============================================================================
+   ADMIN (касса) — Театр Шевченка
+   - Рисует схему зала из hall.json (формат: zones object + rows + boxes)
+   - Бронь/продажа в localStorage
+   - Экспорт CSV/JSON
+   - Синхронизация кассовых продаж с сайтом (Edge Function cash-sync)
+   ВАЖНО: сканер/контролёр сюда НЕ включаем, чтобы не возвращались кнопки режимов.
+============================================================================ */
 
-let SETTINGS = null;
-let CURRENCY = "грн";
-let PRICING_DEFAULTS = {};
-let PRICE_PALETTE = {}; // "200" -> "seat--p200"
+const PATH_SETTINGS = "../data/settings.json";
+const PATH_AFISHA = "../data/afisha.json";
 
-const LS_PREFIX = "shev_admin_v3_";
+// если в афише не указано, какой hall брать — используем дефолт:
+const DEFAULT_HALL_PATH = "../data/halls/shevchenko-big.json";
 
-// local state
+let SETTINGS = {};
+let AFISHA = [];
 let hallSchema = null;
-let afisha = [];
+
 let currentShowId = "";
+let CURRENCY = "грн";
 
-const seatState = new Map(); // key -> "free" | "selected" | "sold" | "reserved" | "inactive"
-let basket = [];             // [{zone,row,seat,seat_label,price}]
-let reserves = [];           // [{who, items:[...], created_at}]
-let ops = [];                // журнал операций
+// ====== localStorage ======
+const LS_PREFIX = "theatre_admin__";
+const lsKey = (k) => LS_PREFIX + (currentShowId ? `${currentShowId}__` : "") + k;
 
-// ===== helpers =====
-function nowIso() { return new Date().toISOString(); }
-function fmtDT(ts) { try { return new Date(ts).toLocaleString("uk-UA"); } catch { return ts; } }
+let seatState = {}; // seatKey -> status ("free" | "basket" | "sold" | "reserved" | "blocked")
+let basket = [];    // [{zone,row,seat,price,seat_label}]
+let reserves = [];  // [{who, created_at, items:[...] }]
+let ops = [];       // журнал операций [{id, at, type, payload, synced_at?, sync_order_id?}]
 
-function seatKey(row, seat, zone) {
-  return `${zone}:${row}-${seat}`;
+// ====== utils ======
+const nowIso = () => new Date().toISOString();
+const safe = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+}[c]));
+
+function uuid() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
-function lsKey(name) {
-  return `${LS_PREFIX}${name}_${currentShowId || "no_show"}`;
+function fmtDT(iso) {
+  try { return new Date(iso).toLocaleString("uk-UA"); } catch { return iso; }
 }
 
 function downloadText(filename, text) {
@@ -34,383 +52,362 @@ function downloadText(filename, text) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = filename;
-  document.body.appendChild(a);
   a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 500);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-function safe(s) {
-  return String(s ?? "").replace(/[<>]/g, "");
+// ====== load json ======
+async function loadJson(path) {
+  const r = await fetch(path, { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${path}`);
+  return await r.json();
 }
 
-// ===== IMPORTANT: paths =====
-// У тебя /data в корне репо, а /admin отдельно.
-// Поэтому из /admin/* надо ходить в ../data/*
-const PATH_SETTINGS = "../data/settings.json";
-const PATH_AFISHA = "../data/afisha.json";
-const PATH_HALL = "../data/halls/shevchenko-big.json";
-
-// ===== load config/data =====
 async function loadSettings() {
-  if (SETTINGS) return SETTINGS;
-
-  try {
-    const res = await fetch(PATH_SETTINGS, { cache: "no-store" });
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    SETTINGS = await res.json();
-
-    if (SETTINGS.theatre?.currency) CURRENCY = SETTINGS.theatre.currency;
-    if (SETTINGS.pricing_defaults) PRICING_DEFAULTS = SETTINGS.pricing_defaults;
-    if (SETTINGS.price_palette) PRICE_PALETTE = SETTINGS.price_palette;
-  } catch (e) {
-    console.warn("settings.json не прочитался, используем дефолты", e);
-    SETTINGS = {};
-  }
-
-  // дефолтная палитра
-  if (!PRICE_PALETTE || Object.keys(PRICE_PALETTE).length === 0) {
-    PRICE_PALETTE = {
-      "70": "seat--p70",
-      "100": "seat--p100",
-      "120": "seat--p120",
-      "140": "seat--p140",
-      "160": "seat--p160",
-      "170": "seat--p170",
-      "180": "seat--p180",
-      "200": "seat--p200"
-    };
-  }
-
-  return SETTINGS;
-}
-
-async function loadHallSchema() {
-  if (hallSchema) return hallSchema;
-  const res = await fetch(PATH_HALL, { cache: "no-store" });
-  if (!res.ok) throw new Error("Cannot load hall schema: " + res.status);
-  hallSchema = await res.json();
-  return hallSchema;
+  SETTINGS = await loadJson(PATH_SETTINGS);
+  CURRENCY = SETTINGS?.theatre?.currency || "грн";
 }
 
 async function loadAfisha() {
-  const res = await fetch(PATH_AFISHA, { cache: "no-store" });
-  if (!res.ok) throw new Error("Cannot load afisha: " + res.status);
-  afisha = await res.json();
-  return afisha;
+  AFISHA = await loadJson(PATH_AFISHA);
+  if (!Array.isArray(AFISHA)) AFISHA = [];
 }
 
-// ===== pricing =====
-function getPriceForRow(rowInfo, zone, rowNumber) {
-  if (rowInfo.price != null) return Number(rowInfo.price) || 0;
-
-  const g = rowInfo.price_group;
-  if (g && PRICING_DEFAULTS[g] != null) return Number(PRICING_DEFAULTS[g]) || 0;
-
-  // fallback только для партера/лож
-  if (zone === "parter") {
-    if (rowNumber <= 2) return 200;
-    if (rowNumber <= 4) return 180;
-    if (rowNumber <= 6) return 170;
-    if (rowNumber <= 8) return 160;
-    if (rowNumber <= 12) return 140;
-    if (rowNumber <= 15) return 120;
-    return 100;
-  }
-  if (zone === "lodge") return 200;
-
-  return 0;
+function getShowById(id) {
+  return AFISHA.find((x) => x.id === id) || null;
 }
 
-function getPriceClass(price) {
-  const key = String(price);
-  return PRICE_PALETTE?.[key] || "";
-}
-
-function getZoneLabel(zone) {
-  switch (zone) {
-    case "parter": return "Партер";
-    case "amphi": return "Амфітеатр";
-    case "balcony": return "Балкон";
-    case "lodge": return "Ложа";
-    default: return zone;
-  }
-}
-
-// продаём партер + ложи (как у тебя)
-function isSellable(zone) {
-  return zone === "parter" || zone === "lodge";
-}
-
-// ===== state persistence =====
-function saveStateForShow() {
-  localStorage.setItem(lsKey("seatState"), JSON.stringify([...seatState.entries()]));
-  localStorage.setItem(lsKey("reserves"), JSON.stringify(reserves));
-  localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
-}
-
-function loadStateForShow() {
-  seatState.clear();
-  basket = [];
-
-  try {
-    const raw = localStorage.getItem(lsKey("seatState"));
-    if (raw) {
-      const entries = JSON.parse(raw);
-      for (const [k, v] of entries) seatState.set(k, v);
-    }
-  } catch {}
-
-  try {
-    reserves = JSON.parse(localStorage.getItem(lsKey("reserves")) || "[]");
-  } catch { reserves = []; }
-
-  try {
-    ops = JSON.parse(localStorage.getItem(lsKey("ops")) || "[]");
-  } catch { ops = []; }
-}
-
-// ===== афиша/select =====
 function fillShowSelect() {
-  const sel = document.getElementById("showSelect");
+  const sel = document.getElementById("admin-show-select");
   if (!sel) return;
-  sel.innerHTML = `<option value="">— обрати —</option>`;
 
-  for (const s of afisha) {
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = `${s.title} • ${s.date} ${s.time}`;
-    sel.appendChild(opt);
-  }
+  sel.innerHTML = `<option value="">— обрати —</option>` +
+    AFISHA.map((s) => {
+      const label = `${s.title} • ${s.date} ${s.time}`;
+      return `<option value="${safe(s.id)}">${safe(label)}</option>`;
+    }).join("");
 
-  sel.addEventListener("change", () => {
+  // выберем первый по умолчанию
+  if (!currentShowId && AFISHA.length) currentShowId = AFISHA[0].id;
+  sel.value = currentShowId || "";
+
+  sel.addEventListener("change", async () => {
     currentShowId = sel.value || "";
     setCurrentShowHeader();
     loadStateForShow();
+    // перерисуем
     renderHall(hallSchema);
+    renderPriceLegend();
     updateBasketUI();
     renderRegistry();
     refreshSyncHint();
   });
-
-  // выберем первый по умолчанию
-  if (!currentShowId && afisha.length) {
-    currentShowId = afisha[0].id;
-    sel.value = currentShowId;
-  } else {
-    sel.value = currentShowId;
-  }
-}
-
-function getCurrentShow() {
-  return afisha.find((x) => x.id === currentShowId) || null;
 }
 
 function setCurrentShowHeader() {
-  const showEl = document.getElementById("admin-current-show");
-  if (!showEl) return;
-
-  const s = getCurrentShow();
-  if (!s) {
-    showEl.textContent = "Сеанс: (не обрано)";
-    return;
-  }
-  showEl.textContent = `Сеанс: ${s.title} — ${s.date}, ${s.time}`;
-}
-
-// ===== UI: hall rendering =====
-function renderPriceLegend() {
-  const el = document.getElementById("priceLegend");
+  const el = document.getElementById("admin-current-show");
   if (!el) return;
-
-  const prices = Object.keys(PRICE_PALETTE)
-    .map((p) => Number(p))
-    .filter((n) => !isNaN(n))
-    .sort((a, b) => b - a);
-
-  el.innerHTML = prices.map((p) => {
-    const cls = PRICE_PALETTE[String(p)];
-    return `<span class="legend-item"><span class="sw ${cls}"></span>${p} ${CURRENCY}</span>`;
-  }).join("");
+  const s = getShowById(currentShowId);
+  if (!s) { el.textContent = "Сеанс: (не обрано)"; return; }
+  el.textContent = `Сеанс: ${s.title} — ${s.date}, ${s.time}`;
 }
 
-function seatLabel(zone, row, seat) {
-  // важно: label должен быть СТАБИЛЬНЫМ — это ключ синхронизации
-  return `${getZoneLabel(zone)} ${row} / ${seat}`;
+async function loadHallSchema() {
+  // если в афише будет поле hall / hall_path — можно будет подхватить.
+  // сейчас — дефолт.
+  hallSchema = await loadJson(DEFAULT_HALL_PATH);
+  hallSchema = normalizeHallSchema(hallSchema);
+  return hallSchema;
+}
+
+/* ============================================================================
+   НОРМАЛИЗАЦИЯ hall.json (под твой формат)
+   Вход (пример):
+   {
+     id,title,
+     zones:{ parter:{label}, ... },
+     price_groups:{ ...labels... },
+     rows:[ {row,zone,seats,aisle_after,price_group} ...,
+            {row,zone,seats_left,seats_right,price_group} ... ],
+     boxes:[ {id,label,side,seats,price_group} ... ]
+   }
+   Выход:
+   {
+     id,title,
+     zonesObj, priceGroupsObj,
+     zonesArray:[ { id,label, rows:[rowInfo...] } ... ],
+     boxes:[...]
+   }
+============================================================================ */
+function normalizeHallSchema(raw) {
+  const schema = raw || {};
+  schema.zonesObj = schema.zones && typeof schema.zones === "object" ? schema.zones : {};
+  schema.priceGroupsObj = schema.price_groups && typeof schema.price_groups === "object" ? schema.price_groups : {};
+  const rows = Array.isArray(schema.rows) ? schema.rows : [];
+
+  // group rows by zone
+  const byZone = new Map();
+  for (const r of rows) {
+    const zid = String(r.zone || "parter");
+    if (!byZone.has(zid)) {
+      const zLabel = schema.zonesObj?.[zid]?.label || zid;
+      byZone.set(zid, { id: zid, label: zLabel, rows: [] });
+    }
+    byZone.get(zid).rows.push(r);
+  }
+
+  // boxes -> отдельная зона "boxes"
+  const boxes = Array.isArray(schema.boxes) ? schema.boxes : [];
+  if (boxes.length) {
+    const zLabel = schema.priceGroupsObj?.p_boxes?.label || "Ложі";
+    const boxZone = { id: "boxes", label: zLabel, rows: [] };
+    for (const b of boxes) {
+      boxZone.rows.push({
+        row: b.label || b.id || "box",
+        zone: "boxes",
+        seats: Number(b.seats || 0),
+        price_group: b.price_group || "p_boxes",
+        _isBox: true,
+        _boxId: b.id || b.label || "box"
+      });
+    }
+    byZone.set("boxes", boxZone);
+  }
+
+  // порядок зон на экране
+  const order = ["parter", "amphi", "balcony", "boxes"];
+  const zonesArray = [];
+  for (const id of order) if (byZone.has(id)) zonesArray.push(byZone.get(id));
+  // остальные (если есть)
+  for (const [id, z] of byZone.entries()) {
+    if (!order.includes(id)) zonesArray.push(z);
+  }
+
+  schema.zonesArray = zonesArray;
+  return schema;
+}
+
+/* ============================================================================
+   STATE
+============================================================================ */
+function loadStateForShow() {
+  try { seatState = JSON.parse(localStorage.getItem(lsKey("seatState")) || "{}"); } catch { seatState = {}; }
+  try { basket = JSON.parse(localStorage.getItem(lsKey("basket")) || "[]"); } catch { basket = []; }
+  try { reserves = JSON.parse(localStorage.getItem(lsKey("reserves")) || "[]"); } catch { reserves = []; }
+  try { ops = JSON.parse(localStorage.getItem(lsKey("ops")) || "[]"); } catch { ops = []; }
+}
+
+function saveStateForShow() {
+  localStorage.setItem(lsKey("seatState"), JSON.stringify(seatState));
+  localStorage.setItem(lsKey("basket"), JSON.stringify(basket));
+  localStorage.setItem(lsKey("reserves"), JSON.stringify(reserves));
+  localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
+}
+
+function seatKey(zone, row, seat) {
+  return `${String(zone)}::${String(row)}::${String(seat)}`;
 }
 
 function getSeatStatus(zone, row, seat) {
-  const k = seatKey(row, seat, zone);
-  return seatState.get(k) || "free";
+  return seatState[seatKey(zone,row,seat)] || "free";
 }
 
 function setSeatStatus(zone, row, seat, status) {
-  const k = seatKey(row, seat, zone);
-  seatState.set(k, status);
+  seatState[seatKey(zone,row,seat)] = status;
 }
 
-function toggleSeatToBasket(zone, row, seat, rowInfo) {
-  const k = seatKey(row, seat, zone);
-  const st = seatState.get(k) || "free";
-
-  if (st === "inactive" || st === "sold" || st === "reserved") return;
-
-  const idx = basket.findIndex((x) => x.zone === zone && x.row === row && x.seat === seat);
-  if (idx >= 0) {
-    basket.splice(idx, 1);
-    seatState.set(k, "free");
-  } else {
-    const price = getPriceForRow(rowInfo, zone, row);
-    basket.push({
-      zone, row, seat,
-      seat_label: seatLabel(zone, row, seat),
-      price
-    });
-    seatState.set(k, "selected");
-  }
-
-  saveStateForShow();
-  updateBasketUI();
-  renderHall(hallSchema);
+/* ============================================================================
+   PRICING
+============================================================================ */
+function priceForGroup(pg) {
+  const def = SETTINGS?.pricing_defaults?.[pg];
+  const n = Number(def);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function renderRow(zone, rowInfo) {
-  const row = rowInfo.row;
-  const seatsCount = rowInfo.seats || 0;
-  const offset = rowInfo.offset || 0;
-
-  const rowWrap = document.createElement("div");
-  rowWrap.className = "admin-row";
-
-  const label = document.createElement("div");
-  label.className = "admin-row-label";
-  label.textContent = row;
-  rowWrap.appendChild(label);
-
-  const seatsWrap = document.createElement("div");
-  seatsWrap.className = "admin-row-seats";
-  seatsWrap.style.marginLeft = (offset * 18) + "px";
-
-  for (let s = 1; s <= seatsCount; s++) {
-    const st = getSeatStatus(zone, row, s);
-    const btn = document.createElement("button");
-    btn.className = "seat";
-
-    if (st === "free") btn.classList.add("seat--free");
-    if (st === "selected") btn.classList.add("seat--selected");
-    if (st === "sold") btn.classList.add("seat--sold");
-    if (st === "reserved") btn.classList.add("seat--reserved");
-    if (st === "inactive") btn.classList.add("seat--inactive");
-
-    if (isSellable(zone) && st !== "inactive") {
-      const price = getPriceForRow(rowInfo, zone, row);
-      const pcls = getPriceClass(price);
-      if (pcls) btn.classList.add(pcls);
-    }
-
-    btn.textContent = s;
-    btn.title = `${getZoneLabel(zone)} • Ряд ${row} • Місце ${s} • ${st}`;
-
-    btn.addEventListener("click", () => toggleSeatToBasket(zone, row, s, rowInfo));
-    seatsWrap.appendChild(btn);
-  }
-
-  rowWrap.appendChild(seatsWrap);
-  return rowWrap;
+function zoneLabel(zoneId) {
+  if (zoneId === "boxes") return hallSchema?.zonesArray?.find(z=>z.id==="boxes")?.label || "Ложі";
+  return hallSchema?.zonesObj?.[zoneId]?.label || zoneId;
 }
 
-function renderZone(zoneBlock) {
-  const zone = zoneBlock.zone;
-  const sec = document.createElement("div");
-  sec.className = "admin-zone";
-
-  const h = document.createElement("div");
-  h.className = "admin-zone-title";
-  h.textContent = getZoneLabel(zone);
-  sec.appendChild(h);
-
-  for (const rowInfo of zoneBlock.rows || []) {
-    sec.appendChild(renderRow(zone, rowInfo));
-  }
-
-  return sec;
+function seatLabel(zone, row, seat, rowInfo) {
+  // для лож: row — это "Ложа A" и т.п.
+  if (rowInfo?._isBox) return `${row} • місце ${seat}`;
+  // обычный ряд/место
+  return `Ряд ${row}, місце ${seat} (${zoneLabel(zone)})`;
 }
 
+/* ============================================================================
+   UI — HALL RENDER
+============================================================================ */
 function renderHall(schema) {
-  const root = document.getElementById("hall-root");
+  const root = document.getElementById("hallRoot");
   if (!root) return;
+  if (!schema) { root.innerHTML = "<div>Немає схеми залу.</div>"; return; }
 
   root.innerHTML = "";
-  for (const zoneBlock of schema.zones || []) {
-    root.appendChild(renderZone(zoneBlock));
+
+  const zones = Array.isArray(schema.zonesArray) ? schema.zonesArray : [];
+  for (const z of zones) {
+    const zWrap = document.createElement("div");
+    zWrap.className = "zone-block";
+
+    const h = document.createElement("div");
+    h.className = "zone-title";
+    h.textContent = z.label || z.id;
+    zWrap.appendChild(h);
+
+    const rowsWrap = document.createElement("div");
+    rowsWrap.className = "zone-rows";
+
+    for (const r of (z.rows || [])) {
+      rowsWrap.appendChild(renderRow(z.id, r));
+    }
+
+    zWrap.appendChild(rowsWrap);
+    root.appendChild(zWrap);
   }
 }
 
-// ===== basket UI =====
-function basketTotal() {
-  return basket.reduce((s, x) => s + (Number(x.price) || 0), 0);
+function renderRow(zoneId, rowInfo) {
+  const row = rowInfo?.row ?? "?";
+  const wrap = document.createElement("div");
+  wrap.className = "hall-row";
+
+  const lab = document.createElement("div");
+  lab.className = "row-label";
+  lab.textContent = String(row);
+  wrap.appendChild(lab);
+
+  const seatsWrap = document.createElement("div");
+  seatsWrap.className = "row-seats";
+
+  const pg = rowInfo?.price_group || "";
+  const price = priceForGroup(pg);
+
+  // Вариант А: seats_left / seats_right (амфитеатр)
+  if (rowInfo && (rowInfo.seats_left != null || rowInfo.seats_right != null)) {
+    const left = Math.max(0, Number(rowInfo.seats_left || 0));
+    const right = Math.max(0, Number(rowInfo.seats_right || 0));
+
+    // левые места 1..left
+    for (let s=1; s<=left; s++) {
+      seatsWrap.appendChild(renderSeatBtn(zoneId, row, s, price, rowInfo));
+    }
+
+    // проход между левыми/правыми (если right>0)
+    if (right > 0) {
+      const gap = document.createElement("div");
+      gap.className = "seat-gap";
+      seatsWrap.appendChild(gap);
+    }
+
+    // правые места продолжаем нумерацию
+    for (let s=left+1; s<=left+right; s++) {
+      seatsWrap.appendChild(renderSeatBtn(zoneId, row, s, price, rowInfo));
+    }
+
+    wrap.appendChild(seatsWrap);
+    return wrap;
+  }
+
+  // Вариант B: обычный ряд seats + aisle_after
+  const seats = Math.max(0, Number(rowInfo?.seats || 0));
+  const aisleAfter = rowInfo?.aisle_after != null ? Number(rowInfo.aisle_after) : null;
+
+  for (let s=1; s<=seats; s++) {
+    seatsWrap.appendChild(renderSeatBtn(zoneId, row, s, price, rowInfo));
+    if (aisleAfter && s === aisleAfter) {
+      const gap = document.createElement("div");
+      gap.className = "seat-gap";
+      seatsWrap.appendChild(gap);
+    }
+  }
+
+  wrap.appendChild(seatsWrap);
+  return wrap;
 }
 
-function updateBasketUI() {
-  const list = document.getElementById("basket-list");
-  const sub = document.getElementById("basket-sub");
-  const total = document.getElementById("basket-total");
-  const cur = document.getElementById("basket-currency");
+function renderSeatBtn(zoneId, row, seat, price, rowInfo) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "seat";
+  btn.textContent = String(seat);
 
-  if (cur) cur.textContent = CURRENCY;
-  if (total) total.textContent = String(basketTotal());
+  const st = getSeatStatus(zoneId, row, seat);
 
-  if (!list) return;
+  // css классы статусов
+  btn.dataset.status = st;
 
-  if (!basket.length) {
-    list.innerHTML = "";
-    if (sub) sub.textContent = "Поки що нічого не обрано.";
+  // кликаем только если не продано/не служебное
+  btn.addEventListener("click", () => onSeatClick(zoneId, row, seat, price, rowInfo));
+  return btn;
+}
+
+function onSeatClick(zoneId, row, seat, price, rowInfo) {
+  const st = getSeatStatus(zoneId, row, seat);
+
+  if (st === "sold" || st === "blocked") return;
+
+  // если уже в корзине — убрать
+  if (st === "basket") {
+    setSeatStatus(zoneId, row, seat, "free");
+    basket = basket.filter((x) => !(x.zone===zoneId && String(x.row)===String(row) && x.seat===seat));
+    updateBasketUI();
+    saveStateForShow();
+    renderHall(hallSchema);
     return;
   }
 
-  if (sub) sub.textContent = `${basket.length} місць у кошику.`;
+  // если бронь — не трогаем из зала (снимать бронь отдельной кнопкой)
+  if (st === "reserved") return;
 
-  list.innerHTML = basket.map((x, i) => `
+  // добавить в корзину
+  const label = seatLabel(zoneId, row, seat, rowInfo);
+  basket.push({ zone: zoneId, row: String(row), seat, price, seat_label: label });
+  setSeatStatus(zoneId, row, seat, "basket");
+
+  updateBasketUI();
+  saveStateForShow();
+  renderHall(hallSchema);
+}
+
+/* ============================================================================
+   UI — BASKET / ACTIONS
+============================================================================ */
+function updateBasketUI() {
+  const list = document.getElementById("basketList");
+  const sumEl = document.getElementById("basketSum");
+  if (!list || !sumEl) return;
+
+  if (!basket.length) {
+    list.innerHTML = `<div class="basket-empty">Поки що нічого не обрано.</div>`;
+    sumEl.textContent = `0 ${CURRENCY}`;
+    return;
+  }
+
+  const sum = basket.reduce((s,x)=>s+(Number(x.price)||0),0);
+  sumEl.textContent = `${sum} ${CURRENCY}`;
+
+  list.innerHTML = basket.map((it) => `
     <div class="basket-item">
-      <div class="basket-title">${safe(x.seat_label)}</div>
-      <div class="basket-meta">${safe(getZoneLabel(x.zone))} • ряд ${x.row} • місце ${x.seat} • <b>${x.price} ${CURRENCY}</b></div>
-      <button class="basket-remove" data-i="${i}">×</button>
+      <div class="basket-seat">${safe(it.seat_label)}</div>
+      <div class="basket-price">${it.price} ${CURRENCY}</div>
     </div>
   `).join("");
+}
 
-  list.querySelectorAll(".basket-remove").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const i = Number(btn.getAttribute("data-i"));
-      const it = basket[i];
-      if (!it) return;
-
-      basket.splice(i, 1);
-      setSeatStatus(it.zone, it.row, it.seat, "free");
-      saveStateForShow();
-      updateBasketUI();
-      renderHall(hallSchema);
-    });
-  });
+function addOp(type, payload) {
+  ops.unshift({ id: uuid(), at: nowIso(), type, payload });
 }
 
 function clearBasketOnly() {
+  // снимаем статус basket -> free
   for (const it of basket) setSeatStatus(it.zone, it.row, it.seat, "free");
   basket = [];
   saveStateForShow();
   updateBasketUI();
   renderHall(hallSchema);
-}
-
-// ===== reserves/ops =====
-function addOp(type, payload) {
-  ops.unshift({
-    id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
-    at: nowIso(),
-    type,
-    show_id: currentShowId,
-    payload
-  });
-  saveStateForShow();
 }
 
 function applyReserve() {
@@ -423,10 +420,10 @@ function applyReserve() {
   for (const it of items) setSeatStatus(it.zone, it.row, it.seat, "reserved");
 
   reserves.unshift({ who, created_at: nowIso(), items });
-
   addOp("reserve", { who, items });
-  basket = [];
 
+  basket = [];
+  saveStateForShow();
   updateBasketUI();
   renderHall(hallSchema);
   renderRegistry();
@@ -476,7 +473,9 @@ function applySell() {
   refreshSyncHint();
 }
 
-// ===== registry UI =====
+/* ============================================================================
+   REGISTRY + EXPORT
+============================================================================ */
 function renderRegistry() {
   const el = document.getElementById("reserveRegistry");
   if (!el) return;
@@ -502,7 +501,6 @@ function renderRegistry() {
   }).join("");
 }
 
-// ===== CSV export =====
 function toCsvRow(arr) {
   return arr.map((x) => `"${String(x ?? "").replace(/"/g, '""')}"`).join(",");
 }
@@ -528,16 +526,33 @@ function exportOps() {
   downloadText(`ops_${currentShowId || "show"}.json`, JSON.stringify(ops, null, 2));
 }
 
-// =====================================================================
-// ✅ СИНХРОНИЗАЦИЯ КАССЫ С САЙТОМ (через Edge Function cash-sync)
-// =====================================================================
+/* ============================================================================
+   LEGEND (можно оставить простой)
+============================================================================ */
+function renderPriceLegend() {
+  const el = document.getElementById("priceLegend");
+  if (!el) return;
+
+  // по умолчанию показываем справку по статусам (не цены)
+  el.innerHTML = `
+    <span class="legend-item"><span class="dot dot-free"></span>вільно</span>
+    <span class="legend-item"><span class="dot dot-basket"></span>обрано (кошик)</span>
+    <span class="legend-item"><span class="dot dot-sold"></span>продано</span>
+    <span class="legend-item"><span class="dot dot-reserved"></span>бронь</span>
+    <span class="legend-item"><span class="dot dot-blocked"></span>службові / не продаються</span>
+  `;
+}
+
+/* ============================================================================
+   SYNC кассы с сайтом (cash-sync)
+============================================================================ */
 const SYNC_LS_SECRET = LS_PREFIX + "cashier_sync_secret";
 
 function getCashSyncEndpoint() {
   const explicit = SETTINGS?.cash_sync_endpoint;
   if (explicit) return String(explicit).trim();
 
-  const u = SETTINGS?.supabase_url || SETTINGS?.supabase?.url || "";
+  const u = SETTINGS?.supabase_url || "";
   if (u && typeof u === "string") {
     return u.replace(/\/+$/, "") + "/functions/v1/cash-sync";
   }
@@ -562,7 +577,6 @@ function getUnsyncedCashSales() {
 }
 
 function ensureSyncUI() {
-  // Ставим рядом с контролами (fallback: в body)
   let host = document.querySelector(".admin-controls");
   if (!host) host = document.getElementById("admin-controls");
   if (!host) host = document.querySelector("header");
@@ -683,11 +697,13 @@ async function syncNow() {
   }
 }
 
-// ===== init =====
+/* ============================================================================
+   INIT
+============================================================================ */
 async function initAdminPage() {
   await loadSettings();
   await loadAfisha();
-  const schema = await loadHallSchema();
+  await loadHallSchema();
 
   const nameEl = document.getElementById("admin-theatre-name");
   if (nameEl && SETTINGS.theatre?.name) nameEl.textContent = SETTINGS.theatre.name;
@@ -695,15 +711,7 @@ async function initAdminPage() {
   const dateEl = document.getElementById("admin-current-date");
   if (dateEl) dateEl.textContent = new Date().toLocaleString("uk-UA");
 
-  fillShowSelect();
-  setCurrentShowHeader();
-  loadStateForShow();
-
-  renderHall(schema);
-  renderPriceLegend();
-  updateBasketUI();
-  renderRegistry();
-
+  // buttons
   document.getElementById("btn-sell")?.addEventListener("click", applySell);
   document.getElementById("btn-reserve")?.addEventListener("click", applyReserve);
   document.getElementById("btn-unreserve")?.addEventListener("click", applyUnreserve);
@@ -713,6 +721,18 @@ async function initAdminPage() {
   document.getElementById("btn-export-sales")?.addEventListener("click", exportSales);
   document.getElementById("btn-export-ops")?.addEventListener("click", exportOps);
 
+  // shows
+  fillShowSelect();
+  setCurrentShowHeader();
+  loadStateForShow();
+
+  // render
+  renderHall(hallSchema);
+  renderPriceLegend();
+  updateBasketUI();
+  renderRegistry();
+
+  // sync ui
   ensureSyncUI();
   refreshSyncHint();
 }
