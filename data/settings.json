@@ -23,5 +23,13 @@
     "p_balcony_1_5": 120,
     "p_balcony_6": 100,
     "p_boxes": 200
-  }
+  },
+  {
+  "supabase_url": "https://fhusjlkneckbvnrdhbil.supabase.co",
+  "cash_sync_endpoint": "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/cash-sync",
+
+  "theatre": { ... },
+  "payments": { ... },
+  "pricing_defaults": { ... }
+}
 }
