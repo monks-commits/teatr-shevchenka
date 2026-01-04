@@ -44,12 +44,19 @@ function safe(s) {
   return String(s ?? "").replace(/[<>]/g, "");
 }
 
+// ===== IMPORTANT: paths =====
+// У тебя /data в корне репо, а /admin отдельно.
+// Поэтому из /admin/* надо ходить в ../data/*
+const PATH_SETTINGS = "../data/settings.json";
+const PATH_AFISHA = "../data/afisha.json";
+const PATH_HALL = "../data/halls/shevchenko-big.json";
+
 // ===== load config/data =====
 async function loadSettings() {
   if (SETTINGS) return SETTINGS;
 
   try {
-    const res = await fetch("./data/settings.json", { cache: "no-store" });
+    const res = await fetch(PATH_SETTINGS, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     SETTINGS = await res.json();
 
@@ -71,7 +78,7 @@ async function loadSettings() {
       "160": "seat--p160",
       "170": "seat--p170",
       "180": "seat--p180",
-      "200": "seat--p200",
+      "200": "seat--p200"
     };
   }
 
@@ -80,14 +87,14 @@ async function loadSettings() {
 
 async function loadHallSchema() {
   if (hallSchema) return hallSchema;
-  const res = await fetch("./data/halls/shevchenko-big.json", { cache: "no-store" });
+  const res = await fetch(PATH_HALL, { cache: "no-store" });
   if (!res.ok) throw new Error("Cannot load hall schema: " + res.status);
   hallSchema = await res.json();
   return hallSchema;
 }
 
 async function loadAfisha() {
-  const res = await fetch("./data/afisha.json", { cache: "no-store" });
+  const res = await fetch(PATH_AFISHA, { cache: "no-store" });
   if (!res.ok) throw new Error("Cannot load afisha: " + res.status);
   afisha = await res.json();
   return afisha;
@@ -183,6 +190,7 @@ function fillShowSelect() {
     renderHall(hallSchema);
     updateBasketUI();
     renderRegistry();
+    refreshSyncHint();
   });
 
   // выберем первый по умолчанию
@@ -215,7 +223,6 @@ function renderPriceLegend() {
   const el = document.getElementById("priceLegend");
   if (!el) return;
 
-  // показываем палитру как “цена → цвет-класс”
   const prices = Object.keys(PRICE_PALETTE)
     .map((p) => Number(p))
     .filter((n) => !isNaN(n))
@@ -228,8 +235,7 @@ function renderPriceLegend() {
 }
 
 function seatLabel(zone, row, seat) {
-  // твой формат: A0-M4 и т.п. — тут делаем “зона-ряд-место”
-  // чтобы было стабильно для синхронизации
+  // важно: label должен быть СТАБИЛЬНЫМ — это ключ синхронизации
   return `${getZoneLabel(zone)} ${row} / ${seat}`;
 }
 
@@ -249,7 +255,6 @@ function toggleSeatToBasket(zone, row, seat, rowInfo) {
 
   if (st === "inactive" || st === "sold" || st === "reserved") return;
 
-  // если уже в корзине — убираем
   const idx = basket.findIndex((x) => x.zone === zone && x.row === row && x.seat === seat);
   if (idx >= 0) {
     basket.splice(idx, 1);
@@ -297,7 +302,6 @@ function renderRow(zone, rowInfo) {
     if (st === "reserved") btn.classList.add("seat--reserved");
     if (st === "inactive") btn.classList.add("seat--inactive");
 
-    // price class только если sellable
     if (isSellable(zone) && st !== "inactive") {
       const price = getPriceForRow(rowInfo, zone, row);
       const pcls = getPriceClass(price);
@@ -415,7 +419,6 @@ function applyReserve() {
   const who = prompt("Хто бронює? (ПІБ або телефон)");
   if (!who) return;
 
-  // переводим selected -> reserved
   const items = basket.map((x) => ({ ...x }));
   for (const it of items) setSeatStatus(it.zone, it.row, it.seat, "reserved");
 
@@ -458,7 +461,6 @@ function applyUnreserve() {
 function applySell() {
   if (!basket.length) return;
 
-  // selected -> sold
   const soldItems = basket.map((x) => ({ ...x, sold_at: nowIso() }));
   for (const it of soldItems) setSeatStatus(it.zone, it.row, it.seat, "sold");
 
@@ -471,8 +473,7 @@ function applySell() {
   renderHall(hallSchema);
   renderRegistry();
 
-  // Автопредложение синхронизации (если интернет есть)
-  maybeAutoSyncAfterSell(soldItems);
+  refreshSyncHint();
 }
 
 // ===== registry UI =====
@@ -540,11 +541,10 @@ function getCashSyncEndpoint() {
   if (u && typeof u === "string") {
     return u.replace(/\/+$/, "") + "/functions/v1/cash-sync";
   }
-  return ""; // если пусто — синхронизация недоступна
+  return "";
 }
 
 function getUnsyncedCashSales() {
-  // берём ops sell_cash, у которых нет synced_at
   const list = [];
   for (const o of ops) {
     if (o.type !== "sell_cash") continue;
@@ -562,9 +562,11 @@ function getUnsyncedCashSales() {
 }
 
 function ensureSyncUI() {
-  // добавим мини-блок справа в шапку (рядом с выбором спектакля)
-  const topbar = document.querySelector(".admin-controls");
-  if (!topbar) return;
+  // Ставим рядом с контролами (fallback: в body)
+  let host = document.querySelector(".admin-controls");
+  if (!host) host = document.getElementById("admin-controls");
+  if (!host) host = document.querySelector("header");
+  if (!host) host = document.body;
 
   if (document.getElementById("btn-sync-now")) return;
 
@@ -581,9 +583,8 @@ function ensureSyncUI() {
     <span id="syncHint" style="font-size:12px;opacity:.75"></span>
   `;
 
-  topbar.appendChild(wrap);
+  host.appendChild(wrap);
 
-  // подставим secret
   const inp = document.getElementById("cashierSecret");
   const saved = localStorage.getItem(SYNC_LS_SECRET) || "";
   if (inp && saved) inp.value = saved;
@@ -629,7 +630,6 @@ async function syncNow() {
     return;
   }
 
-  // склеим в один payload
   const items = batches.flatMap((b) => b.items);
 
   try {
@@ -654,7 +654,8 @@ async function syncNow() {
 
     if (r.status === 409) {
       const conflicts = j?.conflicts || [];
-      alert("Конфлікт місць (вже продано онлайн або вже є в базі):\n" +
+      alert(
+        "Конфлікт місць (вже продано онлайн або вже є в базі):\n" +
         conflicts.map((c) => `${c.seat_label} (order:${c.order_id})`).join("\n")
       );
       return;
@@ -665,7 +666,6 @@ async function syncNow() {
       return;
     }
 
-    // успех: пометим операции как synced
     const syncedAt = nowIso();
     const syncedOpIds = new Set(batches.map((b) => b.opId));
     for (const o of ops) {
@@ -681,12 +681,6 @@ async function syncNow() {
   } catch (e) {
     alert("Помилка мережі/інтернету при синхронізації: " + String(e?.message || e));
   }
-}
-
-function maybeAutoSyncAfterSell() {
-  // НЕ делаем авто-синк всегда — только если endpoint задан и есть интернет
-  // но мягко: просто обновим хинт
-  refreshSyncHint();
 }
 
 // ===== init =====
@@ -719,7 +713,6 @@ async function initAdminPage() {
   document.getElementById("btn-export-sales")?.addEventListener("click", exportSales);
   document.getElementById("btn-export-ops")?.addEventListener("click", exportOps);
 
-  // добавим UI синхронизации
   ensureSyncUI();
   refreshSyncHint();
 }
