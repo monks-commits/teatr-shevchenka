@@ -1,11 +1,98 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="refresh" content="0; url=./" />
-  <title>Redirect…</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
+  <link rel="stylesheet" href="admin.css" />
+  <style>
+    .wrap{max-width:1100px;margin:0 auto;padding:24px}
+    .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+    .brand h1{margin:0;font-size:28px}
+    .brand .sub{color:#6b7280;margin-top:4px}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    select{min-width:360px;max-width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px}
+    .btn{border:0;border-radius:999px;padding:10px 14px;font-weight:600;cursor:pointer}
+    .btn.primary{background:#2563eb;color:#fff}
+    .btn.ghost{background:#e5e7eb;color:#111827}
+    .hint{margin-top:18px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px}
+    .hint h2{margin:0 0 8px 0;font-size:18px}
+    .muted{color:#6b7280}
+    a.btn{display:inline-block;text-decoration:none}
+  </style>
 </head>
 <body>
-  <script>location.replace("./");</script>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <h1>Театр ім. Т. Г. Шевченка</h1>
+        <div class="sub">Панель касира</div>
+      </div>
+
+      <div class="controls">
+        <label class="muted">Спектакль</label>
+        <select id="showSelect">
+          <option value="">— обрати —</option>
+        </select>
+
+        <button class="btn ghost" id="openCashier">Відкрити схему (каса)</button>
+        <button class="btn ghost" id="openBuyer">Відкрити як покупець</button>
+        <a class="btn primary" href="../scanner/" target="_blank" rel="noopener">Сканер</a>
+        <a class="btn primary" href="../toggle/" target="_blank" rel="noopener">Онлайн/офлайн</a>
+      </div>
+    </div>
+
+    <div class="hint">
+      <h2>Як це працює</h2>
+      <div class="muted">
+        Касир обирає сеанс → відкриває реальну схему залу (ту саму, що на сайті).
+        Так ціни й статуси місць завжди збігаються з онлайн-продажами.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const select = document.getElementById("showSelect");
+    const btnCashier = document.getElementById("openCashier");
+    const btnBuyer = document.getElementById("openBuyer");
+
+    async function loadAfisha(){
+      try{
+        const r = await fetch("../data/afisha.json", { cache: "no-store" });
+        const items = r.ok ? await r.json() : [];
+        if (!Array.isArray(items)) return;
+
+        for (const s of items){
+          const id = s.id || "";
+          if (!id) continue;
+          const label = `${s.title || id} • ${[s.date, s.time].filter(Boolean).join(" ")}`
+          const opt = document.createElement("option");
+          opt.value = id;
+          opt.textContent = label;
+          select.appendChild(opt);
+        }
+      }catch(e){
+        console.error("afisha load error", e);
+      }
+    }
+
+    function getShow(){
+      return (select.value || "").trim();
+    }
+
+    function openHall(role){
+      const show = getShow();
+      if (!show) return;
+      const url = new URL("../spectacles/hall.html", window.location.href);
+      url.searchParams.set("show", show);
+      if (role) url.searchParams.set("role", role);
+      window.open(url.toString(), "_blank", "noopener");
+    }
+
+    btnCashier.addEventListener("click", () => openHall("cashier"));
+    btnBuyer.addEventListener("click", () => openHall(""));
+
+    loadAfisha();
+  </script>
 </body>
 </html>
