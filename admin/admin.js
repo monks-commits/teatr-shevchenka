@@ -1,112 +1,92 @@
-// admin/admin.js
-// Панель касира: только выбор сеанса и redirect на реальную схему сайта.
+(async function () {
+  const elSelect = document.getElementById("showSelect");
+  const btnCashier = document.getElementById("openCashier");
+  const btnBuyer = document.getElementById("openBuyer");
+  const btnScanner = document.getElementById("openScanner");
+  const btnToggle = document.getElementById("openToggle");
 
-async function safeJson(url) {
-  try {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    console.error("[admin] fetch error:", url, e);
-    return null;
-  }
-}
-
-function formatWhen(item) {
-  const when = [item.date, item.time].filter(Boolean).join(" • ");
-  const place = [item.theatre, item.stage].filter(Boolean).join(" • ");
-  return [when, place].filter(Boolean).join(" — ");
-}
-
-(function init() {
-  const elTheatre = document.getElementById("admin-theatre-name");
-  const elStatus = document.getElementById("kassa-status");
-  const showSelect = document.getElementById("showSelect");
-
-  const btnCashier = document.getElementById("btn-open-hall-cashier");
-  const btnCustomer = document.getElementById("btn-open-hall-customer");
-
-  let afisha = [];
-  let selectedShow = "";
-
-  function setEnabled(enabled) {
-    btnCashier.disabled = !enabled;
-    btnCustomer.disabled = !enabled;
+  function setDisabled(disabled) {
+    btnCashier.disabled = disabled;
+    btnBuyer.disabled = disabled;
+    btnScanner.disabled = disabled;
   }
 
-  function openHall({ role }) {
-    if (!selectedShow) return;
-
-    const base = "../spectacles/hall.html";
-    const url = new URL(base, window.location.href);
-    url.searchParams.set("show", selectedShow);
-    if (role) url.searchParams.set("role", role);
-
-    window.location.href = url.toString();
+  function baseUrl(path) {
+    // /admin/ -> "../"
+    return `../${path}`.replace(/\/{2,}/g, "/");
   }
 
-  async function load() {
-    // Важно: admin/ лежит в подпапке, поэтому только ../data/...
-    const settings = await safeJson("../data/settings.json");
-    const items = await safeJson("../data/afisha.json");
+  function selectedShow() {
+    return (elSelect && elSelect.value) ? elSelect.value : "";
+  }
 
-    if (settings?.theatre?.name) elTheatre.textContent = settings.theatre.name;
+  async function loadAfisha() {
+    try {
+      const res = await fetch(baseUrl("data/afisha.json"), { cache: "no-store" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      console.error("afisha load error:", e);
+      return [];
+    }
+  }
 
-    if (!Array.isArray(items) || items.length === 0) {
-      elStatus.textContent = "Немає подій у afisha.json";
-      setEnabled(false);
-      return;
+  function renderOptions(items) {
+    const opts = [`<option value="">— обрати —</option>`];
+
+    // сортировка по дате/времени
+    items.sort((a, b) => {
+      const da = `${a.date || ""} ${a.time || ""}`.trim();
+      const db = `${b.date || ""} ${b.time || ""}`.trim();
+      return da.localeCompare(db);
+    });
+
+    for (const s of items) {
+      const id = s.id || "";
+      if (!id) continue;
+      const when = [s.date, s.time].filter(Boolean).join(" ");
+      const title = s.title || id;
+      const stage = s.stage ? ` • ${s.stage}` : "";
+      opts.push(`<option value="${encodeURIComponent(id)}">${when} • ${title}${stage}</option>`);
     }
 
-    afisha = items;
-
-    // наполняем select
-    const opts = ['<option value="">— обрати —</option>']
-      .concat(
-        afisha.map((s) => {
-          const id = s.id || "";
-          const title = s.title || id || "Без назви";
-          const extra = formatWhen(s);
-          const label = extra ? `${title} — ${extra}` : title;
-          return `<option value="${encodeURIComponent(id)}">${escapeHtml(label)}</option>`;
-        })
-      );
-
-    showSelect.innerHTML = opts.join("");
-
-    elStatus.textContent = "Оберіть спектакль і відкрийте схему.";
-    setEnabled(false);
+    elSelect.innerHTML = opts.join("");
   }
 
-  showSelect.addEventListener("change", () => {
-    const val = decodeURIComponent(showSelect.value || "");
-    selectedShow = val;
+  // --- init ---
+  setDisabled(true);
+  renderOptions(await loadAfisha());
+  setDisabled(false);
+  setDisabled(true); // снова true до выбора
 
-    if (!selectedShow) {
-      setEnabled(false);
-      elStatus.textContent = "Сеанс не обрано.";
-      return;
-    }
-
-    setEnabled(true);
-
-    const item = afisha.find((x) => (x.id || "") === selectedShow);
-    elStatus.textContent = item
-      ? `Обрано: ${item.title || selectedShow} (${[item.date, item.time].filter(Boolean).join(" ")})`
-      : `Обрано: ${selectedShow}`;
+  elSelect.addEventListener("change", () => {
+    const id = selectedShow();
+    setDisabled(!id);
   });
 
-  btnCashier.addEventListener("click", () => openHall({ role: "cashier" }));
-  btnCustomer.addEventListener("click", () => openHall({ role: "" }));
+  btnCashier.addEventListener("click", () => {
+    const id = selectedShow();
+    if (!id) return;
+    // касса работает на РЕАЛЬНОЙ схеме сайта
+    window.location.href = baseUrl(`spectacles/hall.html?show=${id}&role=cashier`);
+  });
 
-  load();
+  btnBuyer.addEventListener("click", () => {
+    const id = selectedShow();
+    if (!id) return;
+    // открыть как обычный покупатель
+    window.location.href = baseUrl(`spectacles/hall.html?show=${id}`);
+  });
 
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
+  btnScanner.addEventListener("click", () => {
+    const id = selectedShow();
+    if (!id) return;
+    // если сканеру не нужен show — просто откроется страница
+    window.location.href = baseUrl(`scanner/?show=${id}`);
+  });
+
+  btnToggle.addEventListener("click", () => {
+    window.location.href = baseUrl(`toggle/`);
+  });
 })();
