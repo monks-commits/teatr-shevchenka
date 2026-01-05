@@ -1,70 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
-
-  <link rel="stylesheet" href="../styles.css" />
-  <link rel="stylesheet" href="./admin.css" />
-
-  <style>
-    .kassa-wrap { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    .kassa-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .kassa-meta { color:#6b7280; font-size:14px; margin-top:8px; }
-  </style>
+  <meta http-equiv="refresh" content="0; url=./" />
+  <title>Redirect…</title>
 </head>
-
 <body>
-  <header class="site-header" style="padding:18px 0;">
-    <div class="container admin-topbar">
-      <div>
-        <div class="admin-title" id="admin-theatre-name">Театр ім. Т. Г. Шевченка</div>
-        <div class="admin-subtitle">Панель касира</div>
-        <div class="kassa-meta" id="kassa-status">Завантаження…</div>
-      </div>
-
-      <div class="admin-meta">
-        <div class="admin-controls kassa-wrap">
-          <label class="admin-label" for="showSelect">Спектакль</label>
-          <select id="showSelect" class="admin-select">
-            <option value="">— обрати —</option>
-          </select>
-
-          <div class="kassa-actions">
-            <button id="btn-open-hall-cashier" class="btn btn-primary" type="button" disabled>
-              Відкрити схему (каса)
-            </button>
-
-            <button id="btn-open-hall-customer" class="btn btn-secondary" type="button" disabled>
-              Відкрити як покупець
-            </button>
-
-            <a class="btn btn-ghost" href="../scanner/" target="_blank" rel="noopener">
-              Сканер
-            </a>
-
-            <a class="btn btn-ghost" href="../toggle/" target="_blank" rel="noopener">
-              Онлайн/офлайн
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="main">
-    <div class="container" style="padding:20px 0;">
-      <section class="card" style="padding:16px;">
-        <h2 class="card-title" style="margin:0 0 8px;">Як це працює</h2>
-        <div class="card-subtitle">
-          Касир обирає сеанс → відкриває реальну схему залу (ту саму, що на сайті).
-          Так ціни і статуси місць завжди збігаються з онлайн-продажами.
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <script type="module" src="./admin.js"></script>
+  <script>location.replace("./");</script>
 </body>
 </html>
