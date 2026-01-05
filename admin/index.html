@@ -4,19 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Панель касира</title>
-  <meta http-equiv="refresh" content="0; url=admin.html" />
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:24px}
-  </style>
+  <meta http-equiv="refresh" content="0; url=../cashier/" />
+  <script>
+    // на случай если meta refresh блокируется
+    location.replace("../cashier/");
+  </script>
 </head>
 <body>
-  <p>Перехід до панелі касира…</p>
-  <p><a href="admin.html">Відкрити панель касира</a></p>
-
-  <script>
-    // Жёстко фиксируем маршрут /admin/ → /admin/admin.html (без “дёрганий”)
-    const target = new URL("admin.html", window.location.href);
-    window.location.replace(target.toString());
-  </script>
+  <p>
+    Якщо редирект не спрацював:
+    <a href="../cashier/">відкрити панель касира</a>
+  </p>
 </body>
 </html>
