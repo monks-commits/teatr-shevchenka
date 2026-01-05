@@ -4,48 +4,95 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
+
   <link rel="stylesheet" href="../styles.css" />
-  <style>
-    .wrap{max-width:980px;margin:24px auto;padding:0 16px;}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;display:grid;gap:12px;}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .muted{color:#6b7280;font-size:14px}
-    select{min-width:360px;max-width:100%}
-    .btn{cursor:pointer}
-  </style>
+  <link rel="stylesheet" href="../admin/admin.css" />
 </head>
+
 <body>
-  <div id="site-header"></div>
-  <script type="module" src="../scripts/include.js"></script>
-
-  <main class="wrap">
-    <h1>Панель касира</h1>
-    <p class="muted">
-      Касир працює на тій самій схемі, що й онлайн-покупець (одні ціни/статуси).
-      Оплата в касі проходить <b>без LiqPay</b>.
-    </p>
-
-    <section class="card">
-      <div class="row">
-        <label class="muted" for="show">Сеанс</label>
-        <select id="show">
-          <option value="">— обрати —</option>
-        </select>
-        <button id="open-hall" class="btn">Відкрити схему (каса)</button>
+  <header class="site-header" style="padding:18px 0;">
+    <div class="container admin-topbar">
+      <div>
+        <div class="admin-title" id="admin-theatre-name">Театр ім. Т. Г. Шевченка</div>
+        <div class="admin-subtitle" id="admin-theatre-subtitle">Панель касира</div>
       </div>
 
-      <div class="row">
-        <a class="btn secondary" href="../toggle/" target="_blank" rel="noopener">Онлайн/офлайн + синхронізація</a>
-        <a class="btn secondary" href="../scanner/" target="_blank" rel="noopener">Контролер (сканер)</a>
-        <a class="btn secondary" href="../afisha.html" target="_blank" rel="noopener">Афіша (як покупець)</a>
-      </div>
+      <div class="admin-meta">
+        <div class="admin-meta-line" id="admin-current-show">Сеанс: (не обрано)</div>
+        <div class="admin-meta-line" id="admin-current-date">—</div>
 
-      <div id="hint" class="muted"></div>
-    </section>
+        <div class="admin-controls">
+          <label class="admin-label" for="showSelect">Спектакль</label>
+          <select id="showSelect" class="admin-select">
+            <option value="">— обрати —</option>
+          </select>
+
+          <div class="admin-actions-row" style="gap:10px; display:flex; align-items:center; flex-wrap:wrap;">
+            <!-- открыть реальную схему зала (страница зала на сайте) -->
+            <button id="btn-open-hall" class="btn btn-primary" type="button">
+              Відкрити схему (каса)
+            </button>
+
+            <!-- переключение онлайн/офлайн + синхронизация -->
+            <a class="btn btn-secondary" href="../toggle/">
+              Онлайн/офлайн + синхронізація
+            </a>
+
+            <!-- контролер отдельно -->
+            <a class="btn btn-secondary" href="../scanner/">
+              Контролер (сканер)
+            </a>
+
+            <!-- афиша как у покупателя (чисто посмотреть) -->
+            <a class="btn btn-ghost" href="../afisha.html">
+              Афіша
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container admin-layout">
+
+      <section class="card admin-card">
+        <div class="card-header">
+          <h2 class="card-title">Схема залу (каса)</h2>
+          <div class="card-subtitle">
+            Оберіть сеанс → «Відкрити схему (каса)». Продаж/бронь/скасування/реєстри — на схемі.
+          </div>
+        </div>
+
+        <div class="admin-note">
+          <strong>Важливо</strong><br/>
+          Касир працює на тій самій схемі, що й онлайн-покупець — тому ціни й статуси місць збігаються.
+        </div>
+      </section>
+
+    </div>
   </main>
 
-  <div id="site-footer"></div>
+  <script src="../admin/admin.js"></script>
 
-  <script type="module" src="./cashier.js"></script>
+  <script>
+    // Кнопка "Відкрити схему (каса)" — идём на реальную схему зала
+    // show берём из select; роль = cashier
+    (function () {
+      const btn = document.getElementById("btn-open-hall");
+      const sel = document.getElementById("showSelect");
+      if (!btn || !sel) return;
+
+      btn.addEventListener("click", () => {
+        const show = sel.value;
+        if (!show) {
+          alert("Оберіть сеанс у списку.");
+          return;
+        }
+        // реальная схема зала на сайте
+        location.href = `../spectacles/hall.html?show=${encodeURIComponent(show)}&role=cashier`;
+      });
+    })();
+  </script>
 </body>
 </html>
