@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Білетний відділ — Backoffice</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="brand-title">Білетний відділ</div>
+      <div class="brand-sub">Backoffice (читання даних)</div>
+    </div>
+
+    <div class="top-actions">
+      <span id="whoami" class="muted"></span>
+      <button id="btnLogout" class="btn btn-secondary" style="display:none">Вийти</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- LOGIN -->
+    <section id="loginCard" class="card">
+      <h2>Вхід для співробітників</h2>
+      <p class="muted">Використовує Supabase Auth. Доступ лише для співробітників.</p>
+
+      <div class="grid2">
+        <div>
+          <label>Email</label>
+          <input id="loginEmail" type="email" placeholder="office@theatre.com" autocomplete="username"/>
+        </div>
+        <div>
+          <label>Пароль</label>
+          <input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btnLogin" class="btn btn-primary">Увійти</button>
+        <span id="loginMsg" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- APP -->
+    <section id="appCard" class="card" style="display:none">
+      <div class="row space">
+        <div>
+          <h2 style="margin:0">Пошук</h2>
+          <div class="muted">order_id / email / phone / ticket_id / qr_payload</div>
+        </div>
+        <div class="row">
+          <button id="btnExportCsv" class="btn btn-secondary">Експорт CSV (видиме)</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <input id="q" type="text" placeholder="Напр.: ORD-1002 або +380... або email@..." style="flex:1"/>
+        <button id="btnSearch" class="btn btn-primary">Знайти</button>
+        <button id="btnClear" class="btn btn-secondary">Очистити</button>
+      </div>
+
+      <div id="statusLine" class="muted" style="margin-top:10px"></div>
+
+      <div class="split">
+        <section class="card-inner">
+          <h3>Замовлення</h3>
+          <div id="ordersList" class="list"></div>
+        </section>
+
+        <section class="card-inner">
+          <h3>Деталі</h3>
+          <div id="details" class="muted">Оберіть замовлення зі списку.</div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
