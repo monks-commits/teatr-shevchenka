@@ -1,97 +1,76 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
-
+  <title>Панель касира — Афіша</title>
   <link rel="stylesheet" href="../styles.css" />
-  <link rel="stylesheet" href="../admin/admin.css" />
+  <style>
+    .k-wrap{max-width:980px;margin:0 auto;}
+    .k-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-top:16px;}
+    .k-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;display:grid;gap:10px;}
+    .k-poster{width:100%;height:260px;object-fit:cover;border-radius:10px;background:#e5e7eb;}
+    .k-meta{color:#6b7280;font-size:14px;}
+    .k-btnrow{display:flex;gap:8px;flex-wrap:wrap;}
+  </style>
 </head>
-
 <body>
-  <header class="site-header" style="padding:18px 0;">
-    <div class="container admin-topbar">
-      <div>
-        <div class="admin-title" id="admin-theatre-name">Театр ім. Т. Г. Шевченка</div>
-        <div class="admin-subtitle" id="admin-theatre-subtitle">Панель касира</div>
-      </div>
-
-      <div class="admin-meta">
-        <div class="admin-meta-line" id="admin-current-show">Сеанс: (не обрано)</div>
-        <div class="admin-meta-line" id="admin-current-date">—</div>
-
-        <div class="admin-controls">
-          <label class="admin-label" for="showSelect">Спектакль</label>
-          <select id="showSelect" class="admin-select">
-            <option value="">— обрати —</option>
-          </select>
-
-          <div class="admin-actions-row" style="gap:10px; display:flex; align-items:center; flex-wrap:wrap;">
-            <!-- открыть реальную схему зала (страница зала на сайте) -->
-            <button id="btn-open-hall" class="btn btn-primary" type="button">
-              Відкрити схему (каса)
-            </button>
-
-            <!-- переключение онлайн/офлайн + синхронизация -->
-            <a class="btn btn-secondary" href="../toggle/">
-              Онлайн/офлайн + синхронізація
-            </a>
-
-            <!-- контролер отдельно -->
-            <a class="btn btn-secondary" href="../scanner/">
-              Контролер (сканер)
-            </a>
-
-            <!-- афиша как у покупателя (чисто посмотреть) -->
-            <a class="btn btn-ghost" href="../afisha.html">
-              Афіша
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </header>
-
   <main class="main">
-    <div class="container admin-layout">
+    <section class="section">
+      <div class="container k-wrap">
+        <h1>Панель касира</h1>
+        <p class="k-meta">Оберіть сеанс → відкриється схема залу у режимі каси (без LiqPay).</p>
 
-      <section class="card admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Схема залу (каса)</h2>
-          <div class="card-subtitle">
-            Оберіть сеанс → «Відкрити схему (каса)». Продаж/бронь/скасування/реєстри — на схемі.
-          </div>
-        </div>
-
-        <div class="admin-note">
-          <strong>Важливо</strong><br/>
-          Касир працює на тій самій схемі, що й онлайн-покупець — тому ціни й статуси місць збігаються.
-        </div>
-      </section>
-
-    </div>
+        <div id="grid" class="k-grid"></div>
+        <p id="empty" class="k-meta" style="display:none;margin-top:12px">Наразі немає запланованих подій.</p>
+      </div>
+    </section>
   </main>
 
-  <script src="../admin/admin.js"></script>
-
   <script>
-    // Кнопка "Відкрити схему (каса)" — идём на реальную схему зала
-    // show берём из select; роль = cashier
-    (function () {
-      const btn = document.getElementById("btn-open-hall");
-      const sel = document.getElementById("showSelect");
-      if (!btn || !sel) return;
+    (async () => {
+      const grid = document.getElementById("grid");
+      const emptyEl = document.getElementById("empty");
 
-      btn.addEventListener("click", () => {
-        const show = sel.value;
-        if (!show) {
-          alert("Оберіть сеанс у списку.");
-          return;
-        }
-        // реальная схема зала на сайте
-        location.href = `../spectacles/hall.html?show=${encodeURIComponent(show)}&role=cashier`;
-      });
+      let items = [];
+      try {
+        const res = await fetch("../data/afisha.json", { cache: "no-store" });
+        items = res.ok ? await res.json() : [];
+      } catch (e) {
+        console.error(e);
+        items = [];
+      }
+
+      if (!Array.isArray(items) || !items.length) {
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      function cardHTML(s){
+        const id = s.id || "";
+        const when = [s.date, s.time].filter(Boolean).join(" • ");
+        const place = [s.theatre, s.stage].filter(Boolean).join(" • ");
+        const poster = s.poster || "";
+
+        const cashierHall = `../spectacles/hall.html?show=${encodeURIComponent(id)}&role=cashier`;
+        const buyerHall   = `../spectacles/hall.html?show=${encodeURIComponent(id)}`;
+
+        return `
+          <article class="k-card">
+            ${poster ? `<img class="k-poster" src="${poster}" alt="${(s.title||"")}" onerror="this.style.display='none'">` : ""}
+            <div><strong>${s.title || ""}</strong></div>
+            ${when ? `<div class="k-meta">${when}</div>` : ""}
+            ${place ? `<div class="k-meta">${place}</div>` : ""}
+
+            <div class="k-btnrow">
+              <a class="btn" href="${cashierHall}">Відкрити схему (каса)</a>
+              <a class="btn secondary" href="${buyerHall}">Подивитись як покупець</a>
+            </div>
+          </article>
+        `;
+      }
+
+      grid.innerHTML = items.map(cardHTML).join("");
     })();
   </script>
 </body>
