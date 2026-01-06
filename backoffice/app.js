@@ -1,190 +1,324 @@
-import { loadSupabaseFromSettings } from "./supabaseClient.js";
-import { renderOrders, renderDetails } from "./ui.js";
-import { downloadText, toCsv } from "./utils.js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
 
+let SETTINGS = null;
 let supabase = null;
-let orders = [];
-let activeOrder = null;
-let activeTickets = [];
 
-const $ = (id)=>document.getElementById(id);
+const el = (id)=>document.getElementById(id);
 
-async function ensure(){
-  if(!supabase) supabase = await loadSupabaseFromSettings();
-  return supabase;
+function showErr(msg){
+  const box = el('loginError');
+  if (!box) return;
+  box.textContent = msg || '';
+  box.hidden = !msg;
 }
 
-async function setUIAuthed(user){
-  $("loginCard").style.display = user ? "none" : "block";
-  $("appCard").style.display = user ? "block" : "none";
-  $("btnLogout").style.display = user ? "inline-block" : "none";
-  $("whoami").textContent = user ? `👤 ${user.email}` : "";
+async function loadSettings(){
+  const r = await fetch('../data/settings.json', { cache:'no-store' });
+  if(!r.ok) throw new Error('Не можу прочитати /data/settings.json (HTTP '+r.status+')');
+  const json = await r.json(); // упадёт если JSON битый
+  SETTINGS = json;
+  return json;
 }
 
-async function login(){
-  $("loginMsg").textContent = "…";
-  const email = $("loginEmail").value.trim();
-  const password = $("loginPassword").value.trim();
-  try{
-    const sb = await ensure();
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if(error) throw error;
-    $("loginMsg").textContent = "OK";
-    await setUIAuthed(data.user);
-  }catch(e){
-    console.error(e);
-    $("loginMsg").textContent = "Помилка: " + (e?.message || e);
+function initSupabase(){
+  const url = SETTINGS?.supabase_url;
+  const key = SETTINGS?.supabase_anon_key;
+  if(!url || !key) throw new Error('У settings.json немає supabase_url або supabase_anon_key');
+  supabase = createClient(url, key, { auth: { persistSession:true }});
+}
+
+function setLoggedUI(user){
+  const loginCard = el('loginCard');
+  const appCard = el('appCard');
+  const userBox = el('userBox');
+  const userEmail = el('userEmail');
+  const theatreName = el('theatreName');
+
+  if (SETTINGS?.theatre?.name) theatreName.textContent = SETTINGS.theatre.name + ' — Білетний відділ';
+
+  if(user){
+    if (loginCard) loginCard.hidden = true;
+    if (appCard) appCard.hidden = false;
+    if (userBox) userBox.hidden = false;
+    if (userEmail) userEmail.textContent = user.email || '';
+  }else{
+    if (loginCard) loginCard.hidden = false;
+    if (appCard) appCard.hidden = true;
+    if (userBox) userBox.hidden = true;
+    if (userEmail) userEmail.textContent = '';
   }
+}
+
+function isAllowedEmail(email){
+  const allowed = SETTINGS?.backoffice?.allowed_emails;
+  if(!allowed || !Array.isArray(allowed) || allowed.length===0) return true;
+  return allowed.map(x=>String(x).toLowerCase()).includes(String(email||'').toLowerCase());
+}
+
+/* tabs */
+let currentTab = 'orders';
+
+function setTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab===tab);
+  });
+
+  el('panel-orders').hidden   = tab!=='orders';
+  el('panel-tickets').hidden  = tab!=='tickets';
+  el('panel-bookings').hidden = tab!=='bookings';
+  el('panel-settings').hidden = tab!=='settings';
+
+  const statusSel = el('filterStatus');
+  statusSel.innerHTML = '<option value="">— всі —</option>';
+
+  const opts = tab==='orders'
+    ? ['created','paid','cancelled']
+    : tab==='bookings'
+      ? ['hold','cancelled','converted']
+      : [];
+
+  for (const s of opts){
+    const o = document.createElement('option');
+    o.value = s;
+    o.textContent = s;
+    statusSel.appendChild(o);
+  }
+
+  refresh();
+}
+
+/* helpers */
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+}
+function badge(status){
+  const cls =
+    status==='paid' || status==='converted' ? 'ok' :
+    status==='created' || status==='hold' ? 'warn' :
+    status==='cancelled' ? 'bad' : '';
+  return `<span class="badge ${cls}">${escapeHtml(status||'—')}</span>`;
+}
+function fmtDT(ts){
+  try{ return new Date(ts).toLocaleString('uk-UA'); }catch{ return String(ts||'—'); }
+}
+function fmtMoney(n){
+  if(n==null) return '—';
+  const x = Number(n);
+  if (Number.isNaN(x)) return escapeHtml(String(n));
+  return x.toFixed(2);
+}
+
+/* load data */
+async function refresh(){
+  const show = el('filterShow').value.trim();
+  const st = el('filterStatus').value.trim();
+
+  if(currentTab==='orders')  return loadOrders(show, st);
+  if(currentTab==='tickets') return loadTickets(show);
+  if(currentTab==='bookings')return loadBookings(show, st);
+  if(currentTab==='settings')return loadBoSettings();
+}
+
+async function loadOrders(show_slug, status){
+  const root = el('panel-orders');
+  root.innerHTML = `<div class="muted">Завантажую…</div>`;
+
+  let q = supabase.from('orders')
+    .select('order_id,show_slug,amount,currency,status,buyer_email,buyer_name,created_at')
+    .order('created_at', { ascending:false })
+    .limit(200);
+
+  if(show_slug) q = q.eq('show_slug', show_slug);
+  if(status) q = q.eq('status', status);
+
+  const { data, error } = await q;
+  if(error){ root.innerHTML = `<div class="err">${escapeHtml(error.message)}</div>`; return; }
+
+  root.innerHTML = `
+    <table class="table">
+      <thead><tr>
+        <th>Час</th><th>order_id</th><th>show</th><th>сума</th><th>статус</th><th>покупець</th>
+      </tr></thead>
+      <tbody>
+        ${(data||[]).map(r=>`
+          <tr>
+            <td>${fmtDT(r.created_at)}</td>
+            <td><code>${escapeHtml(r.order_id)}</code></td>
+            <td>${escapeHtml(r.show_slug||'')}</td>
+            <td>${fmtMoney(r.amount)} ${escapeHtml(r.currency||'')}</td>
+            <td>${badge(r.status)}</td>
+            <td>${escapeHtml(r.buyer_email||'—')}</td>
+          </tr>
+        `).join('') || `<tr><td colspan="6" class="muted">Нічого не знайдено.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadTickets(show_slug){
+  const root = el('panel-tickets');
+  root.innerHTML = `<div class="muted">Завантажую…</div>`;
+
+  let q = supabase.from('tickets')
+    .select('order_id,show_slug,seat_label,price,buyer_email,pdf_url,email_status,emailed_at,checked_in_at,checked_in_by,created_at')
+    .order('created_at', { ascending:false })
+    .limit(300);
+
+  if(show_slug) q = q.eq('show_slug', show_slug);
+
+  const { data, error } = await q;
+  if(error){ root.innerHTML = `<div class="err">${escapeHtml(error.message)}</div>`; return; }
+
+  root.innerHTML = `
+    <table class="table">
+      <thead><tr>
+        <th>Час</th><th>show</th><th>місце</th><th>ціна</th><th>order</th><th>pdf</th><th>email</th><th>check-in</th>
+      </tr></thead>
+      <tbody>
+        ${(data||[]).map(t=>`
+          <tr>
+            <td>${fmtDT(t.created_at)}</td>
+            <td>${escapeHtml(t.show_slug||'')}</td>
+            <td><code>${escapeHtml(t.seat_label||'')}</code></td>
+            <td>${fmtMoney(t.price)} грн</td>
+            <td><code>${escapeHtml(t.order_id||'')}</code></td>
+            <td>${t.pdf_url ? `<a href="${t.pdf_url}" target="_blank" rel="noopener">PDF</a>` : '—'}</td>
+            <td>${escapeHtml(t.email_status||'—')}<br><span class="muted">${t.emailed_at?fmtDT(t.emailed_at):''}</span></td>
+            <td>${t.checked_in_at ? `<span class="badge ok">OK</span> ${fmtDT(t.checked_in_at)}<br><span class="muted">${escapeHtml(t.checked_in_by||'')}</span>` : `<span class="badge">—</span>`}</td>
+          </tr>
+        `).join('') || `<tr><td colspan="8" class="muted">Нічого не знайдено.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadBookings(show_slug, status){
+  const root = el('panel-bookings');
+  root.innerHTML = `<div class="muted">Завантажую…</div>`;
+
+  let q = supabase.from('bookings')
+    .select('id,order_id,show_slug,amount,status,buyer_email,expires_at,created_at,seats')
+    .order('created_at', { ascending:false })
+    .limit(200);
+
+  if(show_slug) q = q.eq('show_slug', show_slug);
+  if(status) q = q.eq('status', status);
+
+  const { data, error } = await q;
+  if(error){ root.innerHTML = `<div class="err">${escapeHtml(error.message)}</div>`; return; }
+
+  root.innerHTML = `
+    <table class="table">
+      <thead><tr>
+        <th>Час</th><th>show</th><th>сума</th><th>статус</th><th>expire</th><th>місця</th>
+      </tr></thead>
+      <tbody>
+        ${(data||[]).map(b=>`
+          <tr>
+            <td>${fmtDT(b.created_at)}</td>
+            <td>${escapeHtml(b.show_slug||'')}</td>
+            <td>${fmtMoney(b.amount)} грн</td>
+            <td>${badge(b.status)}</td>
+            <td>${fmtDT(b.expires_at)}</td>
+            <td class="muted">${escapeHtml(JSON.stringify(b.seats||[]))}</td>
+          </tr>
+        `).join('') || `<tr><td colspan="6" class="muted">Нічого не знайдено.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+async function loadBoSettings(){
+  const root = el('panel-settings');
+  root.innerHTML = `<div class="muted">Завантажую…</div>`;
+
+  const { data, error } = await supabase.from('settings')
+    .select('id,online_sales_enabled,updated_at')
+    .limit(1)
+    .maybeSingle();
+
+  if(error){ root.innerHTML = `<div class="err">${escapeHtml(error.message)}</div>`; return; }
+  if(!data){ root.innerHTML = `<div class="err">У таблиці settings немає рядка (зроби INSERT).</div>`; return; }
+
+  root.innerHTML = `
+    <div class="muted">Перемикач, який не ламає схему, а керує продажами централізовано.</div>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <label style="display:flex;gap:10px;align-items:center;">
+        <input id="toggleOnline" type="checkbox" ${data.online_sales_enabled ? 'checked' : ''} />
+        <strong>online_sales_enabled</strong>
+      </label>
+      <span class="muted">updated: ${fmtDT(data.updated_at)}</span>
+      <button class="btn btn-primary" id="btnSaveSettings">Зберегти</button>
+      <div class="muted" id="settingsMsg"></div>
+    </div>
+  `;
+
+  el('btnSaveSettings').addEventListener('click', async ()=>{
+    const v = el('toggleOnline').checked;
+    el('settingsMsg').textContent = 'Зберігаю…';
+    const { error: e2 } = await supabase
+      .from('settings')
+      .update({ online_sales_enabled: v, updated_at: new Date().toISOString() })
+      .eq('id', data.id);
+    el('settingsMsg').textContent = e2 ? ('Помилка: ' + e2.message) : 'OK';
+  });
+}
+
+/* auth */
+async function login(){
+  showErr('');
+  const email = el('email').value.trim();
+  const password = el('password').value;
+
+  if(!email || !password){ showErr('Введи email та пароль.'); return; }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if(error){ showErr(error.message); return; }
+
+  const user = data?.user;
+  if(user && !isAllowedEmail(user.email)){
+    await supabase.auth.signOut();
+    showErr('Цей email не має доступу (перевір settings.json → backoffice.allowed_emails).');
+    return;
+  }
+
+  setLoggedUI(user);
+  setTab('orders');
 }
 
 async function logout(){
-  const sb = await ensure();
-  await sb.auth.signOut();
-  orders = [];
-  activeOrder = null;
-  activeTickets = [];
-  $("ordersList").innerHTML = "";
-  $("details").innerHTML = `<div class="muted">Оберіть замовлення зі списку.</div>`;
-  $("statusLine").textContent = "";
+  await supabase.auth.signOut();
+  setLoggedUI(null);
 }
 
-function normQ(q){ return (q||"").trim(); }
+/* init */
+async function init(){
+  await loadSettings();
+  initSupabase();
 
-async function search(){
-  const q = normQ($("q").value);
-  if(!q){ $("statusLine").textContent = "Введіть запит."; return; }
+  // tabs
+  document.querySelectorAll('.tab').forEach(b=> b.addEventListener('click', ()=>setTab(b.dataset.tab)));
 
-  $("statusLine").textContent = "Шукаю…";
-  orders = [];
-  activeOrder = null;
-  activeTickets = [];
-  renderOrders($("ordersList"), [], "", ()=>{});
-  renderDetails($("details"), null, []);
+  el('btnRefresh')?.addEventListener('click', refresh);
+  el('btnLogin')?.addEventListener('click', login);
+  el('btnLogout')?.addEventListener('click', logout);
 
-  const sb = await ensure();
+  const { data: s } = await supabase.auth.getSession();
+  const user = s?.session?.user || null;
 
-  // ✅ ВАЖНО: ниже я использую предположительные поля.
-  // ТЫ ОЧЕНЬ БЫСТРО УВИДИШЬ в консоли, если названия отличаются, и мы поправим.
-  try{
-    // 1) Поиск заказов
-    // Ищем по order_id, email, phone (или как у тебя называются)
-    const { data: ord, error: e1 } = await sb
-      .from("orders")
-      .select("*")
-      .or(`order_id.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`)
-      .order("created_at", { ascending:false })
-      .limit(50);
-
-    if(e1) throw e1;
-
-    // 2) Если не нашли — пробуем искать по tickets (id/qr_payload) и подтянуть order
-    if(!ord || ord.length === 0){
-      const { data: tks, error: e2 } = await sb
-        .from("tickets")
-        .select("id,order_id,qr_payload")
-        .or(`id.ilike.%${q}%,qr_payload.ilike.%${q}%`)
-        .limit(20);
-      if(e2) throw e2;
-
-      const orderIds = [...new Set((tks||[]).map(x=>x.order_id).filter(Boolean))];
-      if(orderIds.length){
-        const { data: ord2, error: e3 } = await sb
-          .from("orders")
-          .select("*")
-          .in("order_id", orderIds)
-          .order("created_at", { ascending:false });
-        if(e3) throw e3;
-        orders = ord2 || [];
-      }else{
-        orders = [];
-      }
-    }else{
-      orders = ord;
-    }
-
-    $("statusLine").textContent = `Знайдено: ${orders.length}`;
-    renderOrders($("ordersList"), orders, activeOrder?.id, pickOrder);
-  }catch(e){
-    console.error(e);
-    $("statusLine").textContent = "Помилка пошуку: " + (e?.message || e);
-  }
-}
-
-async function pickOrder(order){
-  activeOrder = order;
-  $("statusLine").textContent = `Обрано: ${order.order_id || order.id}`;
-
-  const sb = await ensure();
-  try{
-    const oid = order.order_id || order.id;
-
-    // Пытаемся по order_id
-    let { data: tks, error } = await sb
-      .from("tickets")
-      .select("*")
-      .eq("order_id", oid)
-      .order("created_at", { ascending:true });
-
-    // Если вдруг у тебя order_id в tickets хранится иначе (например order_uuid)
-    // — это сразу увидишь и мы поправим.
-    if(error) throw error;
-
-    activeTickets = tks || [];
-    renderOrders($("ordersList"), orders, activeOrder?.id, pickOrder);
-    renderDetails($("details"), activeOrder, activeTickets);
-  }catch(e){
-    console.error(e);
-    $("statusLine").textContent = "Помилка завантаження квитків: " + (e?.message || e);
-  }
-}
-
-function clearAll(){
-  $("q").value = "";
-  $("statusLine").textContent = "";
-  orders = [];
-  activeOrder = null;
-  activeTickets = [];
-  $("ordersList").innerHTML = "";
-  $("details").innerHTML = `<div class="muted">Оберіть замовлення зі списку.</div>`;
-}
-
-function exportVisibleCsv(){
-  if(!orders.length){
-    alert("Немає даних для експорту.");
+  if(user && !isAllowedEmail(user.email)){
+    await supabase.auth.signOut();
+    setLoggedUI(null);
+    showErr('Цей email не має доступу.');
     return;
   }
-  // Экспорт заказов (видимых)
-  const cols = ["order_id","status","channel","amount","currency","email","phone","created_at"];
-  const rows = [cols];
-  for(const o of orders){
-    rows.push(cols.map(c=>o?.[c] ?? ""));
-  }
-  downloadText(`orders_export_${Date.now()}.csv`, toCsv(rows));
+
+  setLoggedUI(user);
+  if(user) setTab('orders');
 }
 
-async function boot(){
-  const sb = await ensure();
-
-  // init session
-  const { data } = await sb.auth.getSession();
-  await setUIAuthed(data?.session?.user || null);
-
-  sb.auth.onAuthStateChange((_evt, session)=>{
-    setUIAuthed(session?.user || null);
-  });
-
-  $("btnLogin").addEventListener("click", login);
-  $("btnLogout").addEventListener("click", logout);
-  $("btnSearch").addEventListener("click", search);
-  $("btnClear").addEventListener("click", clearAll);
-  $("btnExportCsv").addEventListener("click", exportVisibleCsv);
-
-  $("q").addEventListener("keydown", (e)=>{
-    if(e.key === "Enter") search();
-  });
-}
-
-boot().catch(e=>{
-  console.error(e);
-  alert("Backoffice init error: " + (e?.message || e));
+init().catch(err=>{
+  console.error(err);
+  showErr(err.message || String(err));
 });
