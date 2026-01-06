@@ -44,7 +44,6 @@ input:focus, select:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,1
 .btn-primary{ background:var(--blue); color:#fff; }
 .btn-primary:hover{ background:var(--blue2); }
 .btn-ghost{ background:#f9fafb; border:1px solid var(--line); color:var(--text); }
-.btn-danger{ background:var(--danger); color:#fff; }
 
 .err{ color:#991b1b; background:#fee2e2; border:1px solid #fecaca; padding:8px 10px; border-radius:12px; font-size:13px; }
 
