@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Схема залу</title>
 
+  <!-- мы находимся в /spectacles/, поднимаемся на уровень выше -->
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
     .hall-layout{display:flex;gap:24px;align-items:flex-start;}
     .hall-left{flex:1 1 auto;min-width:0;}
-    .hall-sidebar{width:320px;flex:0 0 320px;}
+    .hall-sidebar{width:280px;flex:0 0 280px;}
     .hall-card{margin-top:0;}
 
     .hall-scroll{
@@ -34,9 +35,16 @@
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;
     }
+    .seat--parter-front{background:#fef9c3;}
+    .seat--parter-mid{background:#dbeafe;}
+    .seat--parter-back{background:#e5e7eb;}
+    .seat--amphi{background:#e0f2fe;}
+    .seat--balcony{background:#f3e8ff;}
+    .seat--lodge{background:#fee2e2;}
 
     .seat--selected{background:#2563eb !important;color:#fff;border-color:#2563eb;}
     .seat--taken{background:#9ca3af !important;color:#fff;cursor:not-allowed;}
+
     .seat--gap-right{margin-right:16px;}
     .amphi-gap{width:24px;flex:0 0 24px;}
 
@@ -62,16 +70,12 @@
 
     .seat--empty{visibility:hidden;pointer-events:none;border:none;background:transparent;}
 
-    .hint{font-size:12px;color:#6b7280;margin-top:10px;line-height:1.35;}
-    .btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
-
     @media (max-width:900px){
       .hall-layout{flex-direction:column;}
-      .hall-sidebar{width:auto;flex:1 1 auto;}
+      .hall-sidebar{width:auto;}
     }
   </style>
 </head>
-
 <body>
   <div id="site-header"></div>
 
@@ -80,9 +84,12 @@
       <h1>Схема залу</h1>
 
       <div class="hall-layout">
+        <!-- Левая часть: схема -->
         <div class="hall-left">
           <div class="hall-scroll">
             <div class="hall-inner">
+
+              <!-- Партер + ложі збоку -->
               <section class="hall-section">
                 <div class="hall-section-title">Партер</div>
                 <div class="parter-wrap">
@@ -100,6 +107,7 @@
                 </div>
               </section>
 
+              <!-- Амфітеатр -->
               <section class="hall-section">
                 <div class="hall-section-title">Амфітеатр</div>
                 <div class="hall-center">
@@ -107,6 +115,7 @@
                 </div>
               </section>
 
+              <!-- Балкон -->
               <section class="hall-section">
                 <div class="hall-section-title">Балкон</div>
                 <div class="hall-center">
@@ -116,38 +125,29 @@
             </div>
           </div>
 
-          <div class="row-price-list" id="price-legend"></div>
+          <!-- Легенда цін -->
+          <div class="row-price-list">
+            <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
+            <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
+            <div class="row-price"><span>Партер, ряди 13–18</span><span class="dots"></span><b>140 грн</b></div>
+            <div class="row-price"><span>Амфітеатр (усі ряди)</span><span class="dots"></span><b>120 грн</b></div>
+            <div class="row-price"><span>Балкон, ряди 1–5</span><span class="dots"></span><b>100 грн</b></div>
+            <div class="row-price"><span>Балкон, ряд 6</span><span class="dots"></span><b>80 грн</b></div>
+            <div class="row-price"><span>Ложі А і Б</span><span class="dots"></span><b>10 грн</b></div>
+          </div>
         </div>
 
+        <!-- Правая часть: заказ -->
         <aside class="hall-sidebar">
           <div class="card hall-card">
-            <h2 class="hall-summary-title" id="sidebar-title">Ваше замовлення</h2>
-
+            <h2 class="hall-summary-title">Ваше замовлення</h2>
             <p id="summary-show" class="hall-summary-meta"></p>
             <p id="summary-places" class="hall-summary-meta">Обрані місця: немає</p>
             <p id="summary-amount" class="hall-summary-meta">Сума: 0 грн</p>
-
-            <!-- buyer button (existing) -->
             <button id="go-order" class="button-primary" disabled>Перейти до оформлення</button>
-
-            <!-- cashier buttons -->
-            <div id="cashier-actions" style="display:none">
-              <div class="btn-row">
-                <button id="cash-sell" class="button-primary" disabled>Продати (каса)</button>
-                <button id="cash-hold" class="btn secondary" disabled>Поставити на бронь</button>
-                <button id="cash-clear" class="btn secondary">Очистити вибір</button>
-              </div>
-              <div class="hint">
-                Режим каси: LiqPay вимкнено. Продаж записується у <code>orders</code> + <code>tickets</code>.
-                Бронь записується у <code>bookings</code> (status=hold).
-              </div>
-            </div>
-
-            <p class="hall-summary-meta hint" id="buyer-hint">
+            <p class="hall-summary-meta" style="font-size:12px;margin-top:10px;">
               Кнопка стане активною, коли ви оберете хоча б одне місце.
             </p>
-
-            <p id="action-msg" class="hall-summary-meta" style="margin-top:10px;color:#111827;"></p>
           </div>
         </aside>
       </div>
@@ -158,266 +158,201 @@
   <script type="module" src="../scripts/include.js"></script>
 
   <script>
+    // -------- Параметри з URL --------
     const qs = new URLSearchParams(location.search);
     const showSlug  = qs.get("show")  || "";
-    const role = (qs.get("role") || "buyer").toLowerCase(); // buyer | cashier
+    const showTitle = qs.get("title") || showSlug || "Вистава";
+    document.getElementById("summary-show").textContent =
+      "Вистава: " + (showTitle || "—");
 
-    // Supabase
+    // -------- Supabase (для проданих місць) --------
+    // Важно: это твой новый Supabase (ticket-service)
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    const takenSeats = new Set(); // seat_label
-    const selected = new Map();   // seat_label -> {label, price}
+    // -------- Конфігурація залу --------
 
-    let SETTINGS = null;
-    let HALL = null;
-    let AFISHA = null;
+    // Партер 1–18 по 20 місць, проход після 10-го
+    const parterRows = Array.from({length:18}, (_,i)=>( {
+      row: i+1,
+      seats: 20,
+      zone: "Партер",
+      price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
+      className: i+1 <= 6 ? "seat--parter-front"
+               : i+1 <= 12 ? "seat--parter-mid"
+                           : "seat--parter-back"
+    } ));
 
-    function supaHeaders(extra){
-      return Object.assign({
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: "Bearer " + SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-        Prefer: "return=representation"
-      }, extra || {});
+    // Амфітеатр
+    const amphiLeftRows  = [
+      {row:19,seats:11},
+      {row:20,seats:11},
+      {row:21,seats:11},
+      {row:22,seats:11},
+      {row:23,seats:11},
+    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
+
+    const amphiRightRows = [
+      {row:19,seats:11},
+      {row:20,seats:11},
+      {row:21,seats:11},
+    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
+
+    // Балкон
+    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
+    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
+
+    // Ложі
+    const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, zone:"Ложа", className:"seat--lodge" } ));
+
+    // -------- sold seats (from DB) --------
+    const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
+
+    async function loadTakenSeats(){
+      if (!showSlug) return;
+
+      const url =
+        `${SUPABASE_URL}/rest/v1/tickets` +
+        `?show_slug=eq.${encodeURIComponent(showSlug)}` +
+        `&select=seat_label`;
+
+      const res = await fetch(url, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      if (!res.ok) {
+        console.error("Не вдалося завантажити продані місця:", res.status);
+        return;
+      }
+
+      const rows = await res.json().catch(()=>[]);
+      rows.forEach(r => {
+        if (r && r.seat_label) takenSeats.add(String(r.seat_label));
+      });
     }
 
-    function fmtMoney(n){
-      const v = Number(n || 0);
-      return (Number.isFinite(v) ? v : 0);
+    // -------- Вспомогательные функции --------
+
+    // seat_key = P/A/B + row + seat
+    function seatKey(meta){
+      const row  = meta.row ?? meta.index ?? 0;
+      const seat = meta.seat ?? meta.index ?? 0;
+
+      // Партер -> P
+      if (meta.zone === "Партер") return `P${row}-M${seat}`;
+
+      // Амфітеатр -> A
+      if (String(meta.zone).startsWith("Амфітеатр")) return `A${row}-M${seat}`;
+
+      // Балкон -> B
+      if (meta.zone === "Балкон") return `B${row}-M${seat}`;
+
+      // Ложа А -> A0-M{seat}
+      if (meta.zone === "Ложа А") return `A0-M${seat}`;
+
+      // Ложа Б -> B0-M{seat}
+      if (meta.zone === "Ложа Б") return `B0-M${seat}`;
+
+      // fallback
+      return `P${row}-M${seat}`;
     }
 
-    function zoneToPrefix(zone){
-      if (zone === "parter") return "P";
-      if (zone === "amphi") return "A";
-      if (zone === "balcony") return "B";
-      return "X";
-    }
-
-    function seatLabelFor(zone, row, seat, extra){
-      // ВАЖНО: формат как ты подтвердил:
-      // bookings/orders: ["P1-M1"], tickets.seat_label: "P1-M1"
-      if (extra === "lodgeA") return `A0-M${seat}`;
-      if (extra === "lodgeB") return `B0-M${seat}`;
-      return `${zoneToPrefix(zone)}${row}-M${seat}`;
-    }
-
-    function seatHuman(seat_label){
-      const m = String(seat_label).match(/^([PAB])(\d+)-M(\d+)$/i);
-      if (!m) return seat_label;
+    function seatKeyToHuman(k){
+      const m = String(k).match(/^([PAB])(\d+)-M(\d+)$/i);
+      if (!m) return k;
+      const prefix = m[1].toUpperCase();
       const row = Number(m[2]);
       const seat = Number(m[3]);
-      if (m[1].toUpperCase() === "A" && row === 0) return `Ложа А, місце ${seat}`;
-      if (m[1].toUpperCase() === "B" && row === 0) return `Ложа Б, місце ${seat}`;
-      return `Ряд ${row}, місце ${seat}`;
+
+      if (prefix === "P") return `Ряд ${row}, місце ${seat} (Партер)`;
+      if (prefix === "A") return row === 0 ? `Ложа А, місце ${seat}` : `Ряд ${row}, місце ${seat} (Амфітеатр)`;
+      if (prefix === "B") return row === 0 ? `Ложа Б, місце ${seat}` : `Ряд ${row}, місце ${seat} (Балкон)`;
+      return k;
     }
 
-    async function loadJson(path){
-      const r = await fetch(path, { cache: "no-store" });
-      if (!r.ok) throw new Error("HTTP " + r.status + " for " + path);
-      return await r.json();
-    }
-
-    async function loadAll(){
-      SETTINGS = await loadJson("../data/settings.json");
-      AFISHA = await loadJson("../data/afisha.json");
-      HALL = await loadJson("../data/halls/shevchenko-big.json");
-    }
-
-    function getShow(){
-      if (!Array.isArray(AFISHA)) return null;
-      return AFISHA.find(x => x.id === showSlug) || null;
-    }
-
-    function getPriceForRow(rowInfo, zone, rowNumber){
-      if (rowInfo && rowInfo.price != null) return fmtMoney(rowInfo.price);
-      const g = rowInfo && rowInfo.price_group;
-      if (g && SETTINGS && SETTINGS.pricing_defaults && SETTINGS.pricing_defaults[g] != null){
-        return fmtMoney(SETTINGS.pricing_defaults[g]);
-      }
-      if (zone === "parter") return 200;
-      if (zone === "amphi") return 140;
-      if (zone === "balcony") return 120;
-      return 200;
-    }
-
-    function setSummary(){
-      const s = getShow();
-      const showEl = document.getElementById("summary-show");
-      if (showEl){
-        showEl.textContent = s ? `Вистава: ${s.title} • ${s.date} ${s.time}` : (showSlug ? `Спектакль: ${showSlug}` : "");
-      }
-
-      const placesEl = document.getElementById("summary-places");
-      const amountEl = document.getElementById("summary-amount");
-      const btnBuyer = document.getElementById("go-order");
-
-      const seats = Array.from(selected.keys());
-      const sum = Array.from(selected.values()).reduce((acc,it)=>acc + fmtMoney(it.price), 0);
-
-      placesEl.textContent = seats.length ? ("Обрані місця: " + seats.map(seatHuman).join("; ")) : "Обрані місця: немає";
-      amountEl.textContent = `Сума: ${sum} ${SETTINGS?.theatre?.currency || "грн"}`;
-
-      btnBuyer.disabled = seats.length === 0;
-
-      // cashier buttons
-      const sellBtn = document.getElementById("cash-sell");
-      const holdBtn = document.getElementById("cash-hold");
-      if (sellBtn) sellBtn.disabled = seats.length === 0;
-      if (holdBtn) holdBtn.disabled = seats.length === 0;
-    }
-
-    function createSeatButton({zone,row,seat,price,aisleAfter,extra}){
+    function makeSeatElement(key,label,extraClass,price,meta){
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "seat";
-      btn.textContent = String(seat);
-
-      const key = seatLabelFor(zone, row, seat, extra);
+      btn.textContent = label;
+      btn.className = "seat" + (extraClass ? " " + extraClass : "");
+      btn.dataset.key = key;
+      btn.dataset.price = price;
+      btn.dataset.zone = meta.zone;
 
       if (takenSeats.has(key)){
         btn.classList.add("seat--taken");
         btn.disabled = true;
       }
-      if (selected.has(key)) btn.classList.add("seat--selected");
 
-      btn.title = `${seatHuman(key)} • ${price} ${SETTINGS?.theatre?.currency || "грн"}`;
-
-      btn.addEventListener("click", () => {
-        if (takenSeats.has(key)) return;
-
-        if (selected.has(key)) selected.delete(key);
-        else selected.set(key, { label: key, price: fmtMoney(price) });
-
-        setSummary();
-        rerenderAllSeats(); // подсветка
-      });
-
-      if (aisleAfter && seat === aisleAfter) btn.classList.add("seat--gap-right");
+      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
       return btn;
     }
 
-    function rerenderAllSeats(){
-      renderParter();
-      renderAmphi();
-      renderBalcony();
-      renderLodges();
+    const selected = new Map(); // key -> { meta, price }
+
+    function onSeatClick(btn, key, meta, price){
+      if (btn.classList.contains("seat--selected")){
+        btn.classList.remove("seat--selected");
+        selected.delete(key);
+      } else {
+        btn.classList.add("seat--selected");
+        selected.set(key, { meta, price });
+      }
+      updateSummary();
     }
+
+    function updateSummary(){
+      const placesEl = document.getElementById("summary-places");
+      const amountEl = document.getElementById("summary-amount");
+      const btn      = document.getElementById("go-order");
+
+      const keys = Array.from(selected.keys());
+      if (!keys.length){
+        placesEl.textContent = "Обрані місця: немає";
+        amountEl.textContent = "Сума: 0 грн";
+        btn.disabled = true;
+        return;
+      }
+
+      const placesStr = keys.map(seatKeyToHuman).join("; ");
+      const total = Array.from(selected.values()).reduce((sum,x)=> sum + (x.price||0), 0);
+
+      placesEl.textContent = "Обрані місця: " + placesStr;
+      amountEl.textContent = "Сума: " + total + " грн";
+      btn.disabled = false;
+    }
+
+    // -------- Рендер --------
 
     function renderParter(){
       const block = document.getElementById("parter-block");
       block.innerHTML = "";
 
-      const rows = (HALL.rows || []).filter(r => r.zone === "parter");
-      for (const r of rows){
+      parterRows.forEach(r=>{
         const rowLine = document.createElement("div");
         rowLine.className = "row-line";
 
         const lab = document.createElement("div");
         lab.className = "row-label";
-        lab.textContent = String(r.row);
+        lab.textContent = r.row;
         rowLine.appendChild(lab);
 
         const seatsRow = document.createElement("div");
         seatsRow.className = "seats-row";
 
-        const seats = Number(r.seats || 0);
-        const aisleAfter = r.aisle_after ? Number(r.aisle_after) : null;
-        const price = getPriceForRow(r, "parter", Number(r.row));
-
-        for (let s=1; s<=seats; s++){
-          seatsRow.appendChild(createSeatButton({zone:"parter", row:Number(r.row), seat:s, price, aisleAfter}));
+        for (let s=1; s<=r.seats; s++){
+          const meta = { zone:r.zone, row:r.row, seat:s };
+          const key  = seatKey(meta);
+          const cls  = r.className + (s===10 ? " seat--gap-right" : "");
+          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price, meta));
         }
 
         rowLine.appendChild(seatsRow);
         block.appendChild(rowLine);
-      }
-    }
-
-    function renderAmphi(){
-      const block = document.getElementById("amphi-block");
-      block.innerHTML = "";
-
-      const rows = (HALL.rows || []).filter(r => r.zone === "amphi");
-      for (const r of rows){
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
-
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = String(r.row);
-        rowLine.appendChild(lab);
-
-        const seatsRow = document.createElement("div");
-        seatsRow.className = "seats-row";
-
-        const left = Number(r.seats_left || 0);
-        const right = Number(r.seats_right || 0);
-        const price = getPriceForRow(r, "amphi", Number(r.row));
-
-        for (let s=1; s<=left; s++){
-          seatsRow.appendChild(createSeatButton({zone:"amphi", row:Number(r.row), seat:s, price}));
-        }
-
-        if (right > 0){
-          const gap = document.createElement("div");
-          gap.className = "amphi-gap";
-          seatsRow.appendChild(gap);
-          for (let s=left+1; s<=left+right; s++){
-            seatsRow.appendChild(createSeatButton({zone:"amphi", row:Number(r.row), seat:s, price}));
-          }
-        }
-
-        rowLine.appendChild(seatsRow);
-        block.appendChild(rowLine);
-      }
-    }
-
-    function renderBalcony(){
-      const block = document.getElementById("balcony-block");
-      block.innerHTML = "";
-
-      const rows = (HALL.rows || []).filter(r => r.zone === "balcony");
-      for (const r of rows){
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
-
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = String(r.row);
-        rowLine.appendChild(lab);
-
-        const seatsRow = document.createElement("div");
-        seatsRow.className = "seats-row";
-
-        const seats = Number(r.seats || 0);
-        const aisleAfter = r.aisle_after ? Number(r.aisle_after) : null;
-        const price = getPriceForRow(r, "balcony", Number(r.row));
-
-        // row 6 может быть left/right — но если задано seats_left/right, обработаем
-        if (r.seats_left != null || r.seats_right != null){
-          const left = Number(r.seats_left || 0);
-          const right = Number(r.seats_right || 0);
-          for (let s=1; s<=left; s++){
-            seatsRow.appendChild(createSeatButton({zone:"balcony", row:Number(r.row), seat:s, price}));
-          }
-          if (right>0){
-            const gap = document.createElement("div");
-            gap.className = "amphi-gap";
-            seatsRow.appendChild(gap);
-            for (let s=left+1; s<=left+right; s++){
-              seatsRow.appendChild(createSeatButton({zone:"balcony", row:Number(r.row), seat:s, price}));
-            }
-          }
-        } else {
-          for (let s=1; s<=seats; s++){
-            seatsRow.appendChild(createSeatButton({zone:"balcony", row:Number(r.row), seat:s, price, aisleAfter}));
-          }
-        }
-
-        rowLine.appendChild(seatsRow);
-        block.appendChild(rowLine);
-      }
+      });
     }
 
     function renderLodges(){
@@ -426,233 +361,152 @@
       a.innerHTML = "";
       b.innerHTML = "";
 
-      const boxes = Array.isArray(HALL.boxes) ? HALL.boxes : [];
-      const boxA = boxes.find(x => (x.id || "").toLowerCase() === "boxa");
-      const boxB = boxes.find(x => (x.id || "").toLowerCase() === "boxb");
+      lodgeSeats.forEach(ls=>{
+        const metaA = { zone:"Ложа А", row:0, seat:ls.index, index:ls.index };
+        const metaB = { zone:"Ложа Б", row:0, seat:ls.index, index:ls.index };
 
-      const priceA = boxA ? fmtMoney(SETTINGS?.pricing_defaults?.[boxA.price_group] || 0) : 0;
-      const priceB = boxB ? fmtMoney(SETTINGS?.pricing_defaults?.[boxB.price_group] || 0) : 0;
-
-      const seatsA = boxA ? Number(boxA.seats || 0) : 0;
-      const seatsB = boxB ? Number(boxB.seats || 0) : 0;
-
-      for (let s=1; s<=seatsA; s++){
-        a.appendChild(createSeatButton({zone:"parter", row:0, seat:s, price: priceA, extra:"lodgeA"}));
-      }
-      for (let s=1; s<=seatsB; s++){
-        b.appendChild(createSeatButton({zone:"parter", row:0, seat:s, price: priceB, extra:"lodgeB"}));
-      }
+        a.appendChild(makeSeatElement(seatKey(metaA), ls.index, ls.className, ls.price, metaA));
+        b.appendChild(makeSeatElement(seatKey(metaB), ls.index, ls.className, ls.price, metaB));
+      });
     }
 
-    function renderPriceLegend(){
-      const el = document.getElementById("price-legend");
-      const defs = SETTINGS?.pricing_defaults || {};
-      const pg = HALL?.price_groups || {};
+    function renderAmphi(){
+      const block = document.getElementById("amphi-block");
+      block.innerHTML = "";
 
-      const rows = Object.keys(defs).map(k => ({
-        key:k,
-        price: fmtMoney(defs[k]),
-        label: pg?.[k]?.label || k
-      })).filter(x => x.price > 0).sort((a,b)=>b.price-a.price);
+      const rowsAll = [19,20,21,22,23];
 
-      el.innerHTML = rows.map(x => `
-        <div class="row-price">
-          <span>${x.label}</span>
-          <span class="dots"></span>
-          <strong>${x.price} ${SETTINGS?.theatre?.currency || "грн"}</strong>
-        </div>
-      `).join("") || `<div class="row-price"><span>Ціни не задано</span></div>`;
+      rowsAll.forEach(rowNum=>{
+        const rowLine = document.createElement("div");
+        rowLine.className = "row-line";
+
+        const lab = document.createElement("div");
+        lab.className = "row-label";
+        lab.textContent = rowNum;
+        rowLine.appendChild(lab);
+
+        const seatsLeft  = document.createElement("div");
+        seatsLeft.className = "seats-row";
+        const seatsRight = document.createElement("div");
+        seatsRight.className = "seats-row";
+        const gap = document.createElement("div");
+        gap.className = "amphi-gap";
+
+        const leftCfg  = amphiLeftRows.find(r=>r.row===rowNum);
+        const rightCfg = amphiRightRows.find(r=>r.row===rowNum);
+
+        if (leftCfg){
+          for (let s=1; s<=leftCfg.seats; s++){
+            const meta = { zone:leftCfg.zone, row:leftCfg.row, seat:s };
+            seatsLeft.appendChild(makeSeatElement(seatKey(meta), s, leftCfg.className, leftCfg.price, meta));
+          }
+        }
+
+        if (rightCfg){
+          for (let s=1; s<=rightCfg.seats; s++){
+            const seatNum = s+11; // 12–22
+            const meta = { zone:rightCfg.zone, row:rightCfg.row, seat:seatNum };
+            seatsRight.appendChild(makeSeatElement(seatKey(meta), seatNum, rightCfg.className, rightCfg.price, meta));
+          }
+        }
+
+        rowLine.appendChild(seatsLeft);
+        rowLine.appendChild(gap);
+        rowLine.appendChild(seatsRight);
+        block.appendChild(rowLine);
+      });
     }
 
-    async function loadTakenSeats(){
-      takenSeats.clear();
-      if (!showSlug) return;
+    function renderBalcony(){
+      const block = document.getElementById("balcony-block");
+      block.innerHTML = "";
 
-      // tickets заняты всегда
-      const url = `${SUPABASE_URL}/rest/v1/tickets?select=seat_label&show_slug=eq.${encodeURIComponent(showSlug)}`;
-      const r = await fetch(url, { headers: supaHeaders() });
-      if (r.ok){
-        const data = await r.json();
-        for (const t of (data||[])){
-          if (t && t.seat_label) takenSeats.add(String(t.seat_label));
+      // 1–5 ряды по 28 мест, проход после 14
+      balconyRows15.forEach(r=>{
+        const rowLine = document.createElement("div");
+        rowLine.className = "row-line";
+
+        const lab = document.createElement("div");
+        lab.className = "row-label";
+        lab.textContent = r.row;
+        rowLine.appendChild(lab);
+
+        const seatsRow = document.createElement("div");
+        seatsRow.className = "seats-row";
+
+        for (let pos=1; pos<=28; pos++){
+          const meta = { zone:r.zone, row:r.row, seat:pos };
+          const cls  = r.className + (pos===14 ? " seat--gap-right" : "");
+          seatsRow.appendChild(makeSeatElement(seatKey(meta), pos, cls, r.price, meta));
+        }
+
+        rowLine.appendChild(seatsRow);
+        block.appendChild(rowLine);
+      });
+
+      // ряд 6: 1–10, потом пустые слоты 11–18, потом 11–20 на позициях 19–28
+      const r = balconyRow6;
+      const rowLine = document.createElement("div");
+      rowLine.className = "row-line";
+
+      const lab = document.createElement("div");
+      lab.className = "row-label";
+      lab.textContent = r.row;
+      rowLine.appendChild(lab);
+
+      const seatsRow = document.createElement("div");
+      seatsRow.className = "seats-row";
+
+      for (let pos=1; pos<=28; pos++){
+        if (pos<=10){
+          const meta = { zone:r.zone, row:r.row, seat:pos };
+          const cls  = r.className + (pos===10 ? " seat--gap-right" : "");
+          seatsRow.appendChild(makeSeatElement(seatKey(meta), pos, cls, r.price, meta));
+        } else if (pos>=19){
+          const seatNum = pos - 8; // 19→11, 28→20
+          const meta = { zone:r.zone, row:r.row, seat:seatNum };
+          seatsRow.appendChild(makeSeatElement(seatKey(meta), seatNum, r.className, r.price, meta));
+        } else {
+          const empty = document.createElement("button");
+          empty.type = "button";
+          empty.textContent = "";
+          empty.className = "seat seat--empty";
+          seatsRow.appendChild(empty);
         }
       }
 
-      // bookings (hold) тоже считаем занятыми, пока не истекли
-      const bUrl = `${SUPABASE_URL}/rest/v1/bookings?select=seats,expires_at,status&show_slug=eq.${encodeURIComponent(showSlug)}&status=eq.hold`;
-      const br = await fetch(bUrl, { headers: supaHeaders() });
-      if (br.ok){
-        const data = await br.json();
-        const now = Date.now();
-        for (const b of (data||[])){
-          const exp = b.expires_at ? Date.parse(b.expires_at) : 0;
-          if (exp && exp < now) continue;
-          const seats = Array.isArray(b.seats) ? b.seats : [];
-          for (const s of seats) takenSeats.add(String(s));
-        }
-      }
+      rowLine.appendChild(seatsRow);
+      block.appendChild(rowLine);
     }
 
-    function setModeUI(){
-      const cashierBox = document.getElementById("cashier-actions");
-      const buyerHint = document.getElementById("buyer-hint");
-      const btnBuyer = document.getElementById("go-order");
-      const title = document.getElementById("sidebar-title");
+    // -------- Переход на оформлення --------
+    document.getElementById("go-order").addEventListener("click", ()=>{
+      const keys = Array.from(selected.keys());
+      if (!keys.length) return;
 
-      if (role === "cashier"){
-        title.textContent = "Каса";
-        cashierBox.style.display = "block";
-        buyerHint.style.display = "none";
-        btnBuyer.style.display = "none";
-      } else {
-        title.textContent = "Ваше замовлення";
-        cashierBox.style.display = "none";
-        buyerHint.style.display = "block";
-        btnBuyer.style.display = "inline-flex";
-      }
-    }
+      const total = Array.from(selected.values()).reduce((sum,x)=> sum + (x.price||0), 0);
 
-    function msg(text){
-      const el = document.getElementById("action-msg");
-      if (el) el.textContent = text || "";
-    }
+      // seats в URL: "P2-M2,P2-M3"
+      const seatsCsv = keys.join(",");
 
-    function clearSelection(){
-      selected.clear();
-      setSummary();
-      rerenderAllSeats();
-    }
+      const u = new URL("../order.html", location.href);
+      u.searchParams.set("show", showSlug);
+      u.searchParams.set("title", showTitle);
+      u.searchParams.set("seats", seatsCsv);
+      u.searchParams.set("amount", String(total));
 
-    async function cashierSell(){
-      msg("");
-      if (!showSlug) { msg("Немає show."); return; }
+      location.href = u.toString();
+    });
 
-      const seats = Array.from(selected.keys());
-      if (!seats.length) return;
-
-      const sum = Array.from(selected.values()).reduce((acc,it)=>acc + fmtMoney(it.price), 0);
-
-      const order_id = `CASH-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
-
-      // 1) orders (paid)
-      const orderPayload = [{
-        order_id,
-        show_slug: showSlug,
-        seats,            // ["P1-M1"]
-        amount: sum,
-        currency: "UAH",
-        status: "paid"
-      }];
-
-      const oRes = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
-        method: "POST",
-        headers: supaHeaders(),
-        body: JSON.stringify(orderPayload)
-      });
-
-      if (!oRes.ok){
-        const t = await oRes.text().catch(()=> "");
-        msg("Помилка orders: " + t);
-        return;
-      }
-
-      // 2) tickets (по одному на место)
-      const ticketsPayload = seats.map((seat_label) => ({
-        order_id,
-        show_slug: showSlug,
-        seat_label: String(seat_label),
-        price: fmtMoney(selected.get(seat_label)?.price || 0)
-      }));
-
-      const tRes = await fetch(`${SUPABASE_URL}/rest/v1/tickets`, {
-        method: "POST",
-        headers: supaHeaders(),
-        body: JSON.stringify(ticketsPayload)
-      });
-
-      if (!tRes.ok){
-        const t = await tRes.text().catch(()=> "");
-        msg("Помилка tickets: " + t);
-        return;
-      }
-
-      // обновим занятые и UI
+    // -------- init --------
+    (async ()=>{
       await loadTakenSeats();
-      clearSelection();
-      msg(`Продано (каса). order_id: ${order_id}`);
-    }
-
-    async function cashierHold(){
-      msg("");
-      if (!showSlug) { msg("Немає show."); return; }
-
-      const seats = Array.from(selected.keys());
-      if (!seats.length) return;
-
-      const sum = Array.from(selected.values()).reduce((acc,it)=>acc + fmtMoney(it.price), 0);
-      const order_id = `HOLD-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
-
-      const payload = [{
-        order_id,
-        show_slug: showSlug,
-        seats,     // ["P1-M1"]
-        amount: sum,
-        status: "hold"
-        // expires_at default в SQL +15 минут
-      }];
-
-      const r = await fetch(`${SUPABASE_URL}/rest/v1/bookings`, {
-        method: "POST",
-        headers: supaHeaders(),
-        body: JSON.stringify(payload)
-      });
-
-      if (!r.ok){
-        const t = await r.text().catch(()=> "");
-        msg("Помилка bookings: " + t);
-        return;
-      }
-
-      await loadTakenSeats();
-      clearSelection();
-      msg(`Поставлено на бронь. order_id: ${order_id}`);
-    }
-
-    function bindButtons(){
-      // buyer flow (как было)
-      const go = document.getElementById("go-order");
-      go.addEventListener("click", () => {
-        if (role === "cashier") return; // на всякий случай
-        const seats = Array.from(selected.keys());
-        const sum = Array.from(selected.values()).reduce((s,it)=>s + fmtMoney(it.price), 0);
-        const title = (getShow()?.title) || "";
-        const url = `../checkout.html?show=${encodeURIComponent(showSlug)}&title=${encodeURIComponent(title)}&seats=${encodeURIComponent(seats.join(","))}&amount=${encodeURIComponent(sum)}`;
-        location.href = url;
-      });
-
-      // cashier flow
-      document.getElementById("cash-sell").addEventListener("click", cashierSell);
-      document.getElementById("cash-hold").addEventListener("click", cashierHold);
-      document.getElementById("cash-clear").addEventListener("click", clearSelection);
-    }
-
-    (async () => {
-      setModeUI();
-      bindButtons();
-
-      await loadAll();
-      renderPriceLegend();
-
-      if (!showSlug){
-        msg("Немає параметра ?show=...");
-        setSummary();
-        return;
-      }
-
-      await loadTakenSeats();
-      rerenderAllSeats();
-      setSummary();
+      renderParter();
+      renderLodges();
+      renderAmphi();
+      renderBalcony();
+      updateSummary();
     })();
   </script>
 </body>
-</html>
+</html
