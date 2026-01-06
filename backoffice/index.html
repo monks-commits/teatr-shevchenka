@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Білетний відділ — Backoffice</title>
-  <link rel="stylesheet" href="./backoffice.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <header class="top">
@@ -12,6 +12,7 @@
       <div class="brand__title" id="theatreName">Білетний відділ</div>
       <div class="brand__sub">Backoffice (читання даних)</div>
     </div>
+
     <div class="top__right">
       <div class="user" id="userBox" hidden>
         <span id="userEmail"></span>
@@ -21,10 +22,9 @@
   </header>
 
   <main class="wrap">
-    <!-- LOGIN -->
     <section class="card" id="loginCard">
       <h2>Вхід для співробітників</h2>
-      <p class="muted">Доступ лише для співробітників (Supabase Auth).</p>
+      <p class="muted">Supabase Auth. Доступ лише для співробітників.</p>
 
       <div class="grid2">
         <label>
@@ -45,14 +45,13 @@
       <details class="muted" style="margin-top:10px">
         <summary>Якщо не пускає</summary>
         <ol>
-          <li>Перевір, що <code>/data/settings.json</code> — валідний JSON і містить <code>supabase_url</code> та <code>supabase_anon_key</code>.</li>
-          <li>Створи користувача в Supabase → Auth → Users (email+password).</li>
-          <li>Застосуй SQL-політики (нижче), інакше таблиці можуть не читатись.</li>
+          <li>Перевір <code>/data/settings.json</code> — валідний JSON, є <code>supabase_url</code> і <code>supabase_anon_key</code>.</li>
+          <li>Створи користувача: Supabase → Auth → Users (email + password).</li>
+          <li>Додай RLS policies на читання для authenticated.</li>
         </ol>
       </details>
     </section>
 
-    <!-- APP -->
     <section class="card" id="appCard" hidden>
       <div class="tabs">
         <button class="tab active" data-tab="orders">Замовлення</button>
@@ -82,6 +81,6 @@
     </section>
   </main>
 
-  <script type="module" src="./backoffice.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
