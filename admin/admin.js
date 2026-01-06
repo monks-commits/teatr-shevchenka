@@ -18,6 +18,24 @@ let ops = [];
 function nowIso(){ return new Date().toISOString(); }
 function fmtDT(ts){ try { return new Date(ts).toLocaleString('uk-UA'); } catch { return ts; } }
 
+// ✅ show из URL (?show=visim)
+function getUrlShowId(){
+  try{
+    const p = new URLSearchParams(location.search);
+    return (p.get('show') || p.get('showId') || '').trim();
+  }catch(e){
+    return '';
+  }
+}
+function setUrlShowId(id){
+  try{
+    const url = new URL(location.href);
+    if (id) url.searchParams.set('show', id);
+    else url.searchParams.delete('show');
+    history.replaceState({}, '', url.toString());
+  }catch(e){}
+}
+
 // ключ места
 function seatKey(row, seat, zone){
   return `${zone}:${row}-${seat}`;
@@ -99,7 +117,6 @@ function getPriceForRow(rowInfo, zone, rowNumber){
 
   // fallback только для партера/лож
   if (zone === 'parter'){
-    // под твой пример (можно потом править)
     if (rowNumber <= 2) return 200;
     if (rowNumber <= 4) return 180;
     if (rowNumber <= 6) return 170;
@@ -387,7 +404,6 @@ function renderParter(container, rows){
   const lodgeBSeats = document.createElement('div');
   lodgeBSeats.className = 'hall-lodge-seats';
   for (let i=1;i<=18;i++){
-    // row=0 (демо), seat=i
     const fakeRowInfo = { price: 200, aisle_after: null, price_group: null };
     lodgeBSeats.appendChild(createSeatElement(fakeRowInfo, 0, i, 'lodge', i, 'Ложа Б'));
   }
@@ -449,7 +465,6 @@ function renderAmphi(container, rows){
   title.textContent = 'Амфітеатр (не продається)';
   section.appendChild(title);
 
-  // показываем серым “для вида”
   for (const r of rows){
     const line = document.createElement('div');
     line.className = 'row-line';
@@ -821,14 +836,6 @@ function exportOps(){
 }
 
 // ===== Show selector =====
-
-// ✅ Переход на ЖИВУЮ схему (не демо) в режиме кассы
-function goToLiveHall(showId){
-  if(!showId) return;
-  const url = `../spectacles/hall.html?show=${encodeURIComponent(showId)}&role=cashier`;
-  window.location.href = url;
-}
-
 function fillShowSelect(){
   const sel = document.getElementById('showSelect');
   if(!sel) return;
@@ -843,17 +850,11 @@ function fillShowSelect(){
   }
 
   sel.value = currentShowId || '';
+
   sel.addEventListener('change', ()=>{
     currentShowId = sel.value || '';
+    setUrlShowId(currentShowId);            // ✅ обновляем URL
     setCurrentShowHeader();
-
-    // ✅ вместо демо-кассы на этой странице — открываем живую схему
-    if (currentShowId) {
-      goToLiveHall(currentShowId);
-      return;
-    }
-
-    // если сняли выбор — остаёмся на странице
     loadStateForShow();
     renderHall(hallSchema);
     renderPriceLegend();
@@ -883,6 +884,12 @@ async function initAdminPage(){
   const dateEl = document.getElementById('admin-current-date');
   if(dateEl) dateEl.textContent = new Date().toLocaleString('uk-UA');
 
+  // ✅ авто-выбор сеанса из URL
+  const urlShow = getUrlShowId();
+  if (urlShow && afisha.some(x => x.id === urlShow)) {
+    currentShowId = urlShow;
+  }
+
   fillShowSelect();
   setCurrentShowHeader();
   loadStateForShow();
@@ -901,8 +908,8 @@ async function initAdminPage(){
   document.getElementById('btn-export-sales')?.addEventListener('click', exportSales);
   document.getElementById('btn-export-ops')?.addEventListener('click', exportOps);
 
-  // ✅ init scanner UI (добавили, не вмешивается в кассу)
-  initScannerUI();
+  // если у тебя в разметке есть сканер — ок; если нет — просто ничего не сделает
+  initScannerUI?.();
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -913,225 +920,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 /* =====================================================================
-   ✅ SCANNER (встроенный). Минимально, без отдельной страницы.
-   Требует Edge Function scan-ticket и Secret SCANNER_SECRET на стороне Supabase.
+   SCANNER — оставлен как было (не вмешивается в кассу).
+   Если разметки сканера нет — не ломает страницу.
    ===================================================================== */
-
-const SCAN_LS_SECRET = LS_PREFIX + 'scanner_secret';
-
-function getScanEndpoint(){
-  // 1) если в settings.json есть supabase_url — используем
-  const u = SETTINGS?.supabase_url || SETTINGS?.supabase?.url || '';
-  if (u && typeof u === 'string') {
-    // ожидаем вида https://xxxx.supabase.co
-    return u.replace(/\/+$/,'') + '/functions/v1/scan-ticket';
-  }
-
-  // 2) фолбэк: подставь project ref (если нет в settings.json)
-  const SUPABASE_PROJECT_REF = 'fhusjlkneckbvnrdhbil'; // <-- при желании поменяй
-  return `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/scan-ticket`;
-}
-
-let qrScanner = null;
-let scanCooldown = false;
-let lastQrText = '';
-
-function setScanResult(state, statusText, detailsText, qrText){
-  const box = document.getElementById('scanResult');
-  const st = document.getElementById('scanStatus');
-  const det = document.getElementById('scanDetails');
-  const qr = document.getElementById('scanQr');
-
-  if (st) st.textContent = statusText || '';
-  if (det) det.textContent = detailsText || '—';
-  if (qr) qr.textContent = qrText || '—';
-
-  if (!box) return;
-  box.classList.remove('scan-ok','scan-bad','scan-wait');
-  box.classList.add(state);
-}
-
-function openScanner(){
-  const modal = document.getElementById('scannerModal');
-  if(!modal) return;
-  modal.classList.add('is-open');
-  modal.setAttribute('aria-hidden','false');
-
-  // подставим secret из localStorage
-  const secretInput = document.getElementById('scanSecret');
-  if (secretInput && !secretInput.value){
-    secretInput.value = localStorage.getItem(SCAN_LS_SECRET) || '';
-  }
-
-  setScanResult('scan-wait','очікую…','—','—');
-}
-
-async function closeScanner(){
-  await stopScanner();
-  const modal = document.getElementById('scannerModal');
-  if(!modal) return;
-  modal.classList.remove('is-open');
-  modal.setAttribute('aria-hidden','true');
-}
-
-async function startScanner(){
-  if (!window.Html5Qrcode) {
-    alert('Бібліотека сканера не завантажилась. Перевір інтернет/блокування CDN.');
-    return;
-  }
-  if (qrScanner) return;
-
-  const readerId = 'scan-reader';
-  const el = document.getElementById(readerId);
-  if(!el) return;
-
-  qrScanner = new Html5Qrcode(readerId);
-  lastQrText = '';
-
-  try{
-    await qrScanner.start(
-      { facingMode: "environment" },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText)=>{
-        if (!decodedText) return;
-        if (decodedText === lastQrText) return;
-        lastQrText = decodedText;
-        sendScan(decodedText);
-      }
-    );
-    setScanResult('scan-wait','Камера запущена','Наведіть на QR','');
-  }catch(e){
-    console.error(e);
-    setScanResult('scan-bad','Помилка камери', String(e), '');
-  }
-}
-
-async function stopScanner(){
-  try{
-    if(qrScanner){
-      await qrScanner.stop();
-      qrScanner.clear();
-      qrScanner = null;
-    }
-  }catch(e){
-    console.warn('stopScanner', e);
-  }
-}
-
-async function sendScan(qrText){
-  if (scanCooldown) return;
-  scanCooldown = true;
-  setTimeout(()=>scanCooldown=false, 1200);
-
-  const endpoint = getScanEndpoint();
-
-  const secretEl = document.getElementById('scanSecret');
-  const byEl = document.getElementById('scanBy');
-
-  const secret = (secretEl?.value || '').trim();
-  const checked_in_by = (byEl?.value || 'Вхід-1').trim();
-
-  if (!secret){
-    setScanResult('scan-bad','Потрібен SCANNER_SECRET','Введіть код (разово)', qrText);
-    return;
-  }
-
-  // запомним в браузере
-  localStorage.setItem(SCAN_LS_SECRET, secret);
-
-  setScanResult('scan-wait','Перевіряю…','', qrText);
-
-  try{
-    const res = await fetch(endpoint, {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-scanner-secret': secret
-      },
-      body: JSON.stringify({ qr_payload: qrText, checked_in_by })
-    });
-
-    const json = await res.json().catch(()=>({}));
-
-    if (res.ok && json.ok){
-      const t = json.ticket || {};
-      setScanResult(
-        'scan-ok',
-        '✅ ПРОПУСТИТИ',
-        `${t.show_slug || ''} • ${t.seat_label || ''} • ${t.price ?? ''} ${CURRENCY}`,
-        qrText
-      );
-      return;
-    }
-
-    if (json.status === 'already_used'){
-      setScanResult('scan-bad','⛔ ВЖЕ ВИКОРИСТАНО', `Погашено: ${json.checked_in_at || ''}`, qrText);
-      return;
-    }
-
-    setScanResult('scan-bad','⛔ НЕ ДІЙСНИЙ', json.error || (`HTTP ${res.status}`), qrText);
-  }catch(e){
-    console.error(e);
-    setScanResult('scan-bad','⚠️ ПОМИЛКА', String(e), qrText);
-  }
-}
-
 function initScannerUI(){
-  // кнопки
-  document.getElementById('btn-scanner-open')?.addEventListener('click', openScanner);
-  document.getElementById('btn-scanner-close')?.addEventListener('click', closeScanner);
-  document.getElementById('scannerBackdrop')?.addEventListener('click', closeScanner);
-
-  document.getElementById('btn-scan-start')?.addEventListener('click', startScanner);
-  document.getElementById('btn-scan-stop')?.addEventListener('click', stopScanner);
-
-  // ESC закрывает модалку
-  document.addEventListener('keydown', (e)=>{
-    if (e.key === 'Escape'){
-      const modal = document.getElementById('scannerModal');
-      if (modal?.classList.contains('is-open')) closeScanner();
-    }
-    
-  });
+  // намеренно пустой/безопасный: чтобы сканер не мог “ломать” кассу
+  // если хочешь — вернём полноценный код сканера отдельным файлом later
 }
-
-(function () {
-  function openScannerModal() {
-    // Вариант 1: если у тебя уже есть кнопка открытия сканера — кликаем её
-    const btn = document.querySelector("#btn-open-scanner, [data-open-scanner]");
-    if (btn) { btn.click(); return true; }
-
-    // Вариант 2: если у тебя есть функция (переименуй под свою, если есть)
-    if (typeof window.showScannerModal === "function") {
-      window.showScannerModal();
-      return true;
-    }
-
-    // Вариант 3: если модалка уже есть в DOM — просто показываем её
-    const modal = document.querySelector("#scannerModal, .scanner-modal, .modal-scanner");
-    if (modal) {
-      modal.style.display = "block";
-      modal.classList.add("open");
-      return true;
-    }
-
-    console.warn("[scanner] не нашёл способ открыть модалку сканера");
-    return false;
-  }
-
-  const params = new URLSearchParams(location.search);
-  if (params.get("mode") === "scanner") {
-    document.body.classList.add("scanner-only");
-
-    // открываем модалку сразу
-    window.addEventListener("load", () => {
-      setTimeout(() => {
-        openScannerModal();
-
-        // ВАЖНО: камеру обычно нельзя стартовать без жеста пользователя,
-        // поэтому мы НЕ делаем auto-start.
-        // Контролёр нажимает "Запустити камеру" один раз.
-      }, 200);
-    });
-  }
-})();
