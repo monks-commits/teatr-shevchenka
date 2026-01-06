@@ -821,6 +821,14 @@ function exportOps(){
 }
 
 // ===== Show selector =====
+
+// ✅ Переход на ЖИВУЮ схему (не демо) в режиме кассы
+function goToLiveHall(showId){
+  if(!showId) return;
+  const url = `../spectacles/hall.html?show=${encodeURIComponent(showId)}&role=cashier`;
+  window.location.href = url;
+}
+
 function fillShowSelect(){
   const sel = document.getElementById('showSelect');
   if(!sel) return;
@@ -838,6 +846,14 @@ function fillShowSelect(){
   sel.addEventListener('change', ()=>{
     currentShowId = sel.value || '';
     setCurrentShowHeader();
+
+    // ✅ вместо демо-кассы на этой странице — открываем живую схему
+    if (currentShowId) {
+      goToLiveHall(currentShowId);
+      return;
+    }
+
+    // если сняли выбор — остаёмся на странице
     loadStateForShow();
     renderHall(hallSchema);
     renderPriceLegend();
@@ -1078,6 +1094,7 @@ function initScannerUI(){
     
   });
 }
+
 (function () {
   function openScannerModal() {
     // Вариант 1: если у тебя уже есть кнопка открытия сканера — кликаем её
