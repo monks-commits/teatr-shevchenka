@@ -1,4 +1,4 @@
-// admin/admin.js
+// admin/admin.js  ✅ FULL REPLACEMENT
 let SETTINGS = null;
 let CURRENCY = 'грн';
 let PRICING_DEFAULTS = {};
@@ -18,25 +18,7 @@ let ops = [];
 function nowIso(){ return new Date().toISOString(); }
 function fmtDT(ts){ try { return new Date(ts).toLocaleString('uk-UA'); } catch { return ts; } }
 
-// ✅ show из URL (?show=visim)
-function getUrlShowId(){
-  try{
-    const p = new URLSearchParams(location.search);
-    return (p.get('show') || p.get('showId') || '').trim();
-  }catch(e){
-    return '';
-  }
-}
-function setUrlShowId(id){
-  try{
-    const url = new URL(location.href);
-    if (id) url.searchParams.set('show', id);
-    else url.searchParams.delete('show');
-    history.replaceState({}, '', url.toString());
-  }catch(e){}
-}
-
-// ключ места
+// ✅ ключ места: теперь row может быть string (например "A" для ложи)
 function seatKey(row, seat, zone){
   return `${zone}:${row}-${seat}`;
 }
@@ -67,13 +49,12 @@ async function loadSettings(){
     if (SETTINGS.theatre?.currency) CURRENCY = SETTINGS.theatre.currency;
     if (SETTINGS.pricing_defaults) PRICING_DEFAULTS = SETTINGS.pricing_defaults;
     if (SETTINGS.price_palette) PRICE_PALETTE = SETTINGS.price_palette;
-
   }catch(e){
     console.warn('settings.json не прочитался, используем дефолты', e);
     SETTINGS = {};
   }
 
-  // ✅ ДЕФОЛТНАЯ “РОДНАЯ” ПАЛИТРА (если не задана в settings.json)
+  // ✅ дефолтная палитра (если не задана в settings.json)
   if (!PRICE_PALETTE || Object.keys(PRICE_PALETTE).length === 0){
     PRICE_PALETTE = {
       "70":  "seat--p70",
@@ -106,28 +87,27 @@ async function loadAfisha(){
 }
 
 // ==== Цена ====
-// 1) если есть rowInfo.price -> берём
-// 2) если есть price_group и pricing_defaults совпадает -> берём
-// 3) если цена = 0 -> Fallback по ряду партера (чтобы не было белого)
+// 1) rowInfo.price
+// 2) rowInfo.price_group + pricing_defaults
+// 3) fallback для партера, чтобы не было белого
 function getPriceForRow(rowInfo, zone, rowNumber){
-  if (rowInfo.price != null) return Number(rowInfo.price) || 0;
+  if (rowInfo?.price != null) return Number(rowInfo.price) || 0;
 
-  const g = rowInfo.price_group;
+  const g = rowInfo?.price_group;
   if (g && PRICING_DEFAULTS[g] != null) return Number(PRICING_DEFAULTS[g]) || 0;
 
-  // fallback только для партера/лож
   if (zone === 'parter'){
-    if (rowNumber <= 2) return 200;
-    if (rowNumber <= 4) return 180;
-    if (rowNumber <= 6) return 170;
-    if (rowNumber <= 8) return 160;
-    if (rowNumber <= 12) return 140;
-    if (rowNumber <= 15) return 120;
+    const rn = Number(rowNumber) || 0;
+    if (rn <= 2) return 200;
+    if (rn <= 4) return 180;
+    if (rn <= 6) return 170;
+    if (rn <= 8) return 160;
+    if (rn <= 12) return 140;
+    if (rn <= 15) return 120;
     return 100;
   }
-  if (zone === 'lodge'){
-    return 200;
-  }
+  if (zone === 'lodge') return 200;
+
   return 0;
 }
 
@@ -146,127 +126,6 @@ function getZoneLabel(zone){
   }
 }
 
-// ✅ теперь ложи тоже продаём
-function isSellable(zone){
-  return zone === 'parter' || zone === 'lodge';
-}
-
-// ===== Batch print =====
-function openPrintBatch(items, show){
-  const orderPrefix = 'ORD-' + Date.now();
-  const safe = (s)=>String(s ?? '').replace(/[<>]/g,'');
-
-  const showTitle = safe(show?.title || 'Назва вистави');
-  const showStage = safe(show?.stage || '');
-  const showDT = safe(`${show?.date || ''} ${show?.time || ''}`.trim());
-
-  const ticketsHtml = items.map((it, idx) => {
-    const order = `${orderPrefix}-${idx+1}`;
-    return `
-      <div class="ticket">
-        <div class="ticket-header">
-          <div class="brand">
-            <div class="logo">Ш</div>
-            <div class="brand-text">
-              <div class="brand-name">Театр ім. Т. Г. Шевченка</div>
-              <div class="brand-tagline">Офіційний онлайн-продаж квитків</div>
-            </div>
-          </div>
-          <div class="ord">${order}</div>
-        </div>
-
-        <div class="title">${showTitle}</div>
-        <div class="sub">${showStage}</div>
-
-        <div class="row">
-          <div class="dt">${showDT}</div>
-          <div class="zone"><strong>${safe(getZoneLabel(it.zone))}</strong></div>
-        </div>
-
-        <div class="dash"></div>
-
-        <div class="grid">
-          <div><div class="lbl">Ряд</div><div class="val">${it.row}</div></div>
-          <div><div class="lbl">Місце</div><div class="val">${it.seat}</div></div>
-          <div><div class="lbl">Ціна</div><div class="val">${it.price} ${safe(CURRENCY)}</div></div>
-          <div><div class="lbl">Канал</div><div class="val">Каса</div></div>
-        </div>
-
-        <div class="dash"></div>
-
-        <div class="legal">
-          Квиток дійсний на одну особу. Повернення та обмін квитків відбувається згідно з правилами театру.
-          Зберігайте квиток до кінця вистави.
-        </div>
-
-        <div class="qr">QR / штрих-код (пізніше можна буде підставити з системи)</div>
-      </div>
-    `;
-  }).join('');
-
-  const html = `
-  <!doctype html>
-  <html lang="uk">
-  <head>
-    <meta charset="utf-8"/>
-    <title>Друк квитків</title>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <style>
-      @page { size: 80mm 200mm; margin: 5mm; }
-      body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:#fff; }
-      .wrap{ padding:8px; display:flex; flex-direction:column; gap:10px; }
-
-      .ticket{
-        width: 72mm;
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 10px 10px 9px;
-        box-sizing:border-box;
-        page-break-after: always;
-      }
-      .ticket:last-child{ page-break-after: auto; }
-
-      .ticket-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-      .brand{ display:flex; gap:8px; align-items:center; }
-      .logo{ width:28px; height:28px; border-radius:999px; background:#111827; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
-      .brand-name{ font-size:11px; font-weight:700; color:#111827; line-height:1.1; }
-      .brand-tagline{ font-size:9px; color:#6b7280; line-height:1.1; }
-      .ord{ font-size:9px; color:#6b7280; text-align:right; }
-
-      .title{ margin-top:8px; font-weight:800; text-transform:uppercase; font-size:12px; color:#111827; }
-      .sub{ margin-top:2px; font-size:10px; color:#374151; }
-
-      .row{ margin-top:6px; display:flex; justify-content:space-between; font-size:10px; color:#111827; }
-      .dash{ margin:8px 0; border-bottom:1px dashed #d1d5db; }
-
-      .grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
-      .lbl{ font-size:8px; color:#6b7280; text-transform:uppercase; letter-spacing:.08em; }
-      .val{ font-size:10px; font-weight:700; color:#111827; }
-
-      .legal{ font-size:8px; color:#6b7280; line-height:1.25; }
-      .qr{ margin-top:8px; height:50px; border:1px dashed #d1d5db; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:8px; color:#9ca3af; }
-      @media print { .wrap{ padding:0; } }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      ${ticketsHtml}
-    </div>
-    <script>
-      setTimeout(()=>window.print(), 350);
-    </script>
-  </body>
-  </html>
-  `;
-
-  const w = window.open('', '_blank');
-  if (!w) return;
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-// ===== DOM =====
 function findSeatButtonByKey(key){
   return document.querySelector(`.seat[data-key="${CSS.escape(key)}"]`);
 }
@@ -278,7 +137,6 @@ function updateBasketUI(){
   const subEl = document.getElementById('basket-sub');
 
   if (curEl) curEl.textContent = CURRENCY;
-
   if (!listEl || !totalEl) return;
 
   if (!basket.length){
@@ -344,16 +202,14 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos, extraLabel
   btn.dataset.price = String(price);
   btn.dataset.key = key;
 
-  // ✅ цвет по цене
   const pc = getPriceClass(price);
   if (pc) btn.classList.add(pc);
 
-  // проходы
-  if (zone === 'parter' && rowInfo.aisle_after && pos === rowInfo.aisle_after){
+  // проходы в партере
+  if (zone === 'parter' && rowInfo?.aisle_after && pos === rowInfo.aisle_after){
     btn.classList.add('seat--gap-right');
   }
 
-  // статус
   const st = seatState.get(key) || 'free';
   applyStatusClass(btn, st);
 
@@ -380,8 +236,46 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos, extraLabel
   return btn;
 }
 
-// ===== Render =====
-function renderParter(container, rows){
+// =================== ✅ REAL HALL RENDER ===================
+// универсальная строка (left + aisle + right)
+function renderSplitRow(section, rowLabel, zone, rowInfo, leftCount, rightCount){
+  const line = document.createElement('div');
+  line.className = 'row-line';
+
+  const lab = document.createElement('div');
+  lab.className = 'row-label';
+  lab.textContent = String(rowLabel);
+  line.appendChild(lab);
+
+  const sr = document.createElement('div');
+  sr.className = 'seats-row';
+
+  // left
+  for (let i=1;i<=leftCount;i++){
+    sr.appendChild(createSeatElement(rowInfo, rowLabel, i, zone, i));
+  }
+
+  // gap between left/right blocks if both exist
+  if (leftCount && rightCount){
+    const gap = document.createElement('div');
+    gap.className = 'seat seat--gap-mid'; // CSS можно добавить при желании
+    gap.style.pointerEvents = 'none';
+    gap.style.opacity = '0';
+    gap.textContent = '';
+    sr.appendChild(gap);
+  }
+
+  // right (нумерация продолжается: left+1..)
+  for (let j=1;j<=rightCount;j++){
+    const seatNo = leftCount + j;
+    sr.appendChild(createSeatElement(rowInfo, rowLabel, seatNo, zone, seatNo));
+  }
+
+  line.appendChild(sr);
+  section.appendChild(line);
+}
+
+function renderParter(container, rows, boxes){
   const section = document.createElement('section');
   section.className = 'hall-section';
 
@@ -393,25 +287,37 @@ function renderParter(container, rows){
   const wrap = document.createElement('div');
   wrap.className = 'parter-wrap';
 
-  // ✅ Ложа Б (продаётся)
-  const lodgeB = document.createElement('div');
-  lodgeB.className = 'hall-lodge';
-  const lodgeBLabel = document.createElement('div');
-  lodgeBLabel.className = 'hall-lodge-label';
-  lodgeBLabel.textContent = 'Ложа Б';
-  lodgeB.appendChild(lodgeBLabel);
+  // ✅ Ложа слева (boxB)
+  const leftBox = boxes?.find(b => (b.id || '').toLowerCase() === 'boxb') || null;
+  if (leftBox){
+    const lodgeB = document.createElement('div');
+    lodgeB.className = 'hall-lodge';
+    const lodgeBLabel = document.createElement('div');
+    lodgeBLabel.className = 'hall-lodge-label';
+    lodgeBLabel.textContent = leftBox.label || 'Ложа Б';
+    lodgeB.appendChild(lodgeBLabel);
 
-  const lodgeBSeats = document.createElement('div');
-  lodgeBSeats.className = 'hall-lodge-seats';
-  for (let i=1;i<=18;i++){
-    const fakeRowInfo = { price: 200, aisle_after: null, price_group: null };
-    lodgeBSeats.appendChild(createSeatElement(fakeRowInfo, 0, i, 'lodge', i, 'Ложа Б'));
+    const lodgeBSeats = document.createElement('div');
+    lodgeBSeats.className = 'hall-lodge-seats';
+    const fakeRowInfo = { price_group: leftBox.price_group, price: null, aisle_after: null };
+
+    for (let i=1;i<=Number(leftBox.seats||0);i++){
+      lodgeBSeats.appendChild(createSeatElement(fakeRowInfo, String(leftBox.id||'boxB'), i, 'lodge', i, (leftBox.label||'Ложа Б')));
+    }
+    lodgeB.appendChild(lodgeBSeats);
+    wrap.appendChild(lodgeB);
+  }else{
+    // если boxes нет — оставим пустое место, чтобы сетка не ехала
+    const spacer = document.createElement('div');
+    spacer.className = 'hall-lodge';
+    spacer.style.visibility = 'hidden';
+    wrap.appendChild(spacer);
   }
-  lodgeB.appendChild(lodgeBSeats);
 
-  // центр
+  // центр: партер rows[]
   const center = document.createElement('div');
   for (const r of rows){
+    // партер всегда seats + aisle_after
     const line = document.createElement('div');
     line.className = 'row-line';
 
@@ -423,7 +329,7 @@ function renderParter(container, rows){
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    const seatsCount = r.seats || 0;
+    const seatsCount = Number(r.seats || 0);
     for (let i=1;i<=seatsCount;i++){
       sr.appendChild(createSeatElement(r, r.row, i, 'parter', i));
     }
@@ -431,26 +337,33 @@ function renderParter(container, rows){
     line.appendChild(sr);
     center.appendChild(line);
   }
-
-  // ✅ Ложа А (продаётся)
-  const lodgeA = document.createElement('div');
-  lodgeA.className = 'hall-lodge';
-  const lodgeALabel = document.createElement('div');
-  lodgeALabel.className = 'hall-lodge-label';
-  lodgeALabel.textContent = 'Ложа А';
-  lodgeA.appendChild(lodgeALabel);
-
-  const lodgeASeats = document.createElement('div');
-  lodgeASeats.className = 'hall-lodge-seats';
-  for (let i=1;i<=18;i++){
-    const fakeRowInfo = { price: 200, aisle_after: null, price_group: null };
-    lodgeASeats.appendChild(createSeatElement(fakeRowInfo, 0, i, 'lodge', i, 'Ложа А'));
-  }
-  lodgeA.appendChild(lodgeASeats);
-
-  wrap.appendChild(lodgeB);
   wrap.appendChild(center);
-  wrap.appendChild(lodgeA);
+
+  // ✅ Ложа справа (boxA)
+  const rightBox = boxes?.find(b => (b.id || '').toLowerCase() === 'boxa') || null;
+  if (rightBox){
+    const lodgeA = document.createElement('div');
+    lodgeA.className = 'hall-lodge';
+    const lodgeALabel = document.createElement('div');
+    lodgeALabel.className = 'hall-lodge-label';
+    lodgeALabel.textContent = rightBox.label || 'Ложа А';
+    lodgeA.appendChild(lodgeALabel);
+
+    const lodgeASeats = document.createElement('div');
+    lodgeASeats.className = 'hall-lodge-seats';
+    const fakeRowInfo = { price_group: rightBox.price_group, price: null, aisle_after: null };
+
+    for (let i=1;i<=Number(rightBox.seats||0);i++){
+      lodgeASeats.appendChild(createSeatElement(fakeRowInfo, String(rightBox.id||'boxA'), i, 'lodge', i, (rightBox.label||'Ложа А')));
+    }
+    lodgeA.appendChild(lodgeASeats);
+    wrap.appendChild(lodgeA);
+  }else{
+    const spacer = document.createElement('div');
+    spacer.className = 'hall-lodge';
+    spacer.style.visibility = 'hidden';
+    wrap.appendChild(spacer);
+  }
 
   section.appendChild(wrap);
   container.appendChild(section);
@@ -466,6 +379,10 @@ function renderAmphi(container, rows){
   section.appendChild(title);
 
   for (const r of rows){
+    const left = Number(r.seats_left || 0);
+    const right = Number(r.seats_right || 0);
+
+    // рисуем, но делаем inactive
     const line = document.createElement('div');
     line.className = 'row-line';
 
@@ -477,14 +394,23 @@ function renderAmphi(container, rows){
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    const seatsCount = r.seats || 0;
-    for (let i=1;i<=seatsCount;i++){
+    const total = left + right;
+    for (let i=1;i<=total;i++){
       const fake = { price: 0, aisle_after: null };
       const b = createSeatElement(fake, r.row, i, 'amphi', i);
       b.classList.add('seat--inactive');
       b.onclick = null;
       b.addEventListener('click', (e)=>e.preventDefault());
       sr.appendChild(b);
+
+      // вставка “прохода” после left блока
+      if (left && right && i === left){
+        const gap = document.createElement('div');
+        gap.className = 'seat seat--gap-mid';
+        gap.style.pointerEvents = 'none';
+        gap.style.opacity = '0';
+        sr.appendChild(gap);
+      }
     }
 
     line.appendChild(sr);
@@ -504,6 +430,11 @@ function renderBalcony(container, rows){
   section.appendChild(title);
 
   for (const r of rows){
+    const left = Number(r.seats_left || 0);
+    const right = Number(r.seats_right || 0);
+    const seats = Number(r.seats || 0);
+    const total = seats || (left + right);
+
     const line = document.createElement('div');
     line.className = 'row-line';
 
@@ -515,14 +446,31 @@ function renderBalcony(container, rows){
     const sr = document.createElement('div');
     sr.className = 'seats-row';
 
-    const seatsCount = r.seats || 0;
-    for (let i=1;i<=seatsCount;i++){
+    for (let i=1;i<=total;i++){
       const fake = { price: 0, aisle_after: null };
       const b = createSeatElement(fake, r.row, i, 'balcony', i);
       b.classList.add('seat--inactive');
       b.onclick = null;
       b.addEventListener('click', (e)=>e.preventDefault());
       sr.appendChild(b);
+
+      // если задан split — вставим проход
+      if (left && right && i === left){
+        const gap = document.createElement('div');
+        gap.className = 'seat seat--gap-mid';
+        gap.style.pointerEvents = 'none';
+        gap.style.opacity = '0';
+        sr.appendChild(gap);
+      }
+
+      // если задан aisle_after — тоже поддержим
+      if (!left && !right && r.aisle_after && i === Number(r.aisle_after)){
+        const gap2 = document.createElement('div');
+        gap2.className = 'seat seat--gap-mid';
+        gap2.style.pointerEvents = 'none';
+        gap2.style.opacity = '0';
+        sr.appendChild(gap2);
+      }
     }
 
     line.appendChild(sr);
@@ -537,11 +485,12 @@ function renderHall(schema){
   if(!root) return;
   root.innerHTML = '';
 
-  const rowsParter = schema.rows.filter(r=>r.zone==='parter');
-  const rowsAmphi  = schema.rows.filter(r=>r.zone==='amphi');
-  const rowsBalcony= schema.rows.filter(r=>r.zone==='balcony');
+  const rowsParter = (schema.rows || []).filter(r=>r.zone==='parter');
+  const rowsAmphi  = (schema.rows || []).filter(r=>r.zone==='amphi');
+  const rowsBalcony= (schema.rows || []).filter(r=>r.zone==='balcony');
+  const boxes = schema.boxes || [];
 
-  renderParter(root, rowsParter);
+  renderParter(root, rowsParter, boxes);
   renderAmphi(root, rowsAmphi);
   renderBalcony(root, rowsBalcony);
 }
@@ -643,6 +592,7 @@ function renderRegistry(){
     btnSell.textContent = 'Продати + друк';
     btnSell.addEventListener('click', ()=>{
       const show = afisha.find(x=>x.id===currentShowId);
+
       for (const s of allSeats){
         seatState.set(s.key, 'sold');
       }
@@ -793,6 +743,109 @@ function applySell(){
   openPrintBatch(items, show);
 }
 
+// ===== Print batch (как было) =====
+function openPrintBatch(items, show){
+  const orderPrefix = 'ORD-' + Date.now();
+  const safe = (s)=>String(s ?? '').replace(/[<>]/g,'');
+
+  const showTitle = safe(show?.title || 'Назва вистави');
+  const showStage = safe(show?.stage || '');
+  const showDT = safe(`${show?.date || ''} ${show?.time || ''}`.trim());
+
+  const ticketsHtml = items.map((it, idx) => {
+    const order = `${orderPrefix}-${idx+1}`;
+    return `
+      <div class="ticket">
+        <div class="ticket-header">
+          <div class="brand">
+            <div class="logo">Ш</div>
+            <div class="brand-text">
+              <div class="brand-name">Театр ім. Т. Г. Шевченка</div>
+              <div class="brand-tagline">Офіційний онлайн-продаж квитків</div>
+            </div>
+          </div>
+          <div class="ord">${order}</div>
+        </div>
+
+        <div class="title">${showTitle}</div>
+        <div class="sub">${showStage}</div>
+
+        <div class="row">
+          <div class="dt">${showDT}</div>
+          <div class="zone"><strong>${safe(getZoneLabel(it.zone))}</strong></div>
+        </div>
+
+        <div class="dash"></div>
+
+        <div class="grid">
+          <div><div class="lbl">Ряд</div><div class="val">${it.row}</div></div>
+          <div><div class="lbl">Місце</div><div class="val">${it.seat}</div></div>
+          <div><div class="lbl">Ціна</div><div class="val">${it.price} ${safe(CURRENCY)}</div></div>
+          <div><div class="lbl">Канал</div><div class="val">Каса</div></div>
+        </div>
+
+        <div class="dash"></div>
+
+        <div class="legal">
+          Квиток дійсний на одну особу. Повернення та обмін квитків відбувається згідно з правилами театру.
+          Зберігайте квиток до кінця вистави.
+        </div>
+
+        <div class="qr">QR / штрих-код (пізніше можна буде підставити з системи)</div>
+      </div>
+    `;
+  }).join('');
+
+  const html = `
+  <!doctype html>
+  <html lang="uk">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Друк квитків</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <style>
+      @page { size: 80mm 200mm; margin: 5mm; }
+      body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:#fff; }
+      .wrap{ padding:8px; display:flex; flex-direction:column; gap:10px; }
+      .ticket{
+        width: 72mm; border: 1px solid #e5e7eb; border-radius: 10px;
+        padding: 10px 10px 9px; box-sizing:border-box; page-break-after: always;
+      }
+      .ticket:last-child{ page-break-after: auto; }
+      .ticket-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+      .brand{ display:flex; gap:8px; align-items:center; }
+      .logo{ width:28px; height:28px; border-radius:999px; background:#111827; color:#fff;
+        display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
+      .brand-name{ font-size:11px; font-weight:700; color:#111827; line-height:1.1; }
+      .brand-tagline{ font-size:9px; color:#6b7280; line-height:1.1; }
+      .ord{ font-size:9px; color:#6b7280; text-align:right; }
+      .title{ margin-top:8px; font-weight:800; text-transform:uppercase; font-size:12px; color:#111827; }
+      .sub{ margin-top:2px; font-size:10px; color:#374151; }
+      .row{ margin-top:6px; display:flex; justify-content:space-between; font-size:10px; color:#111827; }
+      .dash{ margin:8px 0; border-bottom:1px dashed #d1d5db; }
+      .grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
+      .lbl{ font-size:8px; color:#6b7280; text-transform:uppercase; letter-spacing:.08em; }
+      .val{ font-size:10px; font-weight:700; color:#111827; }
+      .legal{ font-size:8px; color:#6b7280; line-height:1.25; }
+      .qr{ margin-top:8px; height:50px; border:1px dashed #d1d5db; border-radius:8px;
+        display:flex; align-items:center; justify-content:center; font-size:8px; color:#9ca3af; }
+      @media print { .wrap{ padding:0; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">${ticketsHtml}</div>
+    <script>setTimeout(()=>window.print(), 350);</script>
+  </body>
+  </html>
+  `;
+
+  const w = window.open('', '_blank');
+  if (!w) return;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
 // ===== Export CSV =====
 function csvEscape(v){
   const s = String(v ?? '');
@@ -850,10 +903,8 @@ function fillShowSelect(){
   }
 
   sel.value = currentShowId || '';
-
   sel.addEventListener('change', ()=>{
     currentShowId = sel.value || '';
-    setUrlShowId(currentShowId);            // ✅ обновляем URL
     setCurrentShowHeader();
     loadStateForShow();
     renderHall(hallSchema);
@@ -884,12 +935,6 @@ async function initAdminPage(){
   const dateEl = document.getElementById('admin-current-date');
   if(dateEl) dateEl.textContent = new Date().toLocaleString('uk-UA');
 
-  // ✅ авто-выбор сеанса из URL
-  const urlShow = getUrlShowId();
-  if (urlShow && afisha.some(x => x.id === urlShow)) {
-    currentShowId = urlShow;
-  }
-
   fillShowSelect();
   setCurrentShowHeader();
   loadStateForShow();
@@ -907,9 +952,6 @@ async function initAdminPage(){
   document.getElementById('btn-export-reserves')?.addEventListener('click', exportReserves);
   document.getElementById('btn-export-sales')?.addEventListener('click', exportSales);
   document.getElementById('btn-export-ops')?.addEventListener('click', exportOps);
-
-  // если у тебя в разметке есть сканер — ок; если нет — просто ничего не сделает
-  initScannerUI?.();
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -918,12 +960,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert('Помилка ініціалізації адмінки. Відкрий консоль (F12) і покажи помилку.');
   });
 });
-
-/* =====================================================================
-   SCANNER — оставлен как было (не вмешивается в кассу).
-   Если разметки сканера нет — не ломает страницу.
-   ===================================================================== */
-function initScannerUI(){
-  // намеренно пустой/безопасный: чтобы сканер не мог “ломать” кассу
-  // если хочешь — вернём полноценный код сканера отдельным файлом later
-}
