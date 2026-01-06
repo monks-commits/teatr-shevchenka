@@ -1,81 +1,87 @@
 <!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Білетний відділ — Backoffice</title>
-  <link rel="stylesheet" href="./styles.css"/>
+  <link rel="stylesheet" href="./backoffice.css" />
 </head>
 <body>
   <header class="top">
     <div class="brand">
-      <div class="brand-title">Білетний відділ</div>
-      <div class="brand-sub">Backoffice (читання даних)</div>
+      <div class="brand__title" id="theatreName">Білетний відділ</div>
+      <div class="brand__sub">Backoffice (читання даних)</div>
     </div>
-
-    <div class="top-actions">
-      <span id="whoami" class="muted"></span>
-      <button id="btnLogout" class="btn btn-secondary" style="display:none">Вийти</button>
+    <div class="top__right">
+      <div class="user" id="userBox" hidden>
+        <span id="userEmail"></span>
+        <button class="btn btn-ghost" id="btnLogout">Вийти</button>
+      </div>
     </div>
   </header>
 
   <main class="wrap">
     <!-- LOGIN -->
-    <section id="loginCard" class="card">
+    <section class="card" id="loginCard">
       <h2>Вхід для співробітників</h2>
-      <p class="muted">Використовує Supabase Auth. Доступ лише для співробітників.</p>
+      <p class="muted">Доступ лише для співробітників (Supabase Auth).</p>
 
       <div class="grid2">
-        <div>
-          <label>Email</label>
-          <input id="loginEmail" type="email" placeholder="office@theatre.com" autocomplete="username"/>
-        </div>
-        <div>
-          <label>Пароль</label>
-          <input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password"/>
-        </div>
+        <label>
+          <div class="lbl">Email</div>
+          <input id="email" type="email" placeholder="you@theatre.com" autocomplete="username" />
+        </label>
+        <label>
+          <div class="lbl">Пароль</div>
+          <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </label>
       </div>
 
       <div class="row">
-        <button id="btnLogin" class="btn btn-primary">Увійти</button>
-        <span id="loginMsg" class="muted"></span>
+        <button class="btn btn-primary" id="btnLogin">Увійти</button>
+        <div class="err" id="loginError" hidden></div>
       </div>
+
+      <details class="muted" style="margin-top:10px">
+        <summary>Якщо не пускає</summary>
+        <ol>
+          <li>Перевір, що <code>/data/settings.json</code> — валідний JSON і містить <code>supabase_url</code> та <code>supabase_anon_key</code>.</li>
+          <li>Створи користувача в Supabase → Auth → Users (email+password).</li>
+          <li>Застосуй SQL-політики (нижче), інакше таблиці можуть не читатись.</li>
+        </ol>
+      </details>
     </section>
 
     <!-- APP -->
-    <section id="appCard" class="card" style="display:none">
-      <div class="row space">
-        <div>
-          <h2 style="margin:0">Пошук</h2>
-          <div class="muted">order_id / email / phone / ticket_id / qr_payload</div>
-        </div>
-        <div class="row">
-          <button id="btnExportCsv" class="btn btn-secondary">Експорт CSV (видиме)</button>
-        </div>
+    <section class="card" id="appCard" hidden>
+      <div class="tabs">
+        <button class="tab active" data-tab="orders">Замовлення</button>
+        <button class="tab" data-tab="tickets">Квитки</button>
+        <button class="tab" data-tab="bookings">Броні</button>
+        <button class="tab" data-tab="settings">Налаштування</button>
       </div>
 
-      <div class="row">
-        <input id="q" type="text" placeholder="Напр.: ORD-1002 або +380... або email@..." style="flex:1"/>
-        <button id="btnSearch" class="btn btn-primary">Знайти</button>
-        <button id="btnClear" class="btn btn-secondary">Очистити</button>
+      <div class="filters">
+        <label>
+          <div class="lbl">show_slug</div>
+          <input id="filterShow" placeholder="visim / maugli / …" />
+        </label>
+        <label>
+          <div class="lbl">статус</div>
+          <select id="filterStatus">
+            <option value="">— всі —</option>
+          </select>
+        </label>
+        <button class="btn btn-ghost" id="btnRefresh">Оновити</button>
       </div>
 
-      <div id="statusLine" class="muted" style="margin-top:10px"></div>
-
-      <div class="split">
-        <section class="card-inner">
-          <h3>Замовлення</h3>
-          <div id="ordersList" class="list"></div>
-        </section>
-
-        <section class="card-inner">
-          <h3>Деталі</h3>
-          <div id="details" class="muted">Оберіть замовлення зі списку.</div>
-        </section>
-      </div>
+      <div class="panel" id="panel-orders"></div>
+      <div class="panel" id="panel-tickets" hidden></div>
+      <div class="panel" id="panel-bookings" hidden></div>
+      <div class="panel" id="panel-settings" hidden></div>
     </section>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./backoffice.js"></script>
 </body>
 </html>
