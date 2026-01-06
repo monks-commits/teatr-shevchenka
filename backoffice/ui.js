@@ -1,78 +1,54 @@
-import { fmt, fmtDT } from "./utils.js";
+// backoffice/ui.js
+(function(){
+  const { qs } = window.BO_UTILS;
 
-export function renderOrders(listEl, orders, activeId, onPick){
-  listEl.innerHTML = "";
-  if(!orders.length){
-    listEl.innerHTML = `<div class="muted">Нічого не знайдено.</div>`;
-    return;
+  function setText(id, text){
+    const el = qs(id);
+    if (el) el.textContent = text;
   }
 
-  for(const o of orders){
-    const div = document.createElement("div");
-    div.className = "item" + (o.id === activeId ? " active" : "");
-    div.innerHTML = `
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-        <div>
-          <div style="font-weight:800">${fmt(o.order_id || o.id)}</div>
-          <div class="muted">${fmtDT(o.created_at)}</div>
-        </div>
-        <div style="text-align:right">
-          <div><span class="pill">${fmt(o.status)}</span></div>
-          <div style="margin-top:6px;font-weight:800">${fmt(o.amount)} ${fmt(o.currency || "грн")}</div>
-        </div>
-      </div>
-      <div class="muted" style="margin-top:8px">
-        ${fmt(o.email)} ${o.phone ? "• " + fmt(o.phone) : ""} ${o.channel ? "• " + fmt(o.channel) : ""}
-      </div>
-    `;
-    div.addEventListener("click", ()=>onPick(o));
-    listEl.appendChild(div);
-  }
-}
-
-export function renderDetails(detailsEl, order, tickets){
-  if(!order){
-    detailsEl.innerHTML = `<div class="muted">Оберіть замовлення.</div>`;
-    return;
+  function clear(el){
+    if (el) el.innerHTML = '';
   }
 
-  const seats = tickets?.map(t=>fmt(t.seat_label || `${t.zone||""} ${t.row||""}-${t.seat||""}`)).join(", ");
+  function renderBasket(listEl, items, currency){
+    clear(listEl);
+    if (!listEl) return;
 
-  detailsEl.innerHTML = `
-    <div class="kv">
-      <div class="k">order_id</div><div>${fmt(order.order_id || order.id)}</div>
-      <div class="k">Статус</div><div>${fmt(order.status)}</div>
-      <div class="k">Канал</div><div>${fmt(order.channel)}</div>
-      <div class="k">Сума</div><div><b>${fmt(order.amount)} ${fmt(order.currency || "грн")}</b></div>
-      <div class="k">Email</div><div>${fmt(order.email)}</div>
-      <div class="k">Телефон</div><div>${fmt(order.phone)}</div>
-      <div class="k">Створено</div><div>${fmtDT(order.created_at)}</div>
-    </div>
+    if (!items.length) return;
 
-    <hr/>
+    for (const it of items){
+      const row = document.createElement('div');
+      row.className = 'bItem';
+      row.innerHTML = `<span>${it.label}</span><span><strong>${it.price}</strong> ${currency}</span>`;
+      listEl.appendChild(row);
+    }
+  }
 
-    <div style="font-weight:800;margin-bottom:8px">Квитки (${tickets?.length || 0})</div>
-    <div class="muted" style="margin-bottom:8px">${seats || "—"}</div>
+  function renderOps(listEl, ops){
+    clear(listEl);
+    if (!listEl) return;
 
-    ${(tickets||[]).map(t=>`
-      <div class="item" style="cursor:default">
-        <div style="display:flex;justify-content:space-between;gap:10px">
-          <div>
-            <div style="font-weight:800">${fmt(t.seat_label || `${t.zone||""} ${t.row||""}-${t.seat||""}`)}</div>
-            <div class="muted">${fmt(t.price)} ${fmt(t.currency || "грн")}</div>
-          </div>
-          <div style="text-align:right">
-            <div><span class="pill">${fmt(t.status)}</span></div>
-            <div class="muted" style="margin-top:6px">${t.checked_in_at ? "✅ " + fmtDT(t.checked_in_at) : "—"}</div>
-          </div>
-        </div>
+    if (!ops.length){
+      listEl.innerHTML = `<div class="muted">Поки що немає операцій.</div>`;
+      return;
+    }
 
-        <div class="muted" style="margin-top:8px">
-          ticket_id: ${fmt(t.id)}${t.qr_payload ? " • qr: " + fmt(t.qr_payload) : ""}
-        </div>
+    for (const o of ops.slice().reverse()){
+      const div = document.createElement('div');
+      div.className = 'op';
+      div.innerHTML = `
+        <div class="t">${o.action} • ${o.count} • ${o.total} ${o.currency}</div>
+        <div class="m">${o.showLabel || ''} • ${o.tsHuman || o.ts}</div>
+        <div class="m">${(o.seats||[]).join(', ')}</div>
+      `;
+      listEl.appendChild(div);
+    }
+  }
 
-        ${t.pdf_url ? `<div style="margin-top:8px"><a href="${t.pdf_url}" target="_blank" rel="noopener">PDF</a></div>` : ``}
-      </div>
-    `).join("")}
-  `;
-}
+  window.BO_UI = {
+    setText,
+    renderBasket,
+    renderOps
+  };
+})();
