@@ -1,4 +1,4 @@
-
+// admin/admin.js
 let SETTINGS = null;
 let CURRENCY = 'грн';
 let PRICING_DEFAULTS = {};
