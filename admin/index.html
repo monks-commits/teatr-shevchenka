@@ -3,117 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Панель касира — Театр ім. Т. Г. Шевченка</title>
-
-  <!-- общий стиль сайта -->
-  <link rel="stylesheet" href="../styles.css" />
-  <!-- стиль админки -->
-  <link rel="stylesheet" href="./admin.css" />
+  <title>Admin</title>
+  <meta http-equiv="refresh" content="0; url=./admin.html">
+  <script>
+    // сохраняем query-string (?show=...)
+    const qs = location.search || "";
+    location.replace("./admin.html" + qs);
+  </script>
 </head>
-
-<body>
-  <header class="site-header" style="padding:18px 0;">
-    <div class="container admin-topbar">
-      <div>
-        <div class="admin-title" id="admin-theatre-name">Театр ім. Т. Г. Шевченка</div>
-        <div class="admin-subtitle" id="admin-theatre-subtitle">Панель касира / адміністратора</div>
-      </div>
-
-      <div class="admin-meta">
-        <div class="admin-meta-line" id="admin-current-show">Сеанс: (не обрано)</div>
-        <div class="admin-meta-line" id="admin-current-date">—</div>
-
-        <div class="admin-controls">
-          <label class="admin-label" for="showSelect">Спектакль</label>
-          <select id="showSelect" class="admin-select">
-            <option value="">— обрати —</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <main class="main">
-    <div class="container admin-layout">
-
-      <!-- LEFT: hall -->
-      <section class="card admin-card">
-        <div class="card-header">
-          <h2 class="card-title">Схема залу</h2>
-          <div class="card-subtitle">Натискайте на місця, щоб додати їх до кошика. Далі — «Продати» або «Поставити на бронь».</div>
-        </div>
-
-        <div class="admin-hall-wrap">
-          <div class="admin-hall-scroll">
-            <div id="hall-root" class="admin-hall-root"></div>
-          </div>
-
-          <div class="admin-legend">
-            <div class="legend-left">
-              <span class="legend-item"><span class="sw sw-free"></span>вільно</span>
-              <span class="legend-item"><span class="sw sw-selected"></span>обрано (кошик)</span>
-              <span class="legend-item"><span class="sw sw-sold"></span>продано</span>
-              <span class="legend-item"><span class="sw sw-reserved"></span>бронь</span>
-              <span class="legend-item"><span class="sw sw-inactive"></span>службові / не продаються</span>
-            </div>
-
-            <div class="legend-prices" id="priceLegend"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- RIGHT: basket + registry -->
-      <aside class="admin-right">
-
-        <section class="card admin-card">
-          <div class="card-header">
-            <h2 class="card-title">Обрані місця</h2>
-            <div class="card-subtitle" id="basket-sub">Поки що нічого не обрано.</div>
-          </div>
-
-          <div class="basket-total">
-            <div>Сума: <strong><span id="basket-total">0</span> <span id="basket-currency">грн</span></strong></div>
-          </div>
-
-          <div id="basket-list" class="basket-list"></div>
-
-          <div class="admin-actions">
-            <button id="btn-sell" class="btn btn-primary">Продати (каса)</button>
-            <button id="btn-reserve" class="btn btn-warning">Поставити на бронь</button>
-
-            <div class="admin-actions-row">
-              <button id="btn-unreserve" class="btn btn-secondary">Скасувати бронь</button>
-              <button id="btn-clear" class="btn btn-ghost">Очистити кошик</button>
-            </div>
-          </div>
-
-          <div class="admin-note">
-            <strong>Примітка</strong><br/>
-            Дані в цій демо-версії зберігаються лише в браузері касира (localStorage).
-            Після оновлення сторінки місця залишаться зі своїми статусами для обраного спектаклю.
-          </div>
-        </section>
-
-        <section class="card admin-card">
-          <div class="card-header">
-            <h2 class="card-title">Реєстр броней</h2>
-            <div class="card-subtitle">Броні групуються за “Хто бронює”. Звідси можна продати+друк або скасувати бронь.</div>
-          </div>
-
-          <div id="reserveRegistry" class="registry"></div>
-
-          <div class="admin-actions export-actions">
-            <button id="btn-export-reserves" class="btn btn-ghost">Експорт броней (CSV)</button>
-            <button id="btn-export-sales" class="btn btn-ghost">Експорт продаж (CSV)</button>
-            <button id="btn-export-ops" class="btn btn-ghost">Експорт журналу (CSV)</button>
-          </div>
-        </section>
-
-      </aside>
-
-    </div>
-  </main>
-
-  <script src="./admin.js"></script>
-</body>
+<body></body>
 </html>
