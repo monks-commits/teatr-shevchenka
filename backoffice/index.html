@@ -2,85 +2,161 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
+  <title>Білетний відділ — Театр ім. Т. Г. Шевченка</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Білетний відділ — Backoffice</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <header class="top">
+  <header class="topbar">
     <div class="brand">
-      <div class="brand__title" id="theatreName">Білетний відділ</div>
-      <div class="brand__sub">Backoffice (читання даних)</div>
+      <div class="brand__title" id="boTitle">Білетний відділ</div>
+      <div class="brand__sub">Backoffice (локально, без авторизації)</div>
     </div>
 
-    <div class="top__right">
-      <div class="user" id="userBox" hidden>
-        <span id="userEmail"></span>
-        <button class="btn btn-ghost" id="btnLogout">Вийти</button>
+    <div class="topbar__controls">
+      <div class="control">
+        <label>Період</label>
+        <input id="rangeFrom" type="date" />
       </div>
+      <div class="control">
+        <label>&nbsp;</label>
+        <input id="rangeTo" type="date" />
+      </div>
+
+      <div class="control control--wide">
+        <label>Подія / сеанс</label>
+        <select id="showSelect">
+          <option value="">— завантаження… —</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <label>Пошук</label>
+        <input id="searchInput" type="text" placeholder="ПІБ / телефон / примітка (поки демо)" />
+      </div>
+
+      <button class="btn btn--ghost" id="btnResetLocal" title="Очистити локальні дані по цьому сеансу">
+        Скинути локальні
+      </button>
     </div>
   </header>
 
-  <main class="wrap">
-    <section class="card" id="loginCard">
-      <h2>Вхід для співробітників</h2>
-      <p class="muted">Supabase Auth. Доступ лише для співробітників.</p>
+  <main class="layout">
+    <!-- Left tools -->
+    <aside class="tools">
+      <button class="toolbtn" id="btnHome" title="На початок">🏠</button>
+      <button class="toolbtn" id="btnZoomIn" title="Збільшити">＋</button>
+      <button class="toolbtn" id="btnZoomOut" title="Зменшити">－</button>
+      <button class="toolbtn" id="btnList" title="Список/журнал (нижче)">≡</button>
+    </aside>
 
-      <div class="grid2">
-        <label>
-          <div class="lbl">Email</div>
-          <input id="email" type="email" placeholder="you@theatre.com" autocomplete="username" />
-        </label>
-        <label>
-          <div class="lbl">Пароль</div>
-          <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
-        </label>
+    <!-- Hall -->
+    <section class="center">
+      <div class="card">
+        <div class="card__head">
+          <div>
+            <div class="h1">Схема залу</div>
+            <div class="muted" id="seanceMeta">Оберіть сеанс.</div>
+          </div>
+
+          <div class="legend" id="legend">
+            <span class="lg"><i class="dot st-free"></i>Вільно</span>
+            <span class="lg"><i class="dot st-basket"></i>У кошику</span>
+            <span class="lg"><i class="dot st-reserved"></i>Резерв</span>
+            <span class="lg"><i class="dot st-sold"></i>Продано</span>
+            <span class="lg"><i class="dot st-real"></i>Реалізація</span>
+            <span class="lg"><i class="dot st-invite"></i>Запрошення</span>
+            <span class="lg"><i class="dot st-blocked"></i>Блок</span>
+          </div>
+        </div>
+
+        <div class="hallWrap" id="hallWrap">
+          <div class="hall" id="hallRoot"></div>
+        </div>
       </div>
 
-      <div class="row">
-        <button class="btn btn-primary" id="btnLogin">Увійти</button>
-        <div class="err" id="loginError" hidden></div>
+      <div class="card" style="margin-top:12px;">
+        <div class="card__head">
+          <div class="h2">Журнал операцій (локально)</div>
+          <div class="muted">Експортується як CSV/JSON. Для синхронізації з онлайн — наступним етапом.</div>
+        </div>
+        <div class="ops">
+          <div class="ops__actions">
+            <button class="btn btn--ghost" id="btnExportOpsCsv">Експорт журналу (CSV)</button>
+            <button class="btn btn--ghost" id="btnExportOpsJson">Експорт журналу (JSON)</button>
+            <button class="btn btn--ghost" id="btnClearOps">Очистити журнал</button>
+          </div>
+          <div class="ops__list" id="opsList"></div>
+        </div>
       </div>
-
-      <details class="muted" style="margin-top:10px">
-        <summary>Якщо не пускає</summary>
-        <ol>
-          <li>Перевір <code>/data/settings.json</code> — валідний JSON, є <code>supabase_url</code> і <code>supabase_anon_key</code>.</li>
-          <li>Створи користувача: Supabase → Auth → Users (email + password).</li>
-          <li>Додай RLS policies на читання для authenticated.</li>
-        </ol>
-      </details>
     </section>
 
-    <section class="card" id="appCard" hidden>
-      <div class="tabs">
-        <button class="tab active" data-tab="orders">Замовлення</button>
-        <button class="tab" data-tab="tickets">Квитки</button>
-        <button class="tab" data-tab="bookings">Броні</button>
-        <button class="tab" data-tab="settings">Налаштування</button>
+    <!-- Right panel -->
+    <aside class="right">
+      <div class="card">
+        <div class="card__head">
+          <div class="h2">Кошик (актуальне замовлення)</div>
+        </div>
+
+        <div class="basket">
+          <div class="basket__meta" id="basketMeta">Поки що нічого не обрано.</div>
+          <div class="basket__list" id="basketList"></div>
+
+          <div class="basket__sum">
+            <div>Всього до сплати:</div>
+            <div class="sum"><span id="basketTotal">0</span> <span id="currency">грн</span></div>
+          </div>
+
+          <div class="basket__sum muted">
+            Касовий збір: <strong>0</strong>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn--sell" id="btnSell">ПРОДАТИ</button>
+            <button class="btn btn--real" id="btnRealize">ПІД РЕАЛІЗАЦІЮ</button>
+            <button class="btn btn--reserve" id="btnReserve">ДО РЕЗЕРВУ</button>
+            <button class="btn btn--invite" id="btnInvite">ЗАПРОШЕННЯ</button>
+            <button class="btn btn--danger" id="btnClearBasket">ОЧИСТИТИ</button>
+          </div>
+
+          <div class="note">
+            <strong>Примітка:</strong> зараз все працює локально (localStorage).  
+            Ми НЕ чіпаємо онлайн. Синхронізація — наступним кроком.
+          </div>
+        </div>
       </div>
 
-      <div class="filters">
-        <label>
-          <div class="lbl">show_slug</div>
-          <input id="filterShow" placeholder="visim / maugli / …" />
-        </label>
-        <label>
-          <div class="lbl">статус</div>
-          <select id="filterStatus">
-            <option value="">— всі —</option>
-          </select>
-        </label>
-        <button class="btn btn-ghost" id="btnRefresh">Оновити</button>
+      <div class="card" style="margin-top:12px;">
+        <div class="card__head">
+          <div class="h2">Клієнти / агенти (поки макет)</div>
+          <div class="muted">Таблиця під “як у Карабаса”. Дані підключимо пізніше.</div>
+        </div>
+
+        <div class="table">
+          <div class="table__row table__row--head">
+            <div>ID</div><div>П.І.Б.</div><div>Email</div><div>Телефон</div><div>Тип</div><div>Примітка</div>
+          </div>
+          <div class="table__row">
+            <div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div>
+          </div>
+        </div>
       </div>
 
-      <div class="panel" id="panel-orders"></div>
-      <div class="panel" id="panel-tickets" hidden></div>
-      <div class="panel" id="panel-bookings" hidden></div>
-      <div class="panel" id="panel-settings" hidden></div>
-    </section>
+      <div class="card" style="margin-top:12px;">
+        <div class="card__head">
+          <div class="h2">Експорт</div>
+        </div>
+        <div class="exp">
+          <button class="btn btn--ghost" id="btnExportStateJson">Експорт стану місць (JSON)</button>
+          <button class="btn btn--ghost" id="btnExportSalesCsv">Експорт продажів (CSV)</button>
+        </div>
+      </div>
+    </aside>
   </main>
 
-  <script type="module" src="./app.js"></script>
+  <script src="./utils.js"></script>
+  <script src="./ui.js"></script>
+  <script src="./supabaseClient.js"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
