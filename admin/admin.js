@@ -38,11 +38,18 @@ function downloadText(filename, text){
   setTimeout(()=>URL.revokeObjectURL(a.href), 500);
 }
 
+function setUiNotice(msg){
+  const el = document.getElementById('adminNotice');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.display = msg ? 'block' : 'none';
+}
+
 async function loadSettings(){
   if (SETTINGS) return SETTINGS;
 
   try{
-    const res = await fetch('../data/settings.json?v=' + Date.now(), {cache:'no-store'});
+    const res = await fetch('../data/settings.json', {cache:'no-store'});
     if(!res.ok) throw new Error('HTTP ' + res.status);
     SETTINGS = await res.json();
 
@@ -55,7 +62,7 @@ async function loadSettings(){
     SETTINGS = {};
   }
 
-  // ✅ ДЕФОЛТНАЯ “РОДНАЯ” ПАЛИТРА (если не задана в settings.json)
+  // ✅ ДЕФОЛТНАЯ ПАЛИТРА (если не задана)
   if (!PRICE_PALETTE || Object.keys(PRICE_PALETTE).length === 0){
     PRICE_PALETTE = {
       "70":  "seat--p70",
@@ -72,46 +79,84 @@ async function loadSettings(){
   return SETTINGS;
 }
 
-async function loadAfisha(){
-  const res = await fetch('../data/afisha.json?v=' + Date.now(), {cache:'no-store'});
-  if(!res.ok) throw new Error('Cannot load afisha: ' + res.status);
-  afisha = await res.json();
-  return afisha;
-}
-
-// === ВАЖНО: схема зала теперь выбирается ПО СЕАНСУ ===
-function getHallSchemaPathForShow(show){
-  // 1) прямое имя файла
-  if (show?.hall_schema) return `../data/halls/${show.hall_schema}`;
-
-  // 2) id -> json
-  if (show?.hall_id) return `../data/halls/${show.hall_id}.json`;
-
-  // 3) fallback
-  return '../data/halls/shevchenko-big.json';
-}
-
-async function loadHallSchemaForCurrentShow(){
-  const show = afisha.find(x=>x.id===currentShowId);
-
-  const path = getHallSchemaPathForShow(show);
-  const res = await fetch(path + '?v=' + Date.now(), {cache:'no-store'});
-  if(!res.ok){
-    console.warn('Не загрузилась схема по сеансу, fallback на shevchenko-big.json. Было:', path, res.status);
-    const r2 = await fetch('../data/halls/shevchenko-big.json?v=' + Date.now(), {cache:'no-store'});
-    if(!r2.ok) throw new Error('Cannot load hall schema: ' + r2.status);
-    hallSchema = await r2.json();
-    return hallSchema;
-  }
-
+async function loadHallSchema(){
+  if (hallSchema) return hallSchema;
+  const res = await fetch('../data/halls/shevchenko-big.json', {cache:'no-store'});
+  if(!res.ok) throw new Error('Cannot load hall schema: ' + res.status);
   hallSchema = await res.json();
   return hallSchema;
 }
 
+/**
+ * ✅ ВАЖНО: админка должна подхватывать "живую" афишу.
+ * Мы НЕ ломаем формат — просто делаем загрузку устойчивой:
+ * - ожидаем массив объектов
+ * - пробуем несколько путей (на случай где реально лежит файл)
+ */
+async function loadAfisha(){
+  const candidates = [
+    '../data/afisha.json',
+    '../spectacles/afisha.json',
+    '../data/seances.json'
+  ];
+
+  let lastErr = null;
+
+  for (const url of candidates){
+    try{
+      const res = await fetch(url, {cache:'no-store'});
+      if (!res.ok) { lastErr = new Error(`${url}: HTTP ${res.status}`); continue; }
+
+      const json = await res.json();
+
+      // нормализуем:
+      // 1) массив -> ок
+      // 2) объект вида {items:[...]} или {afisha:[...]} или {shows:[...]} -> берём массив
+      let arr = null;
+      if (Array.isArray(json)) arr = json;
+      else if (json && Array.isArray(json.items)) arr = json.items;
+      else if (json && Array.isArray(json.afisha)) arr = json.afisha;
+      else if (json && Array.isArray(json.shows)) arr = json.shows;
+      else if (json && Array.isArray(json.seances)) arr = json.seances;
+
+      if (!arr) {
+        lastErr = new Error(`${url}: JSON не массив (и не содержит items/afisha/shows/seances)`);
+        continue;
+      }
+
+      // убираем мусор/пустые элементы
+      arr = arr.filter(x => x && (x.id || x.slug));
+
+      if (arr.length === 0){
+        lastErr = new Error(`${url}: массив пустой`);
+        continue;
+      }
+
+      // приводим к единому виду, чтобы селект работал
+      afisha = arr.map(x => ({
+        id: x.id || x.slug,
+        title: x.title || x.name || x.id || x.slug,
+        date: x.date || (x.datetime ? String(x.datetime).slice(0,10) : ''),
+        time: x.time || (x.datetime ? new Date(x.datetime).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'}) : ''),
+        stage: x.stage || x.hall || x.scene || ''
+      }));
+
+      console.log('[admin] afisha loaded from', url, afisha);
+      setUiNotice('');
+      return afisha;
+
+    }catch(e){
+      lastErr = e;
+    }
+  }
+
+  console.error('[admin] afisha not loaded:', lastErr);
+  afisha = [];
+  setUiNotice('❗️Не вдалося завантажити афішу (список сеансів). Перевір data/afisha.json та формат JSON.');
+  return afisha;
+}
+
 // ==== Цена ====
-// 1) если есть rowInfo.price -> берём
-// 2) если есть price_group и pricing_defaults совпадает -> берём
-// 3) если цена = 0 -> Fallback по ряду партера (чтобы не было белого)
 function getPriceForRow(rowInfo, zone, rowNumber){
   if (rowInfo.price != null) return Number(rowInfo.price) || 0;
 
@@ -128,9 +173,7 @@ function getPriceForRow(rowInfo, zone, rowNumber){
     if (rowNumber <= 15) return 120;
     return 100;
   }
-  if (zone === 'lodge'){
-    return 200;
-  }
+  if (zone === 'lodge') return 200;
   return 0;
 }
 
@@ -213,6 +256,7 @@ function openPrintBatch(items, show){
       @page { size: 80mm 200mm; margin: 5mm; }
       body{ margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; background:#fff; }
       .wrap{ padding:8px; display:flex; flex-direction:column; gap:10px; }
+
       .ticket{
         width: 72mm;
         border: 1px solid #e5e7eb;
@@ -222,19 +266,24 @@ function openPrintBatch(items, show){
         page-break-after: always;
       }
       .ticket:last-child{ page-break-after: auto; }
+
       .ticket-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
       .brand{ display:flex; gap:8px; align-items:center; }
       .logo{ width:28px; height:28px; border-radius:999px; background:#111827; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
       .brand-name{ font-size:11px; font-weight:700; color:#111827; line-height:1.1; }
       .brand-tagline{ font-size:9px; color:#6b7280; line-height:1.1; }
       .ord{ font-size:9px; color:#6b7280; text-align:right; }
+
       .title{ margin-top:8px; font-weight:800; text-transform:uppercase; font-size:12px; color:#111827; }
       .sub{ margin-top:2px; font-size:10px; color:#374151; }
+
       .row{ margin-top:6px; display:flex; justify-content:space-between; font-size:10px; color:#111827; }
       .dash{ margin:8px 0; border-bottom:1px dashed #d1d5db; }
+
       .grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; }
       .lbl{ font-size:8px; color:#6b7280; text-transform:uppercase; letter-spacing:.08em; }
       .val{ font-size:10px; font-weight:700; color:#111827; }
+
       .legal{ font-size:8px; color:#6b7280; line-height:1.25; }
       .qr{ margin-top:8px; height:50px; border:1px dashed #d1d5db; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:8px; color:#9ca3af; }
       @media print { .wrap{ padding:0; } }
@@ -280,7 +329,6 @@ function updateBasketUI(){
     const ul = document.createElement('ul');
     ul.style.paddingLeft = '18px';
     ul.style.margin = '4px 0';
-
     for (const it of basket){
       const li = document.createElement('li');
       li.textContent = `${it.label} — ${it.price} ${CURRENCY}`;
@@ -335,16 +383,13 @@ function createSeatElement(rowInfo, rowNumber, seatNumber, zone, pos, extraLabel
   btn.dataset.price = String(price);
   btn.dataset.key = key;
 
-  // ✅ цвет по цене
   const pc = getPriceClass(price);
   if (pc) btn.classList.add(pc);
 
-  // проходы
   if (zone === 'parter' && rowInfo.aisle_after && pos === rowInfo.aisle_after){
     btn.classList.add('seat--gap-right');
   }
 
-  // статус
   const st = seatState.get(key) || 'free';
   applyStatusClass(btn, st);
 
@@ -384,7 +429,6 @@ function renderParter(container, rows){
   const wrap = document.createElement('div');
   wrap.className = 'parter-wrap';
 
-  // ✅ Ложа Б (продаётся)
   const lodgeB = document.createElement('div');
   lodgeB.className = 'hall-lodge';
   const lodgeBLabel = document.createElement('div');
@@ -400,7 +444,6 @@ function renderParter(container, rows){
   }
   lodgeB.appendChild(lodgeBSeats);
 
-  // центр
   const center = document.createElement('div');
   for (const r of rows){
     const line = document.createElement('div');
@@ -423,7 +466,6 @@ function renderParter(container, rows){
     center.appendChild(line);
   }
 
-  // ✅ Ложа А (продаётся)
   const lodgeA = document.createElement('div');
   lodgeA.className = 'hall-lodge';
   const lodgeALabel = document.createElement('div');
@@ -653,7 +695,6 @@ function renderRegistry(){
         }
       }
       renderRegistry();
-
       openPrintBatch(allSeats, show);
     });
 
@@ -836,34 +877,18 @@ function fillShowSelect(){
   for (const s of afisha){
     const opt = document.createElement('option');
     opt.value = s.id;
-    opt.textContent = `${s.title} — ${s.date}, ${s.time}`;
+    opt.textContent = `${s.title} — ${s.date}${s.time ? ', ' + s.time : ''}`;
     sel.appendChild(opt);
   }
 
   sel.value = currentShowId || '';
-
-  sel.addEventListener('change', async ()=>{
+  sel.onchange = ()=>{
     currentShowId = sel.value || '';
     setCurrentShowHeader();
     loadStateForShow();
-
-    if (!currentShowId){
-      // очистим зал если надо
-      renderHall({ rows: [] });
-      renderPriceLegend();
-      return;
-    }
-
-    // ✅ ключевой момент: грузим схему под выбранный сеанс
-    try{
-      await loadHallSchemaForCurrentShow();
-      renderHall(hallSchema);
-      renderPriceLegend();
-    }catch(e){
-      console.error(e);
-      alert('Не вдалося завантажити схему залу для цього сеансу. Дивись консоль.');
-    }
-  });
+    renderHall(hallSchema);
+    renderPriceLegend();
+  };
 }
 
 function setCurrentShowHeader(){
@@ -875,12 +900,26 @@ function setCurrentShowHeader(){
     showEl.textContent = 'Сеанс: (не обрано)';
     return;
   }
-  showEl.textContent = `Сеанс: ${s.title} — ${s.date}, ${s.time}`;
+  showEl.textContent = `Сеанс: ${s.title} — ${s.date}${s.time ? ', ' + s.time : ''}`;
+}
+
+function hideScannerButtonsIfOfflineOnly(){
+  const offlineOnly = (SETTINGS?.payments?.mode === 'offline_only') || (SETTINGS?.payments?.demo === true);
+  if (!offlineOnly) return;
+
+  // прячем кнопки, если они есть в верстке
+  const btnCtrl = document.getElementById('btn-controller-mode');
+  const btnScan = document.getElementById('btn-scanner-open');
+  if (btnCtrl) btnCtrl.style.display = 'none';
+  if (btnScan) btnScan.style.display = 'none';
 }
 
 async function initAdminPage(){
   await loadSettings();
-  await loadAfisha();
+  hideScannerButtonsIfOfflineOnly();
+
+  await loadAfisha();             // ✅ теперь не “тихо пусто”
+  const schema = await loadHallSchema();
 
   const nameEl = document.getElementById('admin-theatre-name');
   if(nameEl && SETTINGS.theatre?.name) nameEl.textContent = SETTINGS.theatre.name;
@@ -892,15 +931,7 @@ async function initAdminPage(){
   setCurrentShowHeader();
   loadStateForShow();
 
-  // если сеанс уже выбран (например, сохранён в браузере) — подгрузим схему
-  if (currentShowId){
-    await loadHallSchemaForCurrentShow();
-  } else {
-    // по умолчанию можно показать базовую, чтобы страница не была пустой
-    try{ await loadHallSchemaForCurrentShow(); } catch(e){}
-  }
-
-  renderHall(hallSchema || { rows: [] });
+  renderHall(schema);
   renderPriceLegend();
   updateBasketUI();
   renderRegistry();
@@ -913,8 +944,6 @@ async function initAdminPage(){
   document.getElementById('btn-export-reserves')?.addEventListener('click', exportReserves);
   document.getElementById('btn-export-sales')?.addEventListener('click', exportSales);
   document.getElementById('btn-export-ops')?.addEventListener('click', exportOps);
-
-  // ❌ СКАНЕР/КОНТРОЛЁР ОТКЛЮЧЕН ПОЛНОСТЬЮ (чтобы не мешал кассе)
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
