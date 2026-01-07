@@ -1,1 +1,26 @@
+{
+  "show": "maugli",
+  "title": "Мауглі",
+  "date": "2025-12-30",
+  "time": "12:00",
+  "hall_id": "shevchenko-big",
 
+  "prices": {
+    "p_parter_1_6": 200,
+    "p_parter_7_12": 180,
+    "p_parter_13_18": 160,
+    "p_amphi_all": 140,
+    "p_balcony_1_5": 120,
+    "p_balcony_6": 100,
+    "p_boxes": 200
+  },
+
+  "places": {
+    "_comment": "ключ = '<row>-<seat>' або 'boxA-5', 'boxB-3'"
+
+    /*
+      Пусто = всі місця вільні.
+      Статуси зʼявлятимуться після онлайн / касових дій.
+    */
+  }
+}
