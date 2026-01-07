@@ -3,120 +3,520 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Каса — схема залу (browser print)</title>
-
+  <title>Театр — каса (окремо від онлайн) • browser print</title>
   <style>
-    :root{
-      --bg:#f4f6f9;--card:#fff;--line:#e2e8f0;--txt:#0f172a;--muted:#64748b;
-      --red:#ef4444;--amber:#f59e0b;--slate:#64748b;--dark:#0f172a;--blue:#2563eb;
-      --free:#f8fafc;--basket:#fde68a;--reserved:#fdba74;--sold:#fecaca;--blocked:#cbd5e1;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--txt)}
-    header{background:var(--card);border-bottom:1px solid var(--line)}
-    .topbar{max-width:1280px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .brand{display:flex;align-items:center;gap:12px}
-    .logo{width:36px;height:36px;border-radius:10px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}
-    .sub{font-size:12px;color:var(--muted)}
-    .filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    select,input{height:38px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--card);min-width:260px;outline:none}
+    :root{--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--line:#e5e7eb;--text:#111827;}
+    body{margin:0;font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);}
+    header{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);z-index:10}
+    .wrap{max-width:1240px;margin:0 auto;padding:14px 16px;}
+    .top{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .brand{display:flex;gap:10px;align-items:center}
+    .logo{width:34px;height:34px;border-radius:10px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:700}
+    .brand b{display:block}
+    .brand small{display:block;color:var(--muted)}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    select,input{height:36px;border:1px solid var(--line);border-radius:10px;padding:0 10px;background:#fff;min-width:260px}
     input{min-width:220px}
-    main{max-width:1280px;margin:16px auto;padding:0 16px;display:grid;grid-template-columns:1fr 380px;gap:16px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
-    .card-header{padding:12px 14px;border-bottom:1px solid var(--line)}
-    .hall-wrap{padding:10px 10px;overflow:auto;max-height:72vh}
-    .right{padding:14px}
-    .rowline{display:flex;align-items:center;gap:8px;margin:6px 0}
-    .rowlab{width:30px;text-align:right;font-size:12px;color:var(--muted)}
-    .seats{display:flex;gap:6px;flex-wrap:wrap}
-    .seat{
-      width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
-      background:var(--free);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;
-      user-select:none;
-    }
-    .seat:hover{outline:2px solid rgba(37,99,235,.25)}
-    .seat[data-st="basket"]{background:var(--basket);border-color:#f59e0b}
-    .seat[data-st="reserved"]{background:var(--reserved);border-color:#fb923c}
-    .seat[data-st="sold"]{background:var(--sold);border-color:#f87171;cursor:not-allowed;opacity:.75}
-    .seat[data-st="blocked"]{background:var(--blocked);border-color:#94a3b8;cursor:not-allowed;opacity:.85}
-    .seat[data-st="invite"]{background:#e9d5ff;border-color:#a855f7}
-    .seat[data-st="realize"]{background:#bbf7d0;border-color:#22c55e}
-    .aisle{width:18px;height:30px}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:10px 14px;border-top:1px solid var(--line)}
-    .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;border:1px solid var(--line)}
-    .btn{height:46px;border:none;border-radius:14px;font-weight:900;cursor:pointer}
+    main{max-width:1240px;margin:0 auto;padding:16px}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+    .card h2{margin:0 0 6px 0;font-size:18px}
+    .meta{color:var(--muted);font-size:12px;margin-top:2px}
+    .legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 10px}
+    .dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle}
+    .rowline{display:flex;gap:8px;align-items:center;margin:4px 0}
+    .rowlab{width:28px;text-align:right;color:var(--muted);font-size:12px}
+    .seats{display:flex;gap:6px;flex-wrap:nowrap}
+    .seat{width:30px;height:28px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px}
+    .seat:hover{outline:2px solid rgba(59,130,246,.25)}
+    .aisle{width:12px}
+    .st-free{background:#fff}
+    .st-basket{background:#dbeafe;border-color:#93c5fd}
+    .st-reserved{background:#fde68a;border-color:#f59e0b}
+    .st-sold{background:#fecaca;border-color:#ef4444}
+    .st-blocked{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+    .btn{height:42px;border-radius:14px;border:0;cursor:pointer;font-weight:700}
     .btn:disabled{opacity:.45;cursor:not-allowed}
-    .grid{display:grid;gap:10px}
-    .basket-item{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
-    .pill{display:inline-flex;align-items:center;gap:8px}
-    .err{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px 12px;border-radius:12px;margin-top:10px;font-size:13px}
+    .btn-sell{background:#fca5a5}
+    .btn-res{background:#fcd34d}
+    .btn-clear{background:#cbd5e1}
+    .btn-reset{background:#111827;color:#fff;height:36px;border-radius:12px;font-weight:600}
+    .basket{border:1px dashed var(--line);border-radius:14px;padding:10px;color:var(--muted);min-height:44px}
+    .total{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px}
+    .money{font-size:18px;font-weight:800}
+    .note{color:var(--muted);font-size:12px;margin-top:10px}
+    .err{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;padding:10px;border-radius:12px;margin-top:10px;display:none}
+    @media (max-width: 980px){ .grid{grid-template-columns:1fr} select,input{min-width:180px} }
   </style>
 </head>
-
 <body>
 <header>
-  <div class="topbar">
-    <div class="brand">
-      <div class="logo">Ш</div>
-      <div>
-        <div><b>Театр — каса (окремо від онлайн) • browser print</b></div>
-        <div class="sub">Ця сторінка НЕ чіпає LiqPay. Стан місць зберігається локально (поки що).</div>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">Ш</div>
+        <div>
+          <b>Театр — каса (окремо від онлайн) • browser print</b>
+          <small>Ця сторінка НЕ чіпає LiqPay. Стан місць зберігається локально (поки що).</small>
+        </div>
       </div>
-    </div>
 
-    <div class="filters">
-      <select id="showSelect"><option value="">Завантаження…</option></select>
-      <input id="searchBox" placeholder="Пошук (ряд/місце): 1-1 або 12-10" />
+      <div class="controls">
+        <label style="color:var(--muted);font-size:12px">Подія / сеанс</label>
+        <select id="showSelect">
+          <option value="">Завантаження…</option>
+        </select>
+        <input id="searchInput" placeholder="Пошук (ряд/місце) 1-1 або 12-10" />
+      </div>
     </div>
   </div>
 </header>
 
 <main>
-  <section class="card">
-    <div class="card-header">
-      <div><b>Схема залу</b></div>
-      <div id="metaLine" class="sub">Оберіть сеанс зверху.</div>
-    </div>
+  <div class="grid">
+    <div class="card">
+      <h2>Схема залу</h2>
+      <div class="meta" id="metaText">Оберіть сеанс.</div>
 
-    <div class="legend">
-      <span class="pill"><span class="dot" style="background:var(--free)"></span>Вільно</span>
-      <span class="pill"><span class="dot" style="background:var(--basket);border-color:#f59e0b"></span>У кошику</span>
-      <span class="pill"><span class="dot" style="background:var(--reserved);border-color:#fb923c"></span>Резерв</span>
-      <span class="pill"><span class="dot" style="background:var(--sold);border-color:#f87171"></span>Продано</span>
-      <span class="pill"><span class="dot" style="background:var(--blocked);border-color:#94a3b8"></span>Блок</span>
-    </div>
-
-    <div class="hall-wrap" id="hallRoot">
-      <div class="sub" style="padding:12px 14px;">Оберіть сеанс зверху.</div>
-    </div>
-  </section>
-
-  <aside class="card">
-    <div class="right">
-      <div><b>Кошик (актуальне замовлення)</b></div>
-      <div id="basketList" class="sub" style="margin:10px 0 12px;">Поки що нічого не обрано.</div>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 12px;">
-        <span><b>Всього до сплати:</b></span>
-        <span id="sumAmount"><b>0 грн</b></span>
+      <div class="legend">
+        <span><span class="dot" style="background:#fff;border:1px solid var(--line)"></span>Вільно</span>
+        <span><span class="dot" style="background:#dbeafe;border:1px solid #93c5fd"></span>У кошику</span>
+        <span><span class="dot" style="background:#fde68a;border:1px solid #f59e0b"></span>Резерв</span>
+        <span><span class="dot" style="background:#fecaca;border:1px solid #ef4444"></span>Продано</span>
+        <span><span class="dot" style="background:#e5e7eb;border:1px solid var(--line)"></span>Блок</span>
       </div>
 
-      <div class="grid">
-        <button class="btn" id="btnSell" disabled style="background:var(--red);color:#fff">ПРОДАТИ (КАСА) + ДРУК</button>
-        <button class="btn" id="btnReserve" disabled style="background:var(--amber);color:#111827">ДО РЕЗЕРВУ</button>
-        <button class="btn" id="btnClear" disabled style="background:var(--slate);color:#fff">ОЧИСТИТИ</button>
-        <button class="btn" id="btnReset" style="background:var(--dark);color:#fff">Скинути локальні зміни для цього сеансу</button>
+      <div id="hallRoot"></div>
+    </div>
+
+    <div class="card">
+      <h2>Кошик (актуальне замовлення)</h2>
+
+      <div class="basket" id="basketBox">Поки що нічого не обрано.</div>
+
+      <div class="total">
+        <div style="color:var(--muted)">Всього до сплати:</div>
+        <div class="money" id="totalMoney">0 грн</div>
       </div>
 
-      <div id="errorBox" class="err" style="display:none"></div>
+      <button class="btn btn-sell" id="btnSell" disabled>ПРОДАТИ (КАСА) + ДРУК</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-res" id="btnReserve" disabled>ДО РЕЗЕРВУ</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-clear" id="btnClear" disabled>ОЧИСТИТИ</button>
 
-      <div class="sub" style="margin-top:12px;border-top:1px solid var(--line);padding-top:10px;">
+      <div style="height:10px"></div>
+      <button class="btn-reset" id="btnResetLocal">Скинути локальні зміни для цього сеансу</button>
+
+      <div class="err" id="errBox"></div>
+
+      <div class="note">
+        Тут немає онлайн-оплати. “Продати” робить місця проданими локально та відкриває друк квитка(ів).
         Наступний крок: синхронізація/облік у Supabase (окремо, без ламання онлайн).
       </div>
     </div>
-  </aside>
+  </div>
 </main>
 
-<script src="./hall-cash.js?v=20260107-1"></script>
+<script>
+/** ---------------- utils ---------------- **/
+const $ = (s)=>document.querySelector(s);
+const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+function getUrlParams(){
+  const u = new URL(location.href);
+  return {
+    show: u.searchParams.get("show") || "",
+    date: u.searchParams.get("date") || "",
+    time: u.searchParams.get("time") || ""
+  };
+}
+async function fetchJson(url){
+  const res = await fetch(url, {cache:"no-store"});
+  if(!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return await res.json();
+}
+function fmtMoney(n){ return `${Number(n||0)} грн`; }
+function safeText(s){ return (s??"").toString(); }
+
+/** ---------------- state ---------------- **/
+let AFISHA = [];
+let SEANCE = null;
+let currentKey = "";  // cash_patch_<show>_<date>_<time>
+let basket = [];      // [{key,label,price,row,seat}]
+let search = "";
+
+/** statuses stored in localStorage as object: { "<row>-<seat>": "sold|reserved|blocked" } **/
+function loadPatch(){
+  try{
+    const raw = localStorage.getItem(currentKey);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function savePatch(obj){
+  localStorage.setItem(currentKey, JSON.stringify(obj));
+}
+function setSeatStatus(seatKey, status){
+  const patch = loadPatch();
+  if(status) patch[seatKey]=status;
+  else delete patch[seatKey];
+  savePatch(patch);
+}
+function getSeatStatus(seatKey){
+  // priority: basket > local patch
+  if(basket.some(x=>x.key===seatKey)) return "basket";
+  const patch = loadPatch();
+  return patch[seatKey] || "free";
+}
+
+/** ---------------- pricing (matches your settings/seances prices) ---------------- **/
+function priceForRow(row){
+  if(row>=1 && row<=6) return SEANCE?.prices?.p_parter_1_6 ?? 200;
+  if(row>=7 && row<=12) return SEANCE?.prices?.p_parter_7_12 ?? 180;
+  if(row>=13 && row<=18) return SEANCE?.prices?.p_parter_13_18 ?? 160;
+  if(row>=19 && row<=23) return SEANCE?.prices?.p_amphi_all ?? 140;
+  return 0;
+}
+
+/** ---------------- hall layout: shevchenko-big (партер 1-18 *20, проход після 10; амфі 19-23 *11 ліво + 19-21 *11 право) ---------------- **/
+function buildHallRows(){
+  const rows = [];
+  // партер
+  for(let r=1;r<=18;r++){
+    rows.push({zone:"Партер", row:r, seats:20, aisleAfter:10});
+  }
+  // амфітеатр: ліво 19-23 (11)
+  for(let r=19;r<=23;r++){
+    rows.push({zone:"Амфітеатр (ліва)", row:r, seats:11, aisleAfter:null, side:"L"});
+  }
+  // амфітеатр: право 19-21 (11)
+  for(let r=19;r<=21;r++){
+    rows.push({zone:"Амфітеатр (права)", row:r, seats:11, aisleAfter:null, side:"R"});
+  }
+  return rows;
+}
+
+function seatClass(st){
+  if(st==="basket") return "seat st-basket";
+  if(st==="reserved") return "seat st-reserved";
+  if(st==="sold") return "seat st-sold";
+  if(st==="blocked") return "seat st-blocked";
+  return "seat st-free";
+}
+
+function updateBasketUI(){
+  const box = $("#basketBox");
+  const total = basket.reduce((s,i)=>s+Number(i.price||0),0);
+  $("#totalMoney").textContent = fmtMoney(total);
+
+  if(!basket.length){
+    box.textContent = "Поки що нічого не обрано.";
+    $("#btnSell").disabled = true;
+    $("#btnReserve").disabled = true;
+    $("#btnClear").disabled = true;
+    return;
+  }
+
+  $("#btnSell").disabled = false;
+  $("#btnReserve").disabled = false;
+  $("#btnClear").disabled = false;
+
+  box.innerHTML = basket
+    .map(i=>`<div><b>${i.label}</b> — ${i.price} грн</div>`)
+    .join("");
+}
+
+function toggleBasket(seatKey, label, price, row, seat){
+  const st = getSeatStatus(seatKey);
+  if(st==="sold" || st==="blocked") return;
+  const idx = basket.findIndex(x=>x.key===seatKey);
+  if(idx>=0) basket.splice(idx,1);
+  else basket.push({key:seatKey,label,price,row,seat});
+  updateBasketUI();
+  renderHall();
+}
+
+function renderHall(){
+  const root = $("#hallRoot");
+  root.innerHTML = "";
+  if(!SEANCE){
+    root.innerHTML = "<div style='color:var(--muted)'>Оберіть сеанс зверху.</div>";
+    return;
+  }
+
+  const rows = buildHallRows();
+
+  // group by zones
+  const zones = ["Партер", "Амфітеатр (ліва)", "Амфітеатр (права)"];
+  for(const z of zones){
+    const zRows = rows.filter(r=>r.zone===z);
+    if(!zRows.length) continue;
+
+    const title = document.createElement("div");
+    title.style.margin = "10px 0 6px";
+    title.style.fontWeight = "800";
+    title.textContent = z;
+    root.appendChild(title);
+
+    for(const r of zRows){
+      // filter by search (optional)
+      const line = document.createElement("div");
+      line.className = "rowline";
+
+      const lab = document.createElement("div");
+      lab.className = "rowlab";
+      lab.textContent = r.row;
+      line.appendChild(lab);
+
+      const seats = document.createElement("div");
+      seats.className = "seats";
+
+      for(let s=1;s<=r.seats;s++){
+        if(r.aisleAfter && s===r.aisleAfter+1){
+          const a = document.createElement("div");
+          a.className = "aisle";
+          seats.appendChild(a);
+        }
+
+        const key = `${r.row}-${s}`;
+        const st = getSeatStatus(key);
+        const btn = document.createElement("button");
+        btn.className = seatClass(st);
+        btn.textContent = s;
+
+        // search highlight (simple)
+        if(search){
+          const needle = search.trim().toLowerCase();
+          const label = `${r.row}-${s}`;
+          if(label.toLowerCase()===needle){
+            btn.style.outline = "3px solid rgba(59,130,246,.35)";
+          }
+        }
+
+        if(st!=="blocked" && st!=="sold"){
+          btn.addEventListener("click", ()=>toggleBasket(key, `Ряд ${r.row}, місце ${s}`, priceForRow(r.row), r.row, s));
+        }
+        seats.appendChild(btn);
+      }
+
+      line.appendChild(seats);
+      root.appendChild(line);
+    }
+  }
+}
+
+function setError(msg){
+  const el = $("#errBox");
+  el.style.display = "block";
+  el.textContent = msg;
+}
+function clearError(){
+  const el = $("#errBox");
+  el.style.display = "none";
+  el.textContent = "";
+}
+
+/** ---------------- printing (1 билет на 1 место; Вариант A) ---------------- **/
+function openPrintWindow(html){
+  const w = window.open("", "_blank");
+  if(!w){ alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку."); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  // small delay to ensure render then print
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 200);
+}
+function ticketHtml(item){
+  const theatre = "Театр ім. Т. Г. Шевченка";
+  const showTitle = safeText(SEANCE.title || SEANCE.show || "");
+  const dt = `${SEANCE.date} ${SEANCE.time}`;
+  const order = `CASH-${Date.now().toString().slice(-8)}`;
+  return `
+<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>Ticket</title>
+<style>
+  @page{size:A4;margin:18mm;}
+  body{font:14px/1.25 system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#111827;}
+  .t{width:78mm;border:1px solid #e5e7eb;border-radius:12px;padding:10px}
+  .h{display:flex;justify-content:space-between;gap:10px}
+  .h b{font-size:14px}
+  .muted{color:#6b7280;font-size:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .kv{font-size:12px;color:#6b7280}
+  .vv{font-weight:800}
+  .foot{margin-top:8px;font-size:11px;color:#6b7280}
+</style>
+</head>
+<body>
+  <div class="t">
+    <div class="h">
+      <div>
+        <b>${theatre}</b>
+        <div class="muted">Офіційний онлайн-продаж</div>
+      </div>
+      <div class="muted" style="text-align:right">
+        ORD.<br><b>${order}</b>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;font-weight:900">${showTitle}</div>
+    <div class="muted">${dt}</div>
+
+    <div class="grid">
+      <div><div class="kv">Ряд</div><div class="vv">${item.row}</div></div>
+      <div><div class="kv">Місце</div><div class="vv">${item.seat}</div></div>
+      <div><div class="kv">Ціна</div><div class="vv">${item.price} грн</div></div>
+      <div><div class="kv">Канал</div><div class="vv">Каса</div></div>
+    </div>
+
+    <div class="foot">
+      Квиток дійсний на одну особу. Повернення та обмін — згідно правил театру.
+      Зберігайте квиток до кінця вистави.
+    </div>
+    <div class="foot">QR/штрих-код (пізніше можна буде підтягнути із системи).</div>
+  </div>
+</body></html>`;
+}
+
+/** ---------------- actions ---------------- **/
+function applyStatusToBasket(status){
+  for(const it of basket){
+    setSeatStatus(it.key, status);
+  }
+  basket = [];
+  updateBasketUI();
+  renderHall();
+}
+
+async function loadAfisha(){
+  const url = new URL("../data/afisha.json", location.href).toString();
+  AFISHA = await fetchJson(url);
+}
+
+async function loadSeance(showId, date){
+  // file is /data/seances/<show>-<date>.json
+  const url = new URL(`../data/seances/${showId}-${date}.json`, location.href).toString();
+  const js = await fetchJson(url);
+  return js;
+}
+
+function buildSelect(){
+  const sel = $("#showSelect");
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "— обрати —";
+  sel.appendChild(opt0);
+
+  for(const x of AFISHA){
+    const val = `${x.id}|${x.date}|${x.time||""}`;
+    const opt = document.createElement("option");
+    opt.value = val;
+    opt.textContent = `${x.title} — ${x.date}${x.time ? ", " + x.time : ""}`;
+    sel.appendChild(opt);
+  }
+}
+
+async function setCurrentByShow(showId){
+  clearError();
+  const item = AFISHA.find(x=>x.id===showId);
+  if(!item){
+    setError(`Не знайдено show=${showId} у /data/afisha.json`);
+    SEANCE = null;
+    renderHall();
+    return;
+  }
+
+  // load seance json
+  try{
+    const s = await loadSeance(item.id, item.date);
+    SEANCE = s;
+    // session key for local patch
+    currentKey = `cash_patch_${SEANCE.show||item.id}_${SEANCE.date||item.date}_${SEANCE.time||item.time||""}`;
+    // update meta
+    $("#metaText").textContent = `${SEANCE.title || item.title} • ${SEANCE.date || item.date}${(SEANCE.time || item.time) ? " " + (SEANCE.time || item.time) : ""} • hall_id: ${SEANCE.hall_id||"?"}`;
+    basket = [];
+    updateBasketUI();
+    renderHall();
+  }catch(e){
+    setError(`Не вдалося завантажити сеанс: перевір /data/seances/${item.id}-${item.date}.json (має бути валідний JSON без коментарів).`);
+    SEANCE = null;
+    renderHall();
+  }
+}
+
+async function init(){
+  await loadAfisha();
+  buildSelect();
+
+  const p = getUrlParams();
+  if(p.show){
+    // auto select
+    const item = AFISHA.find(x=>x.id===p.show);
+    if(item){
+      $("#showSelect").value = `${item.id}|${item.date}|${item.time||""}`;
+      await setCurrentByShow(item.id);
+    }
+  }
+
+  $("#showSelect").addEventListener("change", async (e)=>{
+    const v = e.target.value;
+    if(!v){ SEANCE=null; renderHall(); $("#metaText").textContent="Оберіть сеанс."; return; }
+    const [id] = v.split("|");
+    // update URL (nice)
+    const u = new URL(location.href);
+    u.searchParams.set("show", id);
+    history.replaceState({}, "", u.toString());
+    await setCurrentByShow(id);
+  });
+
+  $("#searchInput").addEventListener("input", (e)=>{
+    search = e.target.value || "";
+    renderHall();
+  });
+
+  $("#btnClear").addEventListener("click", ()=>{
+    basket = [];
+    updateBasketUI();
+    renderHall();
+  });
+
+  $("#btnReserve").addEventListener("click", ()=>{
+    if(!SEANCE || !basket.length) return;
+    applyStatusToBasket("reserved");
+  });
+
+  $("#btnSell").addEventListener("click", ()=>{
+    if(!SEANCE || !basket.length) return;
+    // mark sold locally
+    const copy = [...basket];
+    applyStatusToBasket("sold");
+    // print each ticket (Variant A: 1 ticket per seat)
+    for(const it of copy){
+      openPrintWindow(ticketHtml(it));
+    }
+  });
+
+  $("#btnResetLocal").addEventListener("click", ()=>{
+    if(!SEANCE){ alert("Спочатку оберіть сеанс."); return; }
+    if(confirm("Скинути всі локальні зміни каси для цього сеансу?")){
+      localStorage.removeItem(currentKey);
+      basket = [];
+      updateBasketUI();
+      renderHall();
+    }
+  });
+
+  // initial render
+  renderHall();
+  updateBasketUI();
+}
+
+init().catch(e=>{
+  console.error(e);
+  setError("Помилка ініціалізації hall-cash. Відкрий консоль (F12) і покажи помилку.");
+});
+</script>
 </body>
 </html>
