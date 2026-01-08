@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Схема залу — Каса</title>
+  <title>Схема залу — каса</title>
 
   <!-- мы находимся в /spectacles/, поднимаемся на уровень выше -->
   <link rel="stylesheet" href="../styles.css" />
@@ -34,6 +34,7 @@
       width:24px;height:24px;border-radius:6px;border:1px solid #d1d5db;background:#fff;
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;
+      user-select:none;
     }
     .seat--parter-front{background:#fef9c3;}
     .seat--parter-mid{background:#dbeafe;}
@@ -43,8 +44,12 @@
     .seat--lodge{background:#fee2e2;}
 
     .seat--selected{background:#2563eb !important;color:#fff;border-color:#2563eb;}
-    .seat--taken{background:#9ca3af !important;color:#fff;cursor:not-allowed;}
+
+    /* статусы кассы */
+    .seat--sold{background:#9ca3af !important;color:#fff;cursor:not-allowed;border-color:#9ca3af;}
     .seat--reserved{background:#f59e0b !important;color:#111827;border-color:#f59e0b;}
+    .seat--blocked{background:#111827 !important;color:#fff;cursor:not-allowed;border-color:#111827;}
+
     .seat--gap-right{margin-right:16px;}
     .amphi-gap{width:24px;flex:0 0 24px;}
 
@@ -72,37 +77,24 @@
 
     .cash-badge{
       display:inline-flex;align-items:center;gap:8px;
-      font-size:12px;color:#374151;background:#f3f4f6;
-      border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;
-      margin-bottom:10px;
-    }
-    .cash-badge b{color:#111827;}
-
-    .btn-row{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
-    .btn-secondary{
-      border-radius:999px;padding:12px 14px;font-weight:700;border:1px solid #d1d5db;background:#fff;
-    }
-    .btn-danger{
-      border-radius:999px;padding:12px 14px;font-weight:700;border:1px solid #fecaca;background:#fee2e2;color:#991b1b;
-    }
-    .btn-warning{
-      border-radius:999px;padding:12px 14px;font-weight:700;border:1px solid #fde68a;background:#fef3c7;color:#92400e;
-    }
-    .btn-muted{
-      border-radius:999px;padding:12px 14px;font-weight:700;border:1px solid #e5e7eb;background:#f3f4f6;color:#6b7280;
+      background:#f1f5f9;border:1px solid #e2e8f0;color:#0f172a;
+      padding:6px 10px;border-radius:999px;font-size:12px;margin:6px 0 14px;
     }
 
-    .hint{
-      font-size:12px;color:#6b7280;margin-top:10px;line-height:1.3;
-      background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;
+    .cash-actions{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+    .btn{
+      border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;
     }
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    .btn-sell{background:#fca5a5;color:#111827;}
+    .btn-reserve{background:#fed7aa;color:#111827;}
+    .btn-clear{background:#e5e7eb;color:#111827;}
+    .btn-reset{background:#111827;color:#fff;margin-top:6px;}
 
-    .status-legend{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 2px;}
-    .dot{width:10px;height:10px;border-radius:3px;display:inline-block;border:1px solid #d1d5db;}
-    .dot.free{background:#fff;}
-    .dot.cart{background:#2563eb;border-color:#2563eb;}
-    .dot.resv{background:#f59e0b;border-color:#f59e0b;}
-    .dot.sold{background:#9ca3af;border-color:#9ca3af;}
+    .note{
+      font-size:12px;color:#6b7280;line-height:1.35;margin-top:10px;
+      background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;
+    }
 
     @media (max-width:900px){
       .hall-layout{flex-direction:column;}
@@ -116,12 +108,7 @@
   <main class="main">
     <div class="container">
       <h1>Схема залу — каса</h1>
-
-      <div class="cash-badge">
-        <span>Режим:</span> <b>Каса</b>
-        <span>•</span>
-        <span>Онлайн-оплата (LiqPay) не використовується</span>
-      </div>
+      <div class="cash-badge">Режим: <b>каса</b> • Онлайн-оплата (LiqPay) не використовується</div>
 
       <div class="hall-layout">
         <!-- Левая часть: схема -->
@@ -165,7 +152,7 @@
             </div>
           </div>
 
-          <!-- Легенда цін -->
+          <!-- Легенда цін (как в твоём текущем онлайн hall.html) -->
           <div class="row-price-list">
             <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
             <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
@@ -182,28 +169,21 @@
           <div class="card hall-card">
             <h2 class="hall-summary-title">Кошик (каса)</h2>
 
-            <div class="status-legend">
-              <span><i class="dot free"></i> вільно</span>
-              <span><i class="dot cart"></i> у кошику</span>
-              <span><i class="dot resv"></i> резерв</span>
-              <span><i class="dot sold"></i> продано</span>
-            </div>
-
             <p id="summary-show" class="hall-summary-meta"></p>
             <p id="summary-places" class="hall-summary-meta">Обрані місця: немає</p>
             <p id="summary-amount" class="hall-summary-meta">Сума: 0 грн</p>
 
-            <div class="btn-row">
-              <button id="btn-sell" class="btn-danger" disabled>ПРОДАТИ (КАСА) + ДРУК</button>
-              <button id="btn-reserve" class="btn-warning" disabled>ДО РЕЗЕРВУ</button>
-              <button id="btn-clear" class="btn-muted" disabled>ОЧИСТИТИ</button>
-              <button id="btn-reset" class="btn-secondary">Скинути локальні зміни для цього сеансу</button>
+            <div class="cash-actions">
+              <button id="btn-sell" class="btn btn-sell" disabled>ПРОДАТИ (КАСА) + ДРУК</button>
+              <button id="btn-reserve" class="btn btn-reserve" disabled>ДО РЕЗЕРВУ</button>
+              <button id="btn-clear" class="btn btn-clear">ОЧИСТИТИ</button>
+              <button id="btn-reset" class="btn btn-reset">Скинути локальні зміни для цього сеансу</button>
             </div>
 
-            <div class="hint">
-              Тут немає LiqPay. Кнопка «Продати» відкриває друк квитка(ів).<br/>
-              Продані <b>онлайн</b> місця підтягуються з Supabase (таблиця <code>tickets</code>) і блокуються в касі.
-              Продані <b>касою</b> місця поки що зберігаються локально (в браузері цієї каси).
+            <div class="note">
+              Тут немає LiqPay. «Продати» робить місця проданими локально та відкриває друк квитка(ів).<br/>
+              Продані онлайн місця (з Supabase tickets) блокуються в касі, щоб не було дубляжу.<br/>
+              Локальні касові стани зберігаються в браузері (localStorage) для цього ПК касира.
             </div>
           </div>
         </aside>
@@ -215,22 +195,22 @@
   <script type="module" src="../scripts/include.js"></script>
 
   <script>
-    // -------- Параметри з URL --------
+    // ==========================
+    //  Параметри з URL
+    // ==========================
     const qs = new URLSearchParams(location.search);
-    const showSlug  = qs.get("show")  || "";
-    const showTitle = qs.get("title") || showSlug || "Вистава";
+    const showSlug  = (qs.get("show") || "").trim();
 
-    document.getElementById("summary-show").textContent =
-      "Вистава: " + (showTitle || "—");
-
-    // -------- Supabase (читаємо продані онлайн місця) --------
-    // ВАЖНО: тут тільки читання. Це потрібно, щоб каса не продавала місця, що вже куплені онлайн.
+    // ==========================
+    //  Supabase (чтобы блокировать онлайн-проданные места)
+    //  ВАЖНО: это то, что у тебя в онлайн hall.html сейчас
+    // ==========================
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    // -------- Конфігурація залу (КОПІЯ з hall.html) --------
-
-    // Партер 1–18 по 20 місць, проход після 10-го
+    // ==========================
+    //  Схема зала (точно как в твоём онлайн hall.html)
+    // ==========================
     const parterRows = Array.from({length:18}, (_,i)=>( {
       row: i+1,
       seats: 20,
@@ -241,7 +221,6 @@
                            : "seat--parter-back"
     } ));
 
-    // Амфітеатр
     const amphiLeftRows  = [
       {row:19,seats:11},
       {row:20,seats:11},
@@ -256,88 +235,23 @@
       {row:21,seats:11},
     ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
 
-    // Балкон
     const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
     const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
 
-    // Ложі
     const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, zone:"Ложа", className:"seat--lodge" } ));
 
-    // -------- Стан місць --------
-    const takenSeats = new Set();     // продані онлайн (Supabase)
-    const localSold = new Set();      // продані касою (localStorage)
-    const localReserved = new Set();  // резерв каси (localStorage)
-
-    function storageKey(type){
-      // різні ключі для різних вистав
-      return `cash_${type}_${showSlug || "unknown"}`;
-    }
-
-    function loadLocalSets(){
-      try {
-        const soldArr = JSON.parse(localStorage.getItem(storageKey("sold")) || "[]");
-        const resvArr = JSON.parse(localStorage.getItem(storageKey("reserved")) || "[]");
-        soldArr.forEach(k => localSold.add(String(k)));
-        resvArr.forEach(k => localReserved.add(String(k)));
-      } catch(e) {
-        console.warn("localStorage parse failed", e);
-      }
-    }
-
-    function saveLocalSets(){
-      localStorage.setItem(storageKey("sold"), JSON.stringify(Array.from(localSold)));
-      localStorage.setItem(storageKey("reserved"), JSON.stringify(Array.from(localReserved)));
-    }
-
-    async function loadTakenSeats(){
-      if (!showSlug) return;
-
-      const url =
-        `${SUPABASE_URL}/rest/v1/tickets` +
-        `?show_slug=eq.${encodeURIComponent(showSlug)}` +
-        `&select=seat_label`;
-
-      const res = await fetch(url, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        }
-      });
-
-      if (!res.ok) {
-        console.error("Не вдалося завантажити продані місця:", res.status);
-        return;
-      }
-
-      const rows = await res.json().catch(()=>[]);
-      rows.forEach(r => {
-        if (r && r.seat_label) takenSeats.add(String(r.seat_label));
-      });
-    }
-
-    // -------- Вспомогательные функции (КОПІЯ з hall.html) --------
-
-    // seat_key = P/A/B + row + seat
+    // ==========================
+    //  Ключи мест (как в твоём онлайн)
+    // ==========================
     function seatKey(meta){
       const row  = meta.row ?? meta.index ?? 0;
       const seat = meta.seat ?? meta.index ?? 0;
 
-      // Партер -> P
       if (meta.zone === "Партер") return `P${row}-M${seat}`;
-
-      // Амфітеатр -> A
       if (String(meta.zone).startsWith("Амфітеатр")) return `A${row}-M${seat}`;
-
-      // Балкон -> B
       if (meta.zone === "Балкон") return `B${row}-M${seat}`;
-
-      // Ложа А -> A0-M{seat}
       if (meta.zone === "Ложа А") return `A0-M${seat}`;
-
-      // Ложа Б -> B0-M{seat}
       if (meta.zone === "Ложа Б") return `B0-M${seat}`;
-
-      // fallback
       return `P${row}-M${seat}`;
     }
 
@@ -354,8 +268,118 @@
       return k;
     }
 
-    function isTaken(key){
-      return takenSeats.has(key) || localSold.has(key);
+    // ==========================
+    //  Данные спектакля (берем из data/afisha.json)
+    // ==========================
+    const THEATRE_NAME = "Театр ім. Т. Г. Шевченка";
+    let SHOW_META = null;
+
+    async function loadAfishaMeta(){
+      if (!showSlug) return;
+      try{
+        const res = await fetch("../data/afisha.json", {cache:"no-store"});
+        if(!res.ok) return;
+        const list = await res.json();
+        SHOW_META = (Array.isArray(list) ? list.find(x => x && x.id === showSlug) : null) || null;
+      }catch(e){
+        console.warn("afisha.json не прочитался", e);
+      }
+    }
+
+    function setHeaderMeta(){
+      const el = document.getElementById("summary-show");
+      if (!showSlug){
+        el.textContent = "Вистава: — (немає ?show=...)";
+        return;
+      }
+      const title = SHOW_META?.title || showSlug;
+      const dt = (SHOW_META?.date && SHOW_META?.time) ? `${SHOW_META.date} ${SHOW_META.time}` : "";
+      el.textContent = `Вистава: ${title}${dt ? " • " + dt : ""}`;
+    }
+
+    // ==========================
+    //  Онлайн-проданные места (Supabase tickets)
+    // ==========================
+    const takenSeatsOnline = new Set();   // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
+
+    async function loadTakenSeatsOnline(){
+      if (!showSlug) return;
+
+      const url =
+        `${SUPABASE_URL}/rest/v1/tickets` +
+        `?show_slug=eq.${encodeURIComponent(showSlug)}` +
+        `&select=seat_label`;
+
+      const res = await fetch(url, {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      if (!res.ok) {
+        console.error("Не вдалося завантажити продані онлайн місця:", res.status);
+        return;
+      }
+
+      const rows = await res.json().catch(()=>[]);
+      rows.forEach(r => {
+        if (r && r.seat_label) takenSeatsOnline.add(String(r.seat_label));
+      });
+    }
+
+    // ==========================
+    //  Локальные статусы кассы (localStorage)
+    // ==========================
+    function cashKey(){
+      const d = SHOW_META?.date || "";
+      const t = SHOW_META?.time || "";
+      return `cash_patch_${showSlug}_${d}_${t}`;
+    }
+
+    function loadCashPatch(){
+      try{
+        const raw = localStorage.getItem(cashKey());
+        const obj = raw ? JSON.parse(raw) : null;
+        return (obj && typeof obj === "object") ? obj : {};
+      }catch(e){
+        return {};
+      }
+    }
+
+    function saveCashPatch(patch){
+      localStorage.setItem(cashKey(), JSON.stringify(patch || {}));
+    }
+
+    // patch format: { "P1-M1": {status:"sold"|"reserved"|"blocked", ts:123} }
+    let CASH_PATCH = {};
+
+    // ==========================
+    //  UI / рендер
+    // ==========================
+    const selected = new Map(); // key -> { meta, price }
+    const seatButtons = new Map(); // key -> button
+
+    function getEffectiveStatus(key){
+      // приоритет: онлайн продано -> sold (блок)
+      if (takenSeatsOnline.has(key)) return "sold";
+      const p = CASH_PATCH[key];
+      return p?.status || "free";
+    }
+
+    function applyStatusClass(btn, status){
+      btn.classList.remove("seat--sold","seat--reserved","seat--blocked","seat--taken");
+      btn.disabled = false;
+
+      if (status === "sold"){
+        btn.classList.add("seat--sold");
+        btn.disabled = true;
+      } else if (status === "blocked"){
+        btn.classList.add("seat--blocked");
+        btn.disabled = true;
+      } else if (status === "reserved"){
+        btn.classList.add("seat--reserved");
+      }
     }
 
     function makeSeatElement(key,label,extraClass,price,meta){
@@ -367,54 +391,39 @@
       btn.dataset.price = price;
       btn.dataset.zone = meta.zone;
 
-      if (isTaken(key)){
-        btn.classList.add("seat--taken");
-        btn.disabled = true;
-      } else if (localReserved.has(key)){
-        btn.classList.add("seat--reserved");
-      }
+      const st = getEffectiveStatus(key);
+      applyStatusClass(btn, st);
 
-      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
+      btn.addEventListener("click", ()=>{
+        const curStatus = getEffectiveStatus(key);
+        if (curStatus === "sold" || curStatus === "blocked") return;
+
+        if (btn.classList.contains("seat--selected")){
+          btn.classList.remove("seat--selected");
+          selected.delete(key);
+        } else {
+          btn.classList.add("seat--selected");
+          selected.set(key, { meta, price });
+        }
+        updateSummary();
+      });
+
+      seatButtons.set(key, btn);
       return btn;
-    }
-
-    const selected = new Map(); // key -> { meta, price }
-
-    function onSeatClick(btn, key, meta, price){
-      if (btn.disabled) return;
-      if (localReserved.has(key)) {
-        // якщо в резерві — дозволяємо зняти резерв одним кліком
-        localReserved.delete(key);
-        saveLocalSets();
-        renderAll(); // перемалюємо щоб прибрати reserved стиль
-        return;
-      }
-
-      if (btn.classList.contains("seat--selected")){
-        btn.classList.remove("seat--selected");
-        selected.delete(key);
-      } else {
-        btn.classList.add("seat--selected");
-        selected.set(key, { meta, price });
-      }
-      updateSummary();
     }
 
     function updateSummary(){
       const placesEl = document.getElementById("summary-places");
       const amountEl = document.getElementById("summary-amount");
-
-      const btnSell    = document.getElementById("btn-sell");
-      const btnReserve = document.getElementById("btn-reserve");
-      const btnClear   = document.getElementById("btn-clear");
+      const btnSell  = document.getElementById("btn-sell");
+      const btnRes   = document.getElementById("btn-reserve");
 
       const keys = Array.from(selected.keys());
       if (!keys.length){
         placesEl.textContent = "Обрані місця: немає";
         amountEl.textContent = "Сума: 0 грн";
         btnSell.disabled = true;
-        btnReserve.disabled = true;
-        btnClear.disabled = true;
+        btnRes.disabled  = true;
         return;
       }
 
@@ -424,19 +433,28 @@
       placesEl.textContent = "Обрані місця: " + placesStr;
       amountEl.textContent = "Сума: " + total + " грн";
       btnSell.disabled = false;
-      btnReserve.disabled = false;
-      btnClear.disabled = false;
+      btnRes.disabled  = false;
     }
 
     function clearSelection(){
+      for (const k of selected.keys()){
+        const btn = seatButtons.get(k);
+        if (btn) btn.classList.remove("seat--selected");
+      }
       selected.clear();
       updateSummary();
-      // прибрати синє виділення з кнопок
-      document.querySelectorAll(".seat.seat--selected").forEach(el=>el.classList.remove("seat--selected"));
     }
 
-    // -------- Рендер (КОПІЯ з hall.html) --------
+    function reapplyAllStatuses(){
+      for (const [k, btn] of seatButtons.entries()){
+        const st = getEffectiveStatus(k);
+        applyStatusClass(btn, st);
+      }
+    }
 
+    // ==========================
+    //  Рендер блоков (как в онлайн)
+    // ==========================
     function renderParter(){
       const block = document.getElementById("parter-block");
       block.innerHTML = "";
@@ -531,7 +549,6 @@
       const block = document.getElementById("balcony-block");
       block.innerHTML = "";
 
-      // 1–5 ряды по 28 мест, проход после 14
       balconyRows15.forEach(r=>{
         const rowLine = document.createElement("div");
         rowLine.className = "row-line";
@@ -554,7 +571,6 @@
         block.appendChild(rowLine);
       });
 
-      // ряд 6: 1–10, потом пустые слоты 11–18, потом 11–20 на позициях 19–28
       const r = balconyRow6;
       const rowLine = document.createElement("div");
       rowLine.className = "row-line";
@@ -589,168 +605,151 @@
       block.appendChild(rowLine);
     }
 
-    function renderAll(){
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-    }
+    // ==========================
+    //  Действия кассы
+    // ==========================
+    function applyStatusToSelected(status){
+      const keys = Array.from(selected.keys());
+      if (!keys.length) return;
 
-    // -------- КАСА: Печать билетов (Вариант А: 1 билет = 1 место) --------
-    function escapeHtml(s){
-      return String(s)
-        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;").replaceAll("'","&#39;");
-    }
-
-    function buildTicketHTML(t){
-      // t: {showTitle, showSlug, seatHuman, price, seatKey}
-      return `
-        <div class="ticket">
-          <div class="t-head">
-            <div class="t-logo">Театр ім. Т. Г. Шевченка</div>
-            <div class="t-sub">Квиток (каса)</div>
-          </div>
-
-          <div class="t-title">${escapeHtml(showTitle || showSlug || "Вистава")}</div>
-
-          <div class="t-grid">
-            <div class="t-kv"><div class="k">Місце</div><div class="v">${escapeHtml(t.seatHuman)}</div></div>
-            <div class="t-kv"><div class="k">Ціна</div><div class="v">${escapeHtml(t.price)} грн</div></div>
-            <div class="t-kv"><div class="k">Канал</div><div class="v">Каса</div></div>
-            <div class="t-kv"><div class="k">Ключ</div><div class="v">${escapeHtml(t.seatKey)}</div></div>
-          </div>
-
-          <div class="t-note">
-            Квиток дійсний на одну особу. Зберігайте до кінця вистави.
-          </div>
-        </div>
-      `;
+      const now = Date.now();
+      for (const k of keys){
+        // не трогаем онлайн-проданные
+        if (takenSeatsOnline.has(k)) continue;
+        CASH_PATCH[k] = { status, ts: now };
+      }
+      saveCashPatch(CASH_PATCH);
+      clearSelection();
+      reapplyAllStatuses();
     }
 
     function openPrintWindow(tickets){
+      // tickets: [{seatKey,human,price}]
+      const title = SHOW_META?.title || showSlug || "Квиток";
+      const dt = (SHOW_META?.date && SHOW_META?.time) ? `${SHOW_META.date} ${SHOW_META.time}` : "";
+      const orderNo = "CASH-" + String(Date.now());
+
       const html = `
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Друк квитків</title>
-  <style>
-    @page { size: A4; margin: 12mm; }
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    .wrap{display:flex;flex-wrap:wrap;gap:12mm;align-items:flex-start;}
-    .ticket{
-      width: 86mm; min-height: 54mm;
-      border:1px dashed #999;border-radius:10px;padding:10mm;
-      box-sizing:border-box;
-    }
-    .t-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;}
-    .t-logo{font-weight:800;font-size:12px;}
-    .t-sub{font-size:11px;color:#555;}
-    .t-title{font-size:14px;font-weight:800;margin-bottom:6mm;}
-    .t-grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm 6mm;margin-bottom:6mm;}
-    .t-kv .k{font-size:10px;color:#666;margin-bottom:1mm;}
-    .t-kv .v{font-size:12px;font-weight:700;}
-    .t-note{font-size:10px;color:#666;line-height:1.3;}
-    .hint{font-size:12px;color:#666;margin:0 0 8mm;}
-    @media print {.hint{display:none;}}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Друк квитків</title>
+<style>
+  body{font-family:Arial, sans-serif;margin:16px;color:#111827;}
+  .wrap{display:flex;flex-wrap:wrap;gap:14px;}
+  .t{width:320px;border:1px solid #e5e7eb;border-radius:14px;padding:12px;}
+  .h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
+  .theatre{font-weight:700;font-size:12px;}
+  .ord{font-size:11px;color:#6b7280;text-align:right;}
+  .show{font-size:14px;font-weight:800;margin:6px 0 4px;}
+  .meta{font-size:12px;color:#374151;line-height:1.35;}
+  .price{margin-top:8px;font-size:14px;font-weight:800;}
+  .hr{height:1px;background:#e5e7eb;margin:10px 0;}
+  .note{font-size:10px;color:#6b7280;line-height:1.3;}
+</style>
 </head>
 <body>
-  <div class="hint">Натисніть “Друк”. 1 квиток = 1 місце.</div>
   <div class="wrap">
-    ${tickets.map(buildTicketHTML).join("\n")}
+    ${tickets.map(t=>`
+      <div class="t">
+        <div class="h">
+          <div class="theatre">${THEATRE_NAME}</div>
+          <div class="ord">ORD: ${orderNo}<br/>Канал: Каса</div>
+        </div>
+        <div class="show">${title}</div>
+        <div class="meta">
+          ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
+          <div>${t.human}</div>
+        </div>
+        <div class="price">Ціна: ${t.price} грн</div>
+        <div class="hr"></div>
+        <div class="note">
+          Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
+          QR/штрих-код (пізніше буде з системи).
+        </div>
+      </div>
+    `).join("")}
   </div>
-  <script>
-    window.focus();
-    setTimeout(()=>window.print(), 150);
-  </script>
+
+<script>
+  window.onload = ()=>{ setTimeout(()=>window.print(), 200); };
+</script>
 </body>
 </html>`;
+
       const w = window.open("", "_blank");
-      if (!w){
-        alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку.");
-        return false;
-      }
+      if (!w){ alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку."); return; }
       w.document.open();
       w.document.write(html);
       w.document.close();
-      return true;
     }
 
-    // -------- Кнопки кассы --------
+    function sellAndPrint(){
+      const keys = Array.from(selected.keys());
+      if (!keys.length) return;
+
+      const tickets = keys.map(k=>{
+        const info = selected.get(k);
+        return {
+          seatKey: k,
+          human: seatKeyToHuman(k),
+          price: Number(info?.price || 0)
+        };
+      });
+
+      // помечаем как sold локально
+      applyStatusToSelected("sold");
+
+      // печать
+      openPrintWindow(tickets);
+    }
+
+    // ==========================
+    //  Кнопки
+    // ==========================
     document.getElementById("btn-clear").addEventListener("click", ()=>{
       clearSelection();
     });
 
     document.getElementById("btn-reserve").addEventListener("click", ()=>{
-      const keys = Array.from(selected.keys());
-      if (!keys.length) return;
-
-      // переносим выбранные в резерв
-      keys.forEach(k => localReserved.add(k));
-      saveLocalSets();
-      clearSelection();
-      renderAll();
-    });
-
-    document.getElementById("btn-reset").addEventListener("click", ()=>{
-      if (!confirm("Скинути всі локальні зміни каси для цього сеансу?")) return;
-      localStorage.removeItem(storageKey("sold"));
-      localStorage.removeItem(storageKey("reserved"));
-      localSold.clear();
-      localReserved.clear();
-      clearSelection();
-      renderAll();
+      applyStatusToSelected("reserved");
     });
 
     document.getElementById("btn-sell").addEventListener("click", ()=>{
-      const keys = Array.from(selected.keys());
-      if (!keys.length) return;
-
-      // защита: если вдруг место уже стало taken (онлайн) — не продаем
-      const conflicted = keys.filter(k => takenSeats.has(k));
-      if (conflicted.length){
-        alert("Деякі місця вже продані онлайн і не можуть бути продані в касі:\n" + conflicted.map(seatKeyToHuman).join("\n"));
-        clearSelection();
-        renderAll();
-        return;
-      }
-
-      const tickets = keys.map(k => {
-        const info = selected.get(k);
-        return {
-          seatKey: k,
-          seatHuman: seatKeyToHuman(k),
-          price: (info && info.price) ? info.price : 0
-        };
-      });
-
-      const ok = openPrintWindow(tickets);
-      if (!ok) return;
-
-      // помечаем как продано кассой локально (и снимаем резерв если был)
-      keys.forEach(k => {
-        localReserved.delete(k);
-        localSold.add(k);
-      });
-      saveLocalSets();
-
-      clearSelection();
-      renderAll();
+      sellAndPrint();
     });
 
-    // -------- init --------
+    document.getElementById("btn-reset").addEventListener("click", ()=>{
+      if (!showSlug){ alert("Немає ?show="); return; }
+      const ok = confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?");
+      if (!ok) return;
+      CASH_PATCH = {};
+      saveCashPatch(CASH_PATCH);
+      clearSelection();
+      reapplyAllStatuses();
+      alert("Локальні зміни скинуто.");
+    });
+
+    // ==========================
+    //  INIT
+    // ==========================
     (async ()=>{
-      if (!showSlug){
-        alert("Не задано show у URL. Відкрий: hall-cash.html?show=visim");
-        return;
-      }
-      loadLocalSets();
-      await loadTakenSeats();
-      renderAll();
+      await loadAfishaMeta();
+      setHeaderMeta();
+
+      CASH_PATCH = loadCashPatch();
+
+      // онлайн-проданные
+      await loadTakenSeatsOnline();
+
+      // render
+      renderParter();
+      renderLodges();
+      renderAmphi();
+      renderBalcony();
+      updateSummary();
     })();
   </script>
 </body>
