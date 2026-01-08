@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Схема залу — каса</title>
 
-  <!-- мы находимся в /spectacles/, поднимаемся на уровень выше -->
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
@@ -45,7 +44,6 @@
 
     .seat--selected{background:#2563eb !important;color:#fff;border-color:#2563eb;}
 
-    /* статусы кассы */
     .seat--sold{background:#9ca3af !important;color:#fff;cursor:not-allowed;border-color:#9ca3af;}
     .seat--reserved{background:#f59e0b !important;color:#111827;border-color:#f59e0b;}
     .seat--blocked{background:#111827 !important;color:#fff;cursor:not-allowed;border-color:#111827;}
@@ -82,9 +80,7 @@
     }
 
     .cash-actions{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
-    .btn{
-      border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;
-    }
+    .btn{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;}
     .btn:disabled{opacity:.45;cursor:not-allowed;}
     .btn-sell{background:#fca5a5;color:#111827;}
     .btn-reserve{background:#fed7aa;color:#111827;}
@@ -111,12 +107,10 @@
       <div class="cash-badge">Режим: <b>каса</b> • Онлайн-оплата (LiqPay) не використовується</div>
 
       <div class="hall-layout">
-        <!-- Левая часть: схема -->
         <div class="hall-left">
           <div class="hall-scroll">
             <div class="hall-inner">
 
-              <!-- Партер + ложі збоку -->
               <section class="hall-section">
                 <div class="hall-section-title">Партер</div>
                 <div class="parter-wrap">
@@ -134,7 +128,6 @@
                 </div>
               </section>
 
-              <!-- Амфітеатр -->
               <section class="hall-section">
                 <div class="hall-section-title">Амфітеатр</div>
                 <div class="hall-center">
@@ -142,7 +135,6 @@
                 </div>
               </section>
 
-              <!-- Балкон -->
               <section class="hall-section">
                 <div class="hall-section-title">Балкон</div>
                 <div class="hall-center">
@@ -152,7 +144,6 @@
             </div>
           </div>
 
-          <!-- Легенда цін (как в твоём текущем онлайн hall.html) -->
           <div class="row-price-list">
             <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
             <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
@@ -164,7 +155,6 @@
           </div>
         </div>
 
-        <!-- Правая часть: касса -->
         <aside class="hall-sidebar">
           <div class="card hall-card">
             <h2 class="hall-summary-title">Кошик (каса)</h2>
@@ -195,22 +185,12 @@
   <script type="module" src="../scripts/include.js"></script>
 
   <script>
-    // ==========================
-    //  Параметри з URL
-    // ==========================
     const qs = new URLSearchParams(location.search);
     const showSlug  = (qs.get("show") || "").trim();
 
-    // ==========================
-    //  Supabase (чтобы блокировать онлайн-проданные места)
-    //  ВАЖНО: это то, что у тебя в онлайн hall.html сейчас
-    // ==========================
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    // ==========================
-    //  Схема зала (точно как в твоём онлайн hall.html)
-    // ==========================
     const parterRows = Array.from({length:18}, (_,i)=>( {
       row: i+1,
       seats: 20,
@@ -222,17 +202,11 @@
     } ));
 
     const amphiLeftRows  = [
-      {row:19,seats:11},
-      {row:20,seats:11},
-      {row:21,seats:11},
-      {row:22,seats:11},
-      {row:23,seats:11},
+      {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11},
     ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
 
     const amphiRightRows = [
-      {row:19,seats:11},
-      {row:20,seats:11},
-      {row:21,seats:11},
+      {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
     ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
 
     const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
@@ -240,13 +214,9 @@
 
     const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, zone:"Ложа", className:"seat--lodge" } ));
 
-    // ==========================
-    //  Ключи мест (как в твоём онлайн)
-    // ==========================
     function seatKey(meta){
       const row  = meta.row ?? meta.index ?? 0;
       const seat = meta.seat ?? meta.index ?? 0;
-
       if (meta.zone === "Партер") return `P${row}-M${seat}`;
       if (String(meta.zone).startsWith("Амфітеатр")) return `A${row}-M${seat}`;
       if (meta.zone === "Балкон") return `B${row}-M${seat}`;
@@ -261,19 +231,13 @@
       const prefix = m[1].toUpperCase();
       const row = Number(m[2]);
       const seat = Number(m[3]);
-
       if (prefix === "P") return `Ряд ${row}, місце ${seat} (Партер)`;
       if (prefix === "A") return row === 0 ? `Ложа А, місце ${seat}` : `Ряд ${row}, місце ${seat} (Амфітеатр)`;
       if (prefix === "B") return row === 0 ? `Ложа Б, місце ${seat}` : `Ряд ${row}, місце ${seat} (Балкон)`;
       return k;
     }
 
-    // ==========================
-    //  Данные спектакля (берем из data/afisha.json)
-    // ==========================
-    const THEATRE_NAME = "Театр ім. Т. Г. Шевченка";
     let SHOW_META = null;
-
     async function loadAfishaMeta(){
       if (!showSlug) return;
       try{
@@ -281,105 +245,58 @@
         if(!res.ok) return;
         const list = await res.json();
         SHOW_META = (Array.isArray(list) ? list.find(x => x && x.id === showSlug) : null) || null;
-      }catch(e){
-        console.warn("afisha.json не прочитался", e);
-      }
+      }catch(e){}
     }
 
     function setHeaderMeta(){
       const el = document.getElementById("summary-show");
-      if (!showSlug){
-        el.textContent = "Вистава: — (немає ?show=...)";
-        return;
-      }
+      if (!showSlug){ el.textContent = "Вистава: — (немає ?show=...)"; return; }
       const title = SHOW_META?.title || showSlug;
       const dt = (SHOW_META?.date && SHOW_META?.time) ? `${SHOW_META.date} ${SHOW_META.time}` : "";
       el.textContent = `Вистава: ${title}${dt ? " • " + dt : ""}`;
     }
 
-    // ==========================
-    //  Онлайн-проданные места (Supabase tickets)
-    // ==========================
-    const takenSeatsOnline = new Set();   // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
-
+    const takenSeatsOnline = new Set();
     async function loadTakenSeatsOnline(){
       if (!showSlug) return;
-
-      const url =
-        `${SUPABASE_URL}/rest/v1/tickets` +
-        `?show_slug=eq.${encodeURIComponent(showSlug)}` +
-        `&select=seat_label`;
-
-      const res = await fetch(url, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        }
-      });
-
-      if (!res.ok) {
-        console.error("Не вдалося завантажити продані онлайн місця:", res.status);
-        return;
-      }
-
+      const url = `${SUPABASE_URL}/rest/v1/tickets?show_slug=eq.${encodeURIComponent(showSlug)}&select=seat_label`;
+      const res = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
+      if (!res.ok) return;
       const rows = await res.json().catch(()=>[]);
-      rows.forEach(r => {
-        if (r && r.seat_label) takenSeatsOnline.add(String(r.seat_label));
-      });
+      rows.forEach(r => { if (r && r.seat_label) takenSeatsOnline.add(String(r.seat_label)); });
     }
 
-    // ==========================
-    //  Локальные статусы кассы (localStorage)
-    // ==========================
     function cashKey(){
       const d = SHOW_META?.date || "";
       const t = SHOW_META?.time || "";
       return `cash_patch_${showSlug}_${d}_${t}`;
     }
-
     function loadCashPatch(){
       try{
         const raw = localStorage.getItem(cashKey());
         const obj = raw ? JSON.parse(raw) : null;
         return (obj && typeof obj === "object") ? obj : {};
-      }catch(e){
-        return {};
-      }
+      }catch(e){ return {}; }
     }
-
     function saveCashPatch(patch){
       localStorage.setItem(cashKey(), JSON.stringify(patch || {}));
     }
-
-    // patch format: { "P1-M1": {status:"sold"|"reserved"|"blocked", ts:123} }
     let CASH_PATCH = {};
 
-    // ==========================
-    //  UI / рендер
-    // ==========================
-    const selected = new Map(); // key -> { meta, price }
-    const seatButtons = new Map(); // key -> button
+    const selected = new Map();
+    const seatButtons = new Map();
 
     function getEffectiveStatus(key){
-      // приоритет: онлайн продано -> sold (блок)
       if (takenSeatsOnline.has(key)) return "sold";
       const p = CASH_PATCH[key];
       return p?.status || "free";
     }
-
     function applyStatusClass(btn, status){
       btn.classList.remove("seat--sold","seat--reserved","seat--blocked","seat--taken");
       btn.disabled = false;
-
-      if (status === "sold"){
-        btn.classList.add("seat--sold");
-        btn.disabled = true;
-      } else if (status === "blocked"){
-        btn.classList.add("seat--blocked");
-        btn.disabled = true;
-      } else if (status === "reserved"){
-        btn.classList.add("seat--reserved");
-      }
+      if (status === "sold"){ btn.classList.add("seat--sold"); btn.disabled = true; }
+      else if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
+      else if (status === "reserved"){ btn.classList.add("seat--reserved"); }
     }
 
     function makeSeatElement(key,label,extraClass,price,meta){
@@ -387,10 +304,6 @@
       btn.type = "button";
       btn.textContent = label;
       btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
-      btn.dataset.price = price;
-      btn.dataset.zone = meta.zone;
-
       const st = getEffectiveStatus(key);
       applyStatusClass(btn, st);
 
@@ -426,10 +339,8 @@
         btnRes.disabled  = true;
         return;
       }
-
       const placesStr = keys.map(seatKeyToHuman).join("; ");
       const total = Array.from(selected.values()).reduce((sum,x)=> sum + (x.price||0), 0);
-
       placesEl.textContent = "Обрані місця: " + placesStr;
       amountEl.textContent = "Сума: " + total + " грн";
       btnSell.disabled = false;
@@ -444,7 +355,6 @@
       selected.clear();
       updateSummary();
     }
-
     function reapplyAllStatuses(){
       for (const [k, btn] of seatButtons.entries()){
         const st = getEffectiveStatus(k);
@@ -452,13 +362,9 @@
       }
     }
 
-    // ==========================
-    //  Рендер блоков (как в онлайн)
-    // ==========================
     function renderParter(){
       const block = document.getElementById("parter-block");
       block.innerHTML = "";
-
       parterRows.forEach(r=>{
         const rowLine = document.createElement("div");
         rowLine.className = "row-line";
@@ -477,7 +383,6 @@
           const cls  = r.className + (s===10 ? " seat--gap-right" : "");
           seatsRow.appendChild(makeSeatElement(key, s, cls, r.price, meta));
         }
-
         rowLine.appendChild(seatsRow);
         block.appendChild(rowLine);
       });
@@ -486,13 +391,10 @@
     function renderLodges(){
       const a = document.getElementById("lodge-a-seats");
       const b = document.getElementById("lodge-b-seats");
-      a.innerHTML = "";
-      b.innerHTML = "";
-
+      a.innerHTML = ""; b.innerHTML = "";
       lodgeSeats.forEach(ls=>{
         const metaA = { zone:"Ложа А", row:0, seat:ls.index, index:ls.index };
         const metaB = { zone:"Ложа Б", row:0, seat:ls.index, index:ls.index };
-
         a.appendChild(makeSeatElement(seatKey(metaA), ls.index, ls.className, ls.price, metaA));
         b.appendChild(makeSeatElement(seatKey(metaB), ls.index, ls.className, ls.price, metaB));
       });
@@ -501,9 +403,7 @@
     function renderAmphi(){
       const block = document.getElementById("amphi-block");
       block.innerHTML = "";
-
       const rowsAll = [19,20,21,22,23];
-
       rowsAll.forEach(rowNum=>{
         const rowLine = document.createElement("div");
         rowLine.className = "row-line";
@@ -529,10 +429,9 @@
             seatsLeft.appendChild(makeSeatElement(seatKey(meta), s, leftCfg.className, leftCfg.price, meta));
           }
         }
-
         if (rightCfg){
           for (let s=1; s<=rightCfg.seats; s++){
-            const seatNum = s+11; // 12–22
+            const seatNum = s+11;
             const meta = { zone:rightCfg.zone, row:rightCfg.row, seat:seatNum };
             seatsRight.appendChild(makeSeatElement(seatKey(meta), seatNum, rightCfg.className, rightCfg.price, meta));
           }
@@ -589,13 +488,12 @@
           const cls  = r.className + (pos===10 ? " seat--gap-right" : "");
           seatsRow.appendChild(makeSeatElement(seatKey(meta), pos, cls, r.price, meta));
         } else if (pos>=19){
-          const seatNum = pos - 8; // 19→11, 28→20
+          const seatNum = pos - 8;
           const meta = { zone:r.zone, row:r.row, seat:seatNum };
           seatsRow.appendChild(makeSeatElement(seatKey(meta), seatNum, r.className, r.price, meta));
         } else {
           const empty = document.createElement("button");
           empty.type = "button";
-          empty.textContent = "";
           empty.className = "seat seat--empty";
           seatsRow.appendChild(empty);
         }
@@ -605,16 +503,11 @@
       block.appendChild(rowLine);
     }
 
-    // ==========================
-    //  Действия кассы
-    // ==========================
     function applyStatusToSelected(status){
       const keys = Array.from(selected.keys());
       if (!keys.length) return;
-
       const now = Date.now();
       for (const k of keys){
-        // не трогаем онлайн-проданные
         if (takenSeatsOnline.has(k)) continue;
         CASH_PATCH[k] = { status, ts: now };
       }
@@ -624,23 +517,23 @@
     }
 
     function openPrintWindow(tickets){
-      // tickets: [{seatKey,human,price}]
+      const theatre = "Театр ім. Т. Г. Шевченка";
       const title = SHOW_META?.title || showSlug || "Квиток";
       const dt = (SHOW_META?.date && SHOW_META?.time) ? `${SHOW_META.date} ${SHOW_META.time}` : "";
       const orderNo = "CASH-" + String(Date.now());
 
-      const html = `
-<!doctype html>
+      // ВАЖНО: внутри строки НЕЛЬЗЯ иметь </script> как текст — заменяем на <\/script>
+      const html = `<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Друк квитків</title>
 <style>
-  body{font-family:Arial, sans-serif;margin:16px;color:#111827;}
+  body{font-family:Arial,sans-serif;margin:16px;color:#111827;}
   .wrap{display:flex;flex-wrap:wrap;gap:14px;}
   .t{width:320px;border:1px solid #e5e7eb;border-radius:14px;padding:12px;}
-  .h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
+  .h{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;}
   .theatre{font-weight:700;font-size:12px;}
   .ord{font-size:11px;color:#6b7280;text-align:right;}
   .show{font-size:14px;font-weight:800;margin:6px 0 4px;}
@@ -655,7 +548,7 @@
     ${tickets.map(t=>`
       <div class="t">
         <div class="h">
-          <div class="theatre">${THEATRE_NAME}</div>
+          <div class="theatre">${theatre}</div>
           <div class="ord">ORD: ${orderNo}<br/>Канал: Каса</div>
         </div>
         <div class="show">${title}</div>
@@ -665,17 +558,14 @@
         </div>
         <div class="price">Ціна: ${t.price} грн</div>
         <div class="hr"></div>
-        <div class="note">
-          Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
-          QR/штрих-код (пізніше буде з системи).
-        </div>
+        <div class="note">Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>QR/штрих-код (пізніше буде з системи).</div>
       </div>
     `).join("")}
   </div>
 
 <script>
   window.onload = ()=>{ setTimeout(()=>window.print(), 200); };
-</script>
+<\/script>
 </body>
 </html>`;
 
@@ -692,34 +582,16 @@
 
       const tickets = keys.map(k=>{
         const info = selected.get(k);
-        return {
-          seatKey: k,
-          human: seatKeyToHuman(k),
-          price: Number(info?.price || 0)
-        };
+        return { seatKey: k, human: seatKeyToHuman(k), price: Number(info?.price || 0) };
       });
 
-      // помечаем как sold локально
       applyStatusToSelected("sold");
-
-      // печать
       openPrintWindow(tickets);
     }
 
-    // ==========================
-    //  Кнопки
-    // ==========================
-    document.getElementById("btn-clear").addEventListener("click", ()=>{
-      clearSelection();
-    });
-
-    document.getElementById("btn-reserve").addEventListener("click", ()=>{
-      applyStatusToSelected("reserved");
-    });
-
-    document.getElementById("btn-sell").addEventListener("click", ()=>{
-      sellAndPrint();
-    });
+    document.getElementById("btn-clear").addEventListener("click", ()=>{ clearSelection(); });
+    document.getElementById("btn-reserve").addEventListener("click", ()=>{ applyStatusToSelected("reserved"); });
+    document.getElementById("btn-sell").addEventListener("click", ()=>{ sellAndPrint(); });
 
     document.getElementById("btn-reset").addEventListener("click", ()=>{
       if (!showSlug){ alert("Немає ?show="); return; }
@@ -732,19 +604,12 @@
       alert("Локальні зміни скинуто.");
     });
 
-    // ==========================
-    //  INIT
-    // ==========================
     (async ()=>{
       await loadAfishaMeta();
       setHeaderMeta();
-
       CASH_PATCH = loadCashPatch();
-
-      // онлайн-проданные
       await loadTakenSeatsOnline();
 
-      // render
       renderParter();
       renderLodges();
       renderAmphi();
