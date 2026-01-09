@@ -164,9 +164,9 @@
             </div>
 
             <div class="note">
-              «Продати» спочатку фіксує продаж у Supabase (через Edge Function), щоб онлайн одразу заблокував місце,
+              «Продати» спочатку фіксує продаж у <b>Supabase tickets</b> (через Edge Function), щоб онлайн одразу заблокував місце,
               і лише потім відкриває друк.<br>
-              Онлайн-продані місця (Supabase tickets) тут блокуються, щоб не було дубляжу.
+              Онлайн-продані місця тут блокуються, щоб не було дубляжу.
             </div>
           </div>
         </aside>
@@ -178,67 +178,19 @@
   <script type="module" src="../scripts/include.js"></script>
 
   <script>
-    // -------- URL params --------
     const qs = new URLSearchParams(location.search);
     const showSlug = (qs.get("show") || "").trim();
 
-    // -------- Supabase (онлайн проданные места) --------
+    // Supabase project (только для чтения проданных мест)
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    // -------- Cash Edge Function endpoint --------
-    const CASH_ENDPOINT = "https://fhusjlkneckbvnrdhbil.functions.supabase.co/cash-sale";
-    const CASH_PIN_SESSION_KEY = "cashier_pin_v1";
+    // Edge Function endpoint
+    const PROJECT_REF = "fhusjlkneckbvnrdhbil";
+    const FN_URL_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sale`;
+    const FN_URL_NO_V1 = `https://${PROJECT_REF}.functions.supabase.co/cash-sale`;
 
-    function getCashierPin(){
-      let pin = sessionStorage.getItem(CASH_PIN_SESSION_KEY) || "";
-      if (pin) return pin;
-      pin = (prompt("PIN каси (для фіксації продажу в онлайн):") || "").trim();
-      if (!pin) return "";
-      sessionStorage.setItem(CASH_PIN_SESSION_KEY, pin);
-      return pin;
-    }
-
-    async function cashCommitToSupabaseSold(seats){
-      if (!showSlug) throw new Error("no_show");
-      const pin = getCashierPin();
-      if (!pin) throw new Error("no_pin");
-
-      const res = await fetch(CASH_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-cashier-pin": pin
-        },
-        body: JSON.stringify({
-          show_slug: showSlug,
-          seats: seats.map(s => ({
-            seat_label: s.seat_label,
-            price: s.price,
-            human_label: s.human_label
-          }))
-        })
-      });
-
-      const json = await res.json().catch(() => ({}));
-
-      if (!res.ok){
-        const err = json?.error || ("http_" + res.status);
-        if (res.status === 409 || err === "already_sold"){
-          throw new Error("already_sold");
-        }
-        if (res.status === 401 || err === "bad_pin"){
-          // сбросим PIN и попросим заново
-          sessionStorage.removeItem(CASH_PIN_SESSION_KEY);
-          throw new Error("bad_pin");
-        }
-        throw new Error(err);
-      }
-
-      return json; // {ok:true, order_id}
-    }
-
-    // -------- Hall layout (как в онлайн hall.html) --------
+    // --- схема (как онлайн) ---
     const parterRows = Array.from({length:18}, (_,i)=>( {
       row: i+1, seats: 20, zone: "Партер",
       price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
@@ -260,7 +212,6 @@
 
     const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, className:"seat--lodge" } ));
 
-    // -------- seat key format (совпадает с онлайн) --------
     function seatKey(meta){
       const row = meta.row ?? 0;
       const seat = meta.seat ?? 0;
@@ -284,7 +235,6 @@
       return k;
     }
 
-    // -------- safe fetch JSON (без "Unexpected token <") --------
     async function fetchJsonSafe(url){
       try{
         const res = await fetch(url, {cache:"no-store"});
@@ -294,24 +244,29 @@
       }catch(e){ return null; }
     }
 
-    // -------- show meta --------
     let SHOW_META = null;
     async function loadShowMeta(){
       if (!showSlug) return;
       const list = await fetchJsonSafe("../data/afisha.json");
       if (Array.isArray(list)) SHOW_META = list.find(x => x && x.id === showSlug) || null;
+
       const title = SHOW_META?.title || showSlug || "—";
       const dt = (SHOW_META?.date && SHOW_META?.time) ? ` • ${SHOW_META.date} ${SHOW_META.time}` : "";
       document.getElementById("summary-show").textContent = `Вистава: ${title}${dt}`;
     }
 
-    // -------- online sold seats --------
+    // Онлайн-проданные места из tickets
     const takenSeatsOnline = new Set();
     async function loadTakenSeatsOnline(){
       if (!showSlug) return;
       const url = `${SUPABASE_URL}/rest/v1/tickets?show_slug=eq.${encodeURIComponent(showSlug)}&select=seat_label`;
       try{
-        const res = await fetch(url, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }});
+        const res = await fetch(url, {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          }
+        });
         if (!res.ok) return;
         const txt = await res.text();
         let rows = [];
@@ -320,7 +275,7 @@
       }catch(e){}
     }
 
-    // -------- local cash patch --------
+    // Локальные состояния кассы (резерв/продано на этом ПК)
     function cashStorageKey(){
       const d = SHOW_META?.date || "";
       const t = SHOW_META?.time || "";
@@ -337,7 +292,7 @@
       localStorage.setItem(cashStorageKey(), JSON.stringify(patch || {}));
     }
 
-    let CASH_PATCH = {}; // key -> {status:"sold"|"reserved"}
+    let CASH_PATCH = {};
     const selected = new Map(); // key -> {price}
     const seatButtons = new Map(); // key -> button
 
@@ -432,7 +387,52 @@
       reapplyAllStatuses();
     }
 
-    // -------- PRINT (без <script> внутри печатного HTML!) --------
+    // --- секрет для синхронизации (чтобы не вводить каждый раз) ---
+    function getCashierSecret(){
+      return localStorage.getItem("cashier_sync_secret") || "";
+    }
+    function ensureCashierSecret(){
+      let s = getCashierSecret();
+      if (s) return s;
+      s = prompt("Секрет каси (CASHIER_SYNC_SECRET):") || "";
+      s = s.trim();
+      if (s) localStorage.setItem("cashier_sync_secret", s);
+      return s;
+    }
+
+    // --- вызов Edge Function (фиксируем продажу в tickets) ---
+    async function callCashSale(seatKeys){
+      const secret = ensureCashierSecret();
+
+      const payload = {
+        show_slug: showSlug,
+        seats: seatKeys.map(k => ({
+          seat_label: k,
+          price: Number(selected.get(k)?.price || 0),
+          human_label: seatKeyToHuman(k),
+        })),
+      };
+
+      const headers = { "Content-Type": "application/json" };
+      if (secret) headers["x-cashier-secret"] = secret;
+
+      // пробуем v1, если не получилось — пробуем без /functions/v1
+      async function post(url){
+        const res = await fetch(url, { method:"POST", headers, body: JSON.stringify(payload) });
+        const txt = await res.text();
+        let data = null;
+        try{ data = JSON.parse(txt); }catch(e){ data = { raw: txt }; }
+        return { ok: res.ok, status: res.status, data };
+      }
+
+      let r = await post(FN_URL_V1);
+      if (!r.ok && (r.status === 404 || r.status === 405)) {
+        r = await post(FN_URL_NO_V1);
+      }
+      return r;
+    }
+
+    // --- PRINT ---
     function openPrintWindow(tickets, orderNo){
       const theatre = "Театр ім. Т. Г. Шевченка";
       const title = SHOW_META?.title || showSlug || "Квиток";
@@ -493,58 +493,28 @@
       const keys = Array.from(selected.keys());
       if (!keys.length) return;
 
-      // формируем payload для фиксации в supabase
-      const payloadSeats = keys.map(k => {
-        const info = selected.get(k);
-        return {
-          seat_label: k,
-          human_label: seatKeyToHuman(k),
-          price: Number(info?.price || 0)
-        };
-      });
-
-      // 1) фиксируем в supabase (источник истины)
-      let order_id = "";
-      try{
-        const resp = await cashCommitToSupabaseSold(payloadSeats);
-        order_id = resp?.order_id || ("CASH-" + Date.now());
-      }catch(e){
-        const msg = String(e?.message || e);
-        if (msg === "already_sold"){
-          alert("Це місце вже продано (онлайн або каса). Дубль заборонено.");
-          // обновим онлайн-занятые места, чтобы UI сразу заблокировался
-          takenSeatsOnline.clear();
-          await loadTakenSeatsOnline();
-          clearSelection();
-          reapplyAllStatuses();
-          return;
-        }
-        if (msg === "bad_pin"){
-          alert("Невірний PIN каси. Спробуй ще раз.");
-          return;
-        }
-        if (msg === "no_pin"){
-          alert("Без PIN каси не можна зафіксувати продаж в онлайн.");
-          return;
-        }
+      // 1) фиксируем продажу в Supabase
+      const r = await callCashSale(keys);
+      if (!r.ok){
+        const msg = (r.data && (r.data.details || r.data.error)) ? (r.data.details || r.data.error) : "unknown";
         alert("Не вдалося зафіксувати продаж у Supabase: " + msg);
         return;
       }
 
-      // 2) локально отмечаем sold (для кассы)
+      const orderNo = r.data?.order_id || ("CASH-" + String(Date.now()));
+
+      // 2) после успешной фиксации — локально ставим sold и печатаем
+      const tickets = keys.map(k => ({ human: seatKeyToHuman(k), price: Number(selected.get(k)?.price || 0) }));
       applyStatusToSelectedLocal("sold");
+      openPrintWindow(tickets, orderNo);
 
-      // 3) печать
-      const tickets = payloadSeats.map(s => ({ human: s.human_label, price: s.price }));
-      openPrintWindow(tickets, order_id);
-
-      // 4) обновим онлайн-занятость (чтобы сразу видеть блокировки)
+      // 3) обновим онлайн-проданные (чтобы блок сразу появился без ожидания)
       takenSeatsOnline.clear();
       await loadTakenSeatsOnline();
       reapplyAllStatuses();
     }
 
-    // -------- Render --------
+    // --- render ---
     function renderParter(){
       const block = document.getElementById("parter-block");
       block.innerHTML = "";
@@ -614,7 +584,7 @@
         }
         if (rightCfg){
           for(let s=1;s<=rightCfg.seats;s++){
-            const seatNum = s+11; // 12–22
+            const seatNum = s+11;
             const key = seatKey({zone:rightCfg.zone, row:rowNum, seat:seatNum});
             right.appendChild(makeSeatElement(key, seatNum, rightCfg.className, 120));
           }
@@ -653,7 +623,6 @@
         block.appendChild(rowLine);
       });
 
-      // ряд 6: 1–10, пустые 11–18, потом 11–20 на позициях 19–28
       const rowLine = document.createElement("div");
       rowLine.className = "row-line";
 
@@ -671,7 +640,7 @@
           const cls = "seat--balcony" + (pos===10 ? " seat--gap-right" : "");
           seatsRow.appendChild(makeSeatElement(key, pos, cls, 80));
         } else if (pos>=19){
-          const seatNum = pos-8; // 19->11 ... 28->20
+          const seatNum = pos-8;
           const key = seatKey({zone:"Балкон", row:6, seat:seatNum});
           seatsRow.appendChild(makeSeatElement(key, seatNum, "seat--balcony", 80));
         } else {
@@ -686,7 +655,7 @@
       block.appendChild(rowLine);
     }
 
-    // -------- Buttons --------
+    // --- кнопки ---
     document.getElementById("btn-clear").addEventListener("click", ()=> clearSelection());
     document.getElementById("btn-reserve").addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
     document.getElementById("btn-sell").addEventListener("click", ()=> sellAndPrint());
@@ -701,7 +670,6 @@
       alert("Локальні зміни скинуто.");
     });
 
-    // -------- init --------
     (async ()=>{
       await loadShowMeta();
       CASH_PATCH = loadCashPatch();
