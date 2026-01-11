@@ -10,7 +10,7 @@
   <style>
     .hall-layout{display:flex;gap:24px;align-items:flex-start;}
     .hall-left{flex:1 1 auto;min-width:0;}
-    .hall-sidebar{width:320px;flex:0 0 320px;}
+    .hall-sidebar{width:340px;flex:0 0 340px;}
     .hall-card{margin-top:0;}
 
     .hall-scroll{
@@ -82,11 +82,21 @@
     .btn-reserve{background:#fed7aa;color:#111827;}
     .btn-clear{background:#e5e7eb;color:#111827;}
     .btn-reset{background:#111827;color:#fff;margin-top:6px;}
+    .btn-mini{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:8px 10px;font-weight:700;cursor:pointer;}
 
     .note{
       font-size:12px;color:#6b7280;line-height:1.35;margin-top:10px;
       background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;
     }
+
+    .warnbox{
+      margin-top:10px;
+      background:#fff7ed;border:1px solid #fdba74;color:#9a3412;
+      padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.35;
+      display:none;
+    }
+    .warnbox b{color:#7c2d12;}
+    .warnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
 
     @media (max-width:900px){
       .hall-layout{flex-direction:column;}
@@ -163,9 +173,11 @@
               <button id="btn-reset" class="btn btn-reset">Скинути локальні зміни для цього сеансу</button>
             </div>
 
+            <div id="warnbox" class="warnbox"></div>
+
             <div class="note">
-              «Продати» спочатку фіксує продаж у <b>Supabase tickets</b> (через Edge Function), щоб онлайн одразу заблокував місце,
-              і лише потім відкриває друк.<br>
+              «Продати» спочатку фіксує продаж у <b>Supabase (orders + tickets)</b> через Edge Function,
+              щоб онлайн одразу заблокував місце, і лише потім відкриває друк.<br>
               Онлайн-продані місця тут блокуються, щоб не було дубляжу.
             </div>
           </div>
@@ -181,7 +193,7 @@
     const qs = new URLSearchParams(location.search);
     const showSlug = (qs.get("show") || "").trim();
 
-    // Supabase project (только для чтения проданных мест)
+    // Supabase project (чтение tickets для блокировки онлайн-проданных)
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
@@ -211,6 +223,19 @@
     const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
 
     const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, className:"seat--lodge" } ));
+
+    const $ = (id)=>document.getElementById(id);
+
+    function showWarn(html){
+      const box = $("warnbox");
+      box.style.display = "block";
+      box.innerHTML = html;
+    }
+    function hideWarn(){
+      const box = $("warnbox");
+      box.style.display = "none";
+      box.innerHTML = "";
+    }
 
     function seatKey(meta){
       const row = meta.row ?? 0;
@@ -252,7 +277,7 @@
 
       const title = SHOW_META?.title || showSlug || "—";
       const dt = (SHOW_META?.date && SHOW_META?.time) ? ` • ${SHOW_META.date} ${SHOW_META.time}` : "";
-      document.getElementById("summary-show").textContent = `Вистава: ${title}${dt}`;
+      $("summary-show").textContent = `Вистава: ${title}${dt}`;
     }
 
     // Онлайн-проданные места из tickets
@@ -293,8 +318,8 @@
     }
 
     let CASH_PATCH = {};
-    const selected = new Map(); // key -> {price}
-    const seatButtons = new Map(); // key -> button
+    const selected = new Map();     // key -> {price}
+    const seatButtons = new Map();  // key -> button
 
     function getEffectiveStatus(key){
       if (takenSeatsOnline.has(key)) return "blocked";
@@ -320,6 +345,7 @@
       applyStatusClass(btn, getEffectiveStatus(key));
 
       btn.addEventListener("click", ()=>{
+        hideWarn();
         const st = getEffectiveStatus(key);
         if (st === "sold" || st === "blocked") return;
 
@@ -353,10 +379,10 @@
     }
 
     function updateSummary(){
-      const placesEl = document.getElementById("summary-places");
-      const amountEl = document.getElementById("summary-amount");
-      const btnSell = document.getElementById("btn-sell");
-      const btnRes  = document.getElementById("btn-reserve");
+      const placesEl = $("summary-places");
+      const amountEl = $("summary-amount");
+      const btnSell = $("btn-sell");
+      const btnRes  = $("btn-reserve");
 
       const keys = Array.from(selected.keys());
       if (!keys.length){
@@ -387,36 +413,32 @@
       reapplyAllStatuses();
     }
 
-    // --- секрет для синхронизации (чтобы не вводить каждый раз) ---
+    // --- секрет кассы: теперь НЕ спрашиваем автоматически ---
+    // Если секрет удалён — просто не шлём заголовок.
+    const LS_CASH_SECRET = "cashier_sync_secret";
     function getCashierSecret(){
-      return localStorage.getItem("cashier_sync_secret") || "";
+      return (localStorage.getItem(LS_CASH_SECRET) || "").trim();
     }
-    function ensureCashierSecret(){
-      let s = getCashierSecret();
-      if (s) return s;
-      s = prompt("Секрет каси (CASHIER_SYNC_SECRET):") || "";
-      s = s.trim();
-      if (s) localStorage.setItem("cashier_sync_secret", s);
-      return s;
+    function clearCashierSecret(){
+      localStorage.removeItem(LS_CASH_SECRET);
     }
 
-    // --- вызов Edge Function (фиксируем продажу в tickets) ---
+    // --- вызов Edge Function (фиксируем продажу) ---
     async function callCashSale(seatKeys){
-      const secret = ensureCashierSecret();
-
       const payload = {
         show_slug: showSlug,
         seats: seatKeys.map(k => ({
           seat_label: k,
           price: Number(selected.get(k)?.price || 0),
-          human_label: seatKeyToHuman(k),
         })),
       };
 
       const headers = { "Content-Type": "application/json" };
+
+      // добавляем secret только если он реально есть в браузере
+      const secret = getCashierSecret();
       if (secret) headers["x-cashier-secret"] = secret;
 
-      // пробуем v1, если не получилось — пробуем без /functions/v1
       async function post(url){
         const res = await fetch(url, { method:"POST", headers, body: JSON.stringify(payload) });
         const txt = await res.text();
@@ -451,7 +473,7 @@
           </div>
           <div class="price">Ціна: ${t.price} грн</div>
           <div class="hr"></div>
-          <div class="note">Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>QR/штрих-код — пізніше.</div>
+          <div class="note">Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>QR/штрих-код — у PDF (онлайн) або після синхронізації.</div>
         </div>
       `).join("");
 
@@ -490,25 +512,55 @@
     }
 
     async function sellAndPrint(){
+      hideWarn();
       const keys = Array.from(selected.keys());
       if (!keys.length) return;
 
-      // 1) фиксируем продажу в Supabase
       const r = await callCashSale(keys);
+
       if (!r.ok){
-        const msg = (r.data && (r.data.details || r.data.error)) ? (r.data.details || r.data.error) : "unknown";
+        // 403 bad_secret
+        if (r.status === 403 && (r.data?.details === "bad_secret" || r.data?.error === "forbidden")) {
+          showWarn(`
+            <b>Доступ заборонено (403): bad_secret</b><br/>
+            Це означає, що у Supabase Secrets <b>CASHIER_SYNC_SECRET</b> все ще заданий (або заданий інший).<br/>
+            Якщо ти його видалив — перевір, що збережено і натисни Deploy ще раз.<br/>
+            <div class="warnrow">
+              <button id="btnClearSecret" class="btn-mini">Очистити secret у браузері</button>
+            </div>
+          `);
+          setTimeout(()=>{
+            const b = document.getElementById("btnClearSecret");
+            if (b) b.addEventListener("click", ()=>{
+              clearCashierSecret();
+              alert("Збережений secret видалено з цього браузера.");
+            });
+          }, 0);
+          return;
+        }
+
+        // 409 already_sold
+        if (r.status === 409 && (r.data?.error === "already_sold")) {
+          showWarn(`
+            <b>Місце вже продано</b> (409).<br/>
+            Хтось уже зафіксував це місце (онлайн або інша каса). Онови сторінку, щоб підтягнути актуальний стан.
+          `);
+          return;
+        }
+
+        const msg = (r.data && (r.data.details || r.data.error)) ? (r.data.details || r.data.error) : ("HTTP " + r.status);
         alert("Не вдалося зафіксувати продаж у Supabase: " + msg);
         return;
       }
 
       const orderNo = r.data?.order_id || ("CASH-" + String(Date.now()));
 
-      // 2) после успешной фиксации — локально ставим sold и печатаем
+      // после успешной фиксации — локально ставим sold и печатаем
       const tickets = keys.map(k => ({ human: seatKeyToHuman(k), price: Number(selected.get(k)?.price || 0) }));
       applyStatusToSelectedLocal("sold");
       openPrintWindow(tickets, orderNo);
 
-      // 3) обновим онлайн-проданные (чтобы блок сразу появился без ожидания)
+      // обновим онлайн-проданные (чтобы блок сразу появился)
       takenSeatsOnline.clear();
       await loadTakenSeatsOnline();
       reapplyAllStatuses();
@@ -516,7 +568,7 @@
 
     // --- render ---
     function renderParter(){
-      const block = document.getElementById("parter-block");
+      const block = $("parter-block");
       block.innerHTML = "";
       parterRows.forEach(r=>{
         const rowLine = document.createElement("div");
@@ -542,8 +594,8 @@
     }
 
     function renderLodges(){
-      const a = document.getElementById("lodge-a-seats");
-      const b = document.getElementById("lodge-b-seats");
+      const a = $("lodge-a-seats");
+      const b = $("lodge-b-seats");
       a.innerHTML = ""; b.innerHTML = "";
 
       lodgeSeats.forEach(ls=>{
@@ -555,7 +607,7 @@
     }
 
     function renderAmphi(){
-      const block = document.getElementById("amphi-block");
+      const block = $("amphi-block");
       block.innerHTML = "";
       [19,20,21,22,23].forEach(rowNum=>{
         const rowLine = document.createElement("div");
@@ -598,7 +650,7 @@
     }
 
     function renderBalcony(){
-      const block = document.getElementById("balcony-block");
+      const block = $("balcony-block");
       block.innerHTML = "";
 
       balconyRows15.forEach(r=>{
@@ -656,11 +708,11 @@
     }
 
     // --- кнопки ---
-    document.getElementById("btn-clear").addEventListener("click", ()=> clearSelection());
-    document.getElementById("btn-reserve").addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
-    document.getElementById("btn-sell").addEventListener("click", ()=> sellAndPrint());
+    $("btn-clear").addEventListener("click", ()=> clearSelection());
+    $("btn-reserve").addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
+    $("btn-sell").addEventListener("click", ()=> sellAndPrint());
 
-    document.getElementById("btn-reset").addEventListener("click", ()=>{
+    $("btn-reset").addEventListener("click", ()=>{
       if (!showSlug){ alert("Немає ?show="); return; }
       if (!confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?")) return;
       CASH_PATCH = {};
