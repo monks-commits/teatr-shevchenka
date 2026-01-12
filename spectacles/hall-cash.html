@@ -177,8 +177,9 @@
             </div>
 
             <div class="note">
-              <b>Офлайн:</b> “Продати” одразу друкує квиток з QR (op/seance/seat) і кладе операцію в чергу.
-              <br><b>Онлайн:</b> коли зʼявиться інтернет — натисніть <b>SYNC</b> або він спрацює автоматично при появі звʼязку.
+              <b>Офлайн:</b> “Продати” друкує квиток з QR (order/show/seat) і кладе операцію в чергу.
+              <br><b>Онлайн:</b> коли є інтернет — натисніть <b>SYNC</b> (або він спрацює автоматично при появі звʼязку).
+              <br><b>Контроль:</b> сканер 100% прийме квиток після SYNC (бо тоді він зʼявиться в tickets).
             </div>
           </div>
         </aside>
@@ -197,10 +198,9 @@
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    // Edge Function cash-sync
+    // Edge Function cash-sync-ts (ВАЖНО!)
     const PROJECT_REF = "fhusjlkneckbvnrdhbil";
-    const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync`;
-    const CASH_SYNC_NO_V1 = `https://${PROJECT_REF}.functions.supabase.co/cash-sync`;
+    const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync-ts`;
 
     // ---- схема (как раньше) ----
     const parterRows = Array.from({length:18}, (_,i)=>( {
@@ -268,7 +268,6 @@
       const time = SHOW_META?.time || "";
       const dt = (date && time) ? ` • ${date} ${time}` : "";
 
-      // seance_id = showSlug-date-time (time с заменой : на -)
       const t2 = String(time || "").replace(":", "-");
       SEANCE_ID = (showSlug && date && t2) ? `${showSlug}-${date}-${t2}` : "";
 
@@ -276,7 +275,7 @@
       document.getElementById("summary-seance").textContent = `Seance: ${SEANCE_ID || "—"}`;
     }
 
-    // Онлайн-проданные места из tickets (блокируем их, чтобы не было дубля в онлайне)
+    // Онлайн-проданные места из tickets (блокируем их)
     const takenSeatsOnline = new Set();
     async function loadTakenSeatsOnline(){
       document.getElementById("onlineBlock").textContent = "читання…";
@@ -285,10 +284,7 @@
       const url = `${SUPABASE_URL}/rest/v1/tickets?show_slug=eq.${encodeURIComponent(showSlug)}&select=seat_label`;
       try{
         const res = await fetch(url, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          }
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
         });
         if (!res.ok) { document.getElementById("onlineBlock").textContent = "помилка"; return; }
         const rows = await res.json().catch(()=>[]);
@@ -300,7 +296,7 @@
       }
     }
 
-    // Локальные состояния кассы (резерв/продано на этом ПК) по seance_id
+    // Локальные состояния кассы по seance_id
     function cashPatchKey(){
       return `cash_patch_${SEANCE_ID || showSlug || "unknown"}`;
     }
@@ -315,7 +311,7 @@
       localStorage.setItem(cashPatchKey(), JSON.stringify(patch || {}));
     }
 
-    // Очередь операций (офлайн продажи)
+    // Очередь операций
     function opsQueueKey(){
       return `cash_ops_queue_v1_${PROJECT_REF}`;
     }
@@ -430,7 +426,7 @@
       reapplyAllStatuses();
     }
 
-    // ---- op_id generator (простая, но достаточно уникальная для одной кассы) ----
+    // ---- op_id generator ----
     function genOpId(){
       const d = new Date();
       const yyyy = d.getFullYear();
@@ -443,6 +439,12 @@
       return `KR-SHEV-${yyyy}${mm}${dd}-${hh}${mi}${ss}-${rnd}`;
     }
 
+    // order_id как на сервере (cash-sync-ts)
+    function calcCashOrderId(seance_id, show_slug, op_id){
+      const base = seance_id ? seance_id : show_slug;
+      return `CASH-${base}-${op_id}`;
+    }
+
     // ---- печать билетов (с QR) ----
     async function openPrintWindowOffline(tickets, meta){
       const theatre = "Театр ім. Т. Г. Шевченка";
@@ -450,10 +452,12 @@
       const dt = (meta?.date && meta?.time) ? `${meta.date} ${meta.time}` : "";
       const seance = SEANCE_ID || "";
 
-      // генерим dataURL QR для каждого билета
       const cardsHtml = [];
       for (const t of tickets){
-        const payload = `op:${t.op_id}|seance:${seance}|seat:${t.seat_label}`;
+        // QR ДОЛЖЕН быть совместим со scan-ticket:
+        // order:...|show:...|seat:...
+        const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
+
         let qrDataUrl = "";
         try{
           qrDataUrl = await QRCode.toDataURL(payload, { width: 240, margin: 1 });
@@ -470,6 +474,7 @@
               ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
               <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
               ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
+              <div class="muted">Order: ${t.order_id}</div>
             </div>
             <div class="price">Ціна: ${t.price} грн</div>
 
@@ -477,7 +482,7 @@
 
             <div class="note">
               Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
-              Якщо немає інтернету — контролер може сканувати офлайн.
+              Для гарантованого сканування натисніть SYNC (коли є інтернет).
             </div>
           </div>
         `);
@@ -524,7 +529,6 @@
       return localStorage.getItem("cashier_sync_secret") || "";
     }
     function ensureCashierSecret(){
-      // если на сервере секрет выключен — можно ничего не вводить
       let s = getCashierSecret();
       if (s) return s;
       s = prompt("Секрет каси (CASHIER_SYNC_SECRET) — якщо не використовується, натисніть Cancel:") || "";
@@ -533,43 +537,42 @@
       return s;
     }
 
-    async function postCashSync(ops){
+    async function postCashSync(cashier_id, ops){
       const secret = ensureCashierSecret();
       const headers = { "Content-Type": "application/json" };
       if (secret) headers["x-cashier-secret"] = secret;
 
-      async function post(url){
-        const res = await fetch(url, { method:"POST", headers, body: JSON.stringify({ ops }) });
-        const txt = await res.text();
-        let data = null;
-        try{ data = JSON.parse(txt); }catch(e){ data = { raw: txt }; }
-        return { ok: res.ok, status: res.status, data };
-      }
+      const res = await fetch(CASH_SYNC_V1, {
+        method:"POST",
+        headers,
+        body: JSON.stringify({ cashier_id, ops }),
+      });
 
-      let r = await post(CASH_SYNC_V1);
-      if (!r.ok && (r.status === 404 || r.status === 405)) r = await post(CASH_SYNC_NO_V1);
-      return r;
+      const txt = await res.text();
+      let data = null;
+      try{ data = JSON.parse(txt); }catch(e){ data = { raw: txt }; }
+      return { ok: res.ok, status: res.status, data };
     }
 
     async function syncQueue(){
       const queue = loadQueue();
       if (!queue.length) { alert("Черга порожня."); return; }
 
-      const r = await postCashSync(queue);
+      const cashier_id = localStorage.getItem("cashier_id") || "pc-1";
+      const r = await postCashSync(cashier_id, queue);
+
       if (!r.ok){
         const msg = (r.data && (r.data.details || r.data.error)) ? (r.data.details || r.data.error) : "unknown";
         alert("SYNC помилка: " + msg);
         return;
       }
 
-      // удаляем успешно applied / already_applied
       const resArr = Array.isArray(r.data?.results) ? r.data.results : [];
       const okOps = new Set(resArr.filter(x => x && x.ok === true).map(x => x.op_id));
 
       const left = queue.filter(op => !okOps.has(op.op_id));
       saveQueue(left);
 
-      // подтянем онлайн блокировку
       await loadTakenSeatsOnline();
       reapplyAllStatuses();
 
@@ -591,6 +594,7 @@
       const prices = {};
       for (const k of keys) prices[k] = Number(selected.get(k)?.price || 0);
 
+      // IMPORTANT: структура ops как ожидает cash-sync-ts
       const op = {
         op_id,
         type: "sale",
@@ -598,9 +602,7 @@
         show_slug: showSlug,
         seats: keys,
         prices,
-        created_at: new Date().toISOString(),
-        cashier: "cash-1",
-        note: "offline",
+        sold_at: new Date().toISOString(),
       };
 
       // 1) в очередь
@@ -615,16 +617,23 @@
       }
       saveCashPatch(CASH_PATCH);
 
-      // 3) печать с QR (op/seance/seat)
-      const tickets = keys.map(k => ({ op_id, seat_label: k, price: Number(prices[k] || 0) }));
+      // 3) печать с QR (order/show/seat) — совместимо со scan-ticket
+      const order_id = calcCashOrderId(SEANCE_ID, showSlug, op_id);
+      const tickets = keys.map(k => ({
+        op_id,
+        order_id,
+        show_slug: showSlug,
+        seat_label: k,
+        price: Number(prices[k] || 0),
+      }));
+
       clearSelection();
       reapplyAllStatuses();
       await openPrintWindowOffline(tickets, SHOW_META);
 
-      // 4) если интернет есть — можем попытаться синкнуть автоматически (не обязательно)
+      // 4) если онлайн — пробуем синкнуть тихо
       try{
         if (navigator.onLine) {
-          // тихая попытка
           const q2 = loadQueue();
           if (q2.length) await syncQueue();
         }
