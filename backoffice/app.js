@@ -1,82 +1,87 @@
-// backoffice/app.js  (FULL REPLACE)
+// backoffice/app.js (REPLACE FULL FILE)
 (() => {
   const { qs, nowIso, fmtDT, downloadText, toCsv, fetchJson } = window.BO_UTILS;
   const { setText, renderBasket, renderOps } = window.BO_UI;
 
   const LS_PREFIX = "bo_v1_";
 
-  let SETTINGS = { theatre: {}, pricing_defaults: {} };
+  let SETTINGS = { theatre: {}, pricing_defaults: {}, pricing_defaults_fallback: {} };
   let AFISHA = [];
-
-  let current = null; // afisha item
+  let current = null; // {id,title,date,time,...}
   let seance = null;  // data/seances/*.json
   let hall = null;    // data/halls/*.json
-
   let currency = "грн";
 
   // state per seance
-  let seatStatus = new Map(); // key -> status
+  let seatStatus = new Map(); // seat_label -> status (free/reserved/sold/realization/invite/blocked)
   let basket = [];            // [{key,label,price}]
   let ops = [];               // log operations
-
-  // zoom
   let zoom = 1;
 
-  // -------------------- keys & helpers --------------------
-  function lsKey(name) {
-    const showKey = current ? `${current.id}_${current.date}` : "no_show";
-    return `${LS_PREFIX}${name}_${showKey}`;
+  // -------------------- key helpers (унифицируем под онлайн формат) --------------------
+  // Партер:  P{row}-M{seat}
+  // Амфи:    A{row}-M{seat}
+  // Балкон:  B{row}-M{seat}
+  // Ложа A:  A0-M{seat}
+  // Ложа B:  B0-M{seat}
+  function seatLabelKey(zone, row, seat, boxId) {
+    if (boxId === "boxA") return `A0-M${seat}`;
+    if (boxId === "boxB") return `B0-M${seat}`;
+    if (zone === "parter") return `P${row}-M${seat}`;
+    if (zone === "amphi") return `A${row}-M${seat}`;
+    if (zone === "balcony") return `B${row}-M${seat}`;
+    // fallback
+    return `P${row}-M${seat}`;
   }
 
-  // New format: "parter:1-1", "amphi:19-5", "balcony:1-1", "boxA-1"
-  function seatKey(zone, row, seat) {
-    if (zone === "box") return String(row); // row = "boxA-1"
-    return `${zone}:${row}-${seat}`;
+  function keyToHuman(k) {
+    const m = String(k).match(/^([PAB])(\d+)-M(\d+)$/i);
+    if (!m) return k;
+    const prefix = m[1].toUpperCase();
+    const row = Number(m[2]);
+    const seat = Number(m[3]);
+
+    if (prefix === "P") return `Партер • ряд ${row} • місце ${seat}`;
+    if (prefix === "A") return row === 0 ? `Ложа A • місце ${seat}` : `Амфітеатр • ряд ${row} • місце ${seat}`;
+    if (prefix === "B") return row === 0 ? `Ложа B • місце ${seat}` : `Балкон • ряд ${row} • місце ${seat}`;
+    return k;
   }
 
-  // Backward compat: seance.places can have:
-  // - "19-5"  -> amphi:19-5 (if row >= 19)
-  // - "1-1"   -> parter:1-1 (by your current convention)
-  // - "boxA-1" -> as is
-  // Balcony legacy without zone is impossible (conflicts with parter).
-  function normalizePlaceKey(k) {
-    const key = String(k || "").trim();
-    if (!key) return "";
+  // поддержка старого формата places: "1-2" и "boxA-5"
+  function normalizePlaceKeyToSeatLabel(k) {
+    const s = String(k || "").trim();
+    if (!s) return "";
+    if (/^[PAB]\d+-M\d+$/i.test(s)) return s;
 
-    if (key.includes(":")) return key; // already new format
-    if (key.startsWith("boxA-") || key.startsWith("boxB-")) return key;
+    const box = s.match(/^box([ab])-(\d+)$/i);
+    if (box) {
+      const idx = Number(box[2]);
+      return box[1].toLowerCase() === "a" ? `A0-M${idx}` : `B0-M${idx}`;
+    }
 
-    const m = key.match(/^(\d+)-(\d+)$/);
-    if (!m) return key;
+    const simple = s.match(/^(\d+)-(\d+)$/);
+    if (simple) {
+      const row = Number(simple[1]);
+      const seat = Number(simple[2]);
+      return `P${row}-M${seat}`;
+    }
 
-    const row = Number(m[1]);
-
-    // by your seance example: 19..23 = amphi
-    if (row >= 19) return `amphi:${key}`;
-
-    // rows 1..18 считаем партером (как у тебя сейчас)
-    return `parter:${key}`;
+    return s;
   }
 
-  function zoneLabel(zone) {
-    return hall?.zones?.[zone]?.label || (
-      zone === "parter" ? "Партер" :
-      zone === "amphi" ? "Амфітеатр" :
-      zone === "balcony" ? "Балкон" : zone
-    );
+  // -------------------- pricing helpers --------------------
+  function priceByGroup(groupKey) {
+    const sp = (seance && seance.prices) ? seance.prices : null;
+    if (sp && sp[groupKey] != null) return Number(sp[groupKey]) || 0;
+
+    const d = SETTINGS.pricing_defaults || {};
+    if (d && d[groupKey] != null) return Number(d[groupKey]) || 0;
+
+    return 0;
   }
 
-  function seatLabelFromKey(k) {
-    const key = String(k || "");
-    if (key.startsWith("boxA-")) return `Ложа A • місце ${key.split("-")[1]}`;
-    if (key.startsWith("boxB-")) return `Ложа Б • місце ${key.split("-")[1]}`;
-
-    const m = key.match(/^([a-z]+):(\d+)-(\d+)$/i);
-    if (!m) return key;
-    const zone = m[1];
-    const row = m[2];
-    const seat = m[3];
-    return `${zoneLabel(zone)} • ряд ${row} • місце ${seat}`;
+  function totalBasket() {
+    return basket.reduce((s, i) => s + (Number(i.price) || 0), 0);
   }
 
   function isLockedStatus(st) {
@@ -89,39 +94,33 @@
       case "reserved": return "РЕЗЕРВ";
       case "realization": return "РЕАЛІЗАЦІЯ";
       case "invite": return "ЗАПРОШЕННЯ";
+      case "clear": return "ОЧИЩЕННЯ";
       default: return status;
     }
   }
 
-  function totalBasket() {
-    return basket.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  // -------------------- localStorage helpers --------------------
+  function lsKey(name) {
+    const showKey = current ? `${current.id}_${current.date}` : "no_show";
+    return `${LS_PREFIX}${name}_${showKey}`;
   }
 
-  function getPriceByGroup(price_group) {
-    const p = seance?.prices || {};
-    const d = SETTINGS?.pricing_defaults || {};
-    if (p && p[price_group] != null) return Number(p[price_group]) || 0;
-    if (d && d[price_group] != null) return Number(d[price_group]) || 0;
-    return 0;
-  }
-
-  // -------------------- load/save local state --------------------
   function loadLocalState() {
     seatStatus = new Map();
     basket = [];
     ops = [];
 
-    const rawSeat = localStorage.getItem(lsKey("seatStatus"));
-    if (rawSeat) {
+    const raw1 = localStorage.getItem(lsKey("seatStatus"));
+    if (raw1) {
       try {
-        const obj = JSON.parse(rawSeat);
+        const obj = JSON.parse(raw1);
         for (const [k, v] of Object.entries(obj)) seatStatus.set(k, v);
       } catch {}
     }
 
-    const rawOps = localStorage.getItem(lsKey("ops"));
-    if (rawOps) {
-      try { ops = JSON.parse(rawOps) || []; } catch { ops = []; }
+    const raw2 = localStorage.getItem(lsKey("ops"));
+    if (raw2) {
+      try { ops = JSON.parse(raw2) || []; } catch { ops = []; }
     }
 
     syncUI();
@@ -137,159 +136,53 @@
     localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
   }
 
-  // -------------------- rendering hall --------------------
+  // -------------------- zoom --------------------
   function setZoom(value) {
     zoom = Math.max(0.6, Math.min(1.8, value));
     const root = qs("#hallRoot");
     if (root) root.style.transform = `scale(${zoom})`;
   }
 
-  function seatDom(key, label, price, aisleAfter = null, seatNumber = null) {
+  // -------------------- seat dom --------------------
+  function seatDom(key, label, price, aisleGap = false) {
     const btn = document.createElement("button");
-    btn.className = "seat";
+    btn.className = "seat" + (aisleGap ? " gapRight" : "");
     btn.type = "button";
     btn.dataset.key = key;
 
-    const base = seatStatus.get(key) || "free";
+    const stBase = seatStatus.get(key) || "free";
     const inBasket = basket.some(x => x.key === key);
-    const st = inBasket ? "basket" : base;
+    const st = inBasket ? "basket" : stBase;
 
     btn.dataset.st = st;
-    btn.title = `${label}\n${price} ${currency}\nСтатус: ${base}`;
-    btn.textContent = seatNumber != null ? String(seatNumber) : (key.split("-")[1] || "");
+    btn.title = `${label}\n${price} ${currency}\nСтатус: ${stBase}`;
 
-    if (isLockedStatus(base)) btn.disabled = true;
+    // номер
+    const m = String(key).match(/-M(\d+)$/i);
+    btn.textContent = m ? m[1] : key;
+
+    if (isLockedStatus(stBase)) btn.disabled = true;
 
     btn.addEventListener("click", () => {
-      const b = seatStatus.get(key) || "free";
-      if (isLockedStatus(b)) return;
+      const base = seatStatus.get(key) || "free";
+      if (isLockedStatus(base)) return;
 
       const idx = basket.findIndex(x => x.key === key);
       if (idx >= 0) basket.splice(idx, 1);
       else basket.push({ key, label, price });
 
-      btn.dataset.st = basket.some(x => x.key === key) ? "basket" : b;
+      btn.dataset.st = basket.some(x => x.key === key) ? "basket" : base;
       syncUI();
     });
-
-    // aisle marker
-    if (aisleAfter && Number(aisleAfter) === Number(seatNumber)) {
-      btn.classList.add("gapRight");
-    }
 
     return btn;
   }
 
-  function renderSectionTitle(text) {
-    const root = qs("#hallRoot");
-    const t = document.createElement("div");
-    t.className = "sectionTitle";
-    t.textContent = text;
-    root.appendChild(t);
-  }
-
-  function renderSimpleRow(zone, rowNum, seatsCount, aisleAfter, price_group) {
-    const root = qs("#hallRoot");
-
-    const line = document.createElement("div");
-    line.className = "rowLine";
-
-    const lab = document.createElement("div");
-    lab.className = "rowLabel";
-    lab.textContent = String(rowNum);
-    line.appendChild(lab);
-
-    const rowWrap = document.createElement("div");
-    rowWrap.className = "seatsRow";
-
-    const price = getPriceByGroup(price_group);
-
-    for (let s = 1; s <= seatsCount; s++) {
-      const key = seatKey(zone, rowNum, s);
-      const lbl = `${zoneLabel(zone)} • ряд ${rowNum} • місце ${s}`;
-      rowWrap.appendChild(seatDom(key, lbl, price, aisleAfter, s));
-    }
-
-    line.appendChild(rowWrap);
-    root.appendChild(line);
-  }
-
-  function renderAmphiRow(rowNum, seatsLeft, seatsRight, price_group) {
-    const root = qs("#hallRoot");
-    const line = document.createElement("div");
-    line.className = "rowLine";
-
-    const lab = document.createElement("div");
-    lab.className = "rowLabel";
-    lab.textContent = String(rowNum);
-    line.appendChild(lab);
-
-    const wrap = document.createElement("div");
-    wrap.className = "seatsRow";
-
-    const price = getPriceByGroup(price_group);
-
-    // left
-    for (let s = 1; s <= seatsLeft; s++) {
-      const key = seatKey("amphi", rowNum, s);
-      const lbl = `${zoneLabel("amphi")} • ряд ${rowNum} • місце ${s}`;
-      wrap.appendChild(seatDom(key, lbl, price, null, s));
-    }
-
-    // gap
-    const gap = document.createElement("div");
-    gap.style.width = "18px";
-    gap.style.flex = "0 0 18px";
-    wrap.appendChild(gap);
-
-    // right seats continue numbering after left
-    for (let s = 1; s <= seatsRight; s++) {
-      const seatNo = seatsLeft + s;
-      const key = seatKey("amphi", rowNum, seatNo);
-      const lbl = `${zoneLabel("amphi")} • ряд ${rowNum} • місце ${seatNo}`;
-      wrap.appendChild(seatDom(key, lbl, price, null, seatNo));
-    }
-
-    line.appendChild(wrap);
-    root.appendChild(line);
-  }
-
-  function renderBoxes() {
-    const root = qs("#hallRoot");
-    const boxes = Array.isArray(hall?.boxes) ? hall.boxes : [];
-    if (!boxes.length) return;
-
-    renderSectionTitle("Ложі");
-
-    for (const box of boxes) {
-      const line = document.createElement("div");
-      line.className = "rowLine";
-
-      const lab = document.createElement("div");
-      lab.className = "rowLabel";
-      lab.textContent = String(box.label || box.id || "BOX");
-      line.appendChild(lab);
-
-      const rowWrap = document.createElement("div");
-      rowWrap.className = "seatsRow";
-
-      const seats = Number(box.seats || 0);
-      const price = getPriceByGroup(box.price_group || "p_boxes");
-
-      for (let i = 1; i <= seats; i++) {
-        const key = `${box.id}-${i}`; // "boxA-1"
-        const lbl = `${box.label || box.id} • місце ${i}`;
-        rowWrap.appendChild(seatDom(key, lbl, price, null, i));
-      }
-
-      line.appendChild(rowWrap);
-      root.appendChild(line);
-    }
-  }
-
+  // -------------------- render hall (как spectacles/hall.html) --------------------
   function renderHall() {
     const root = qs("#hallRoot");
     if (!root) return;
+
     root.innerHTML = "";
 
     if (!current || !seance || !hall) {
@@ -297,44 +190,195 @@
       return;
     }
 
-    // group rows by zone
-    const rows = Array.isArray(hall.rows) ? hall.rows.slice() : [];
+    const rows = (hall.rows || []).slice();
+    const boxes = Array.isArray(hall.boxes) ? hall.boxes : [];
 
+    // 1) Партер (rows zone=parter, seats=20)
     const parter = rows.filter(x => x.zone === "parter");
-    const amphi = rows.filter(x => x.zone === "amphi");
-    const balcony = rows.filter(x => x.zone === "balcony");
 
-    if (parter.length) {
-      renderSectionTitle("Партер");
-      for (const r of parter) {
-        renderSimpleRow("parter", r.row, r.seats, r.aisle_after, r.price_group);
+    const title = document.createElement("div");
+    title.className = "sectionTitle";
+    title.textContent = "Партер";
+    root.appendChild(title);
+
+    const parterWrap = document.createElement("div");
+    parterWrap.className = "parterWrap";
+
+    // Ложа B (слева)
+    const boxB = boxes.find(b => String(b.id).toLowerCase() === "boxb");
+    const leftBox = document.createElement("div");
+    leftBox.className = "lodgeCol";
+    leftBox.innerHTML = `<div class="lodgeTitle">Ложа Б</div>`;
+    const leftSeats = document.createElement("div");
+    leftSeats.className = "lodgeSeats";
+    if (boxB) {
+      const price = priceByGroup(boxB.price_group || "p_boxes");
+      for (let i = 1; i <= Number(boxB.seats || 18); i++) {
+        const key = seatLabelKey(null, 0, i, "boxB");
+        leftSeats.appendChild(seatDom(key, `Ложа B • місце ${i}`, price));
       }
     }
+    leftBox.appendChild(leftSeats);
 
-    renderBoxes();
+    // Партер центр
+    const center = document.createElement("div");
+    center.className = "parterCenter";
 
+    for (const r of parter) {
+      const line = document.createElement("div");
+      line.className = "rowLine";
+
+      const lab = document.createElement("div");
+      lab.className = "rowLabel";
+      lab.textContent = String(r.row);
+      line.appendChild(lab);
+
+      const rowWrap = document.createElement("div");
+      rowWrap.className = "seatsRow";
+
+      const price = priceByGroup(r.price_group || "");
+      const cnt = Number(r.seats || 0);
+
+      for (let s = 1; s <= cnt; s++) {
+        const key = seatLabelKey("parter", Number(r.row), s);
+        const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+        rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+      }
+
+      line.appendChild(rowWrap);
+      center.appendChild(line);
+    }
+
+    // Ложа A (справа)
+    const boxA = boxes.find(b => String(b.id).toLowerCase() === "boxa");
+    const rightBox = document.createElement("div");
+    rightBox.className = "lodgeCol";
+    rightBox.innerHTML = `<div class="lodgeTitle">Ложа A</div>`;
+    const rightSeats = document.createElement("div");
+    rightSeats.className = "lodgeSeats";
+    if (boxA) {
+      const price = priceByGroup(boxA.price_group || "p_boxes");
+      for (let i = 1; i <= Number(boxA.seats || 18); i++) {
+        const key = seatLabelKey(null, 0, i, "boxA");
+        rightSeats.appendChild(seatDom(key, `Ложа A • місце ${i}`, price));
+      }
+    }
+    rightBox.appendChild(rightSeats);
+
+    parterWrap.appendChild(leftBox);
+    parterWrap.appendChild(center);
+    parterWrap.appendChild(rightBox);
+
+    root.appendChild(parterWrap);
+
+    // 2) Амфітеатр (rows zone=amphi, seats_left / seats_right)
+    const amphi = rows.filter(x => x.zone === "amphi");
     if (amphi.length) {
-      renderSectionTitle("Амфітеатр");
+      const t2 = document.createElement("div");
+      t2.className = "sectionTitle";
+      t2.textContent = "Амфітеатр";
+      root.appendChild(t2);
+
       for (const r of amphi) {
-        // supports seats_left / seats_right
+        const line = document.createElement("div");
+        line.className = "rowLine";
+
+        const lab = document.createElement("div");
+        lab.className = "rowLabel";
+        lab.textContent = String(r.row);
+        line.appendChild(lab);
+
+        const wrap = document.createElement("div");
+        wrap.className = "amphiWrap";
+
+        const left = document.createElement("div");
+        left.className = "seatsRow";
+        const gap = document.createElement("div");
+        gap.className = "amphiGap";
+        const right = document.createElement("div");
+        right.className = "seatsRow";
+
+        const price = priceByGroup(r.price_group || "");
+
         const L = Number(r.seats_left || 0);
         const R = Number(r.seats_right || 0);
-        renderAmphiRow(r.row, L, R, r.price_group);
+
+        for (let s = 1; s <= L; s++) {
+          const key = seatLabelKey("amphi", Number(r.row), s);
+          left.appendChild(seatDom(key, keyToHuman(key), price));
+        }
+        for (let s = 1; s <= R; s++) {
+          const seatNum = L + s; // справа продолжает нумерацию
+          const key = seatLabelKey("amphi", Number(r.row), seatNum);
+          right.appendChild(seatDom(key, keyToHuman(key), price));
+        }
+
+        wrap.appendChild(left);
+        wrap.appendChild(gap);
+        wrap.appendChild(right);
+
+        line.appendChild(wrap);
+        root.appendChild(line);
       }
     }
 
+    // 3) Балкон (rows zone=balcony)
+    const balcony = rows.filter(x => x.zone === "balcony");
     if (balcony.length) {
-      renderSectionTitle("Балкон");
+      const t3 = document.createElement("div");
+      t3.className = "sectionTitle";
+      t3.textContent = "Балкон";
+      root.appendChild(t3);
+
       for (const r of balcony) {
-        // balcony row 6 can be split too, but you already have seats=20 + left/right
-        if (r.seats_left != null || r.seats_right != null) {
+        const line = document.createElement("div");
+        line.className = "rowLine";
+
+        const lab = document.createElement("div");
+        lab.className = "rowLabel";
+        lab.textContent = String(r.row);
+        line.appendChild(lab);
+
+        const rowWrap = document.createElement("div");
+        rowWrap.className = "seatsRow";
+
+        const price = priceByGroup(r.price_group || "");
+
+        // Ряды 1-5: seats=28
+        if (r.seats) {
+          const cnt = Number(r.seats || 0);
+          for (let s = 1; s <= cnt; s++) {
+            const key = seatLabelKey("balcony", Number(r.row), s);
+            const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+          }
+        } else {
+          // Ряд 6: seats_left/seats_right, визуально как у тебя: 1-10, пусто, 11-20
           const L = Number(r.seats_left || 0);
           const R = Number(r.seats_right || 0);
-          // here numbering is continuous 1..(L+R)
-          renderAmphiRow(r.row, L, R, r.price_group); // same visual style
-        } else {
-          renderSimpleRow("balcony", r.row, r.seats, r.aisle_after, r.price_group);
+
+          // слева 1..L
+          for (let s = 1; s <= L; s++) {
+            const key = seatLabelKey("balcony", Number(r.row), s);
+            const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+          }
+          // пустые слоты (как “пропуск”)
+          for (let i = 0; i < 8; i++) {
+            const ph = document.createElement("span");
+            ph.className = "seatPh";
+            rowWrap.appendChild(ph);
+          }
+          // справа (продолжаем как 11..(10+R))
+          for (let s = 1; s <= R; s++) {
+            const seatNum = L + s;
+            const key = seatLabelKey("balcony", Number(r.row), seatNum);
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price));
+          }
         }
+
+        line.appendChild(rowWrap);
+        root.appendChild(line);
       }
     }
 
@@ -343,18 +387,18 @@
 
   // -------------------- UI sync --------------------
   function syncUI() {
-    // basket
     const meta = qs("#basketMeta");
     const list = qs("#basketList");
     const totalEl = qs("#basketTotal");
 
     if (meta) meta.textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
     if (totalEl) totalEl.textContent = String(totalBasket());
-
     renderBasket(list, basket, currency);
-    renderOps(qs("#opsList"), ops);
 
-    // update all seat buttons data-st
+    const opsList = qs("#opsList");
+    renderOps(opsList, ops);
+
+    // обновляем статусы на кнопках
     const hallRoot = qs("#hallRoot");
     if (hallRoot) {
       hallRoot.querySelectorAll(".seat[data-key]").forEach(btn => {
@@ -372,10 +416,7 @@
   }
 
   // -------------------- actions --------------------
-  function clearBasket() {
-    basket = [];
-    syncUI();
-  }
+  function clearBasket() { basket = []; syncUI(); }
 
   function applyToBasket(status) {
     if (!current) { alert("Оберіть сеанс."); return; }
@@ -385,15 +426,17 @@
     for (const k of seatKeys) seatStatus.set(k, status);
     saveSeatStatus();
 
+    const total = totalBasket();
+    const showLabel = `${current.title} — ${current.date} ${current.time}`;
     ops.push({
       ts: nowIso(),
       tsHuman: fmtDT(Date.now()),
       action: humanActionName(status),
       status,
       showId: current.id,
-      showLabel: `${current.title} — ${current.date} ${current.time}`,
+      showLabel,
       count: seatKeys.length,
-      total: totalBasket(),
+      total,
       currency,
       seats: seatKeys
     });
@@ -403,10 +446,10 @@
     syncUI();
   }
 
-  const sell = () => applyToBasket("sold");
-  const reserve = () => applyToBasket("reserved");
-  const realize = () => applyToBasket("realization");
-  const invite = () => applyToBasket("invite");
+  function sell() { applyToBasket("sold"); }
+  function reserve() { applyToBasket("reserved"); }
+  function realize() { applyToBasket("realization"); }
+  function invite() { applyToBasket("invite"); }
 
   function exportStateJson() {
     if (!current) { alert("Оберіть сеанс."); return; }
@@ -423,9 +466,7 @@
     const rows = [["ts", "action", "seat", "status", "total", "currency", "showId", "showDate"]];
     for (const o of ops) {
       if (o.action !== "ПРОДАЖ") continue;
-      for (const s of (o.seats || [])) {
-        rows.push([o.ts, o.action, s, o.status, o.total, o.currency, o.showId, current.date]);
-      }
+      for (const s of (o.seats || [])) rows.push([o.ts, o.action, s, o.status, o.total, o.currency, o.showId, current.date]);
     }
     downloadText(`backoffice_sales_${current.id}_${current.date}.csv`, toCsv(rows));
   }
@@ -464,7 +505,8 @@
       currency = SETTINGS?.theatre?.currency || "грн";
       setText("#boTitle", SETTINGS?.theatre?.name ? `Білетний відділ — ${SETTINGS.theatre.name}` : "Білетний відділ");
       return SETTINGS;
-    } catch {
+    } catch (e) {
+      console.warn("settings.json не прочитался", e);
       SETTINGS = { theatre: {}, pricing_defaults: {} };
       currency = "грн";
       return SETTINGS;
@@ -476,37 +518,33 @@
     return AFISHA;
   }
 
-  function inDateRange(item, fromStr, toStr) {
-    const d = String(item?.date || "");
-    if (!d) return true;
-    if (fromStr && d < fromStr) return false;
-    if (toStr && d > toStr) return false;
-    return true;
-  }
-
   function fillShowSelect() {
     const sel = qs("#showSelect");
     if (!sel) return;
 
-    const from = qs("#rangeFrom")?.value || "";
-    const to = qs("#rangeTo")?.value || "";
-
-    const list = (AFISHA || [])
-      .filter(x => inDateRange(x, from, to))
-      .slice()
-      .sort((a, b) => {
-        const ak = `${a.date} ${a.time}`;
-        const bk = `${b.date} ${b.time}`;
-        return ak.localeCompare(bk);
-      });
-
     sel.innerHTML = '<option value="">— обрати —</option>';
-    for (const s of list) {
+    for (const s of AFISHA) {
       const opt = document.createElement("option");
       opt.value = `${s.id}__${s.date}`;
-      opt.textContent = `${s.date} • ${s.time} • ${s.title}`;
+      opt.textContent = `${s.title} — ${s.date}, ${s.time}`;
       sel.appendChild(opt);
     }
+
+    sel.addEventListener("change", async () => {
+      const v = sel.value || "";
+      if (!v) {
+        current = null; seance = null; hall = null;
+        setText("#seanceMeta", "Оберіть сеанс.");
+        renderHall();
+        loadLocalState();
+        return;
+      }
+      const [id, date] = v.split("__");
+      const found = AFISHA.find(x => x.id === id && x.date === date) || AFISHA.find(x => x.id === id) || null;
+      if (!found) return;
+
+      await loadSeance(found);
+    });
   }
 
   async function loadSeance(show) {
@@ -533,19 +571,21 @@
       return;
     }
 
-    // 1) base from seance.places
+    // init statuses from seance.places
     seatStatus = new Map();
     const places = seance.places || {};
     for (const [k, v] of Object.entries(places)) {
-      const nk = normalizePlaceKey(k);
-      let st = v?.status || "free";
-      // normalize aliases
-      if (st === "hold") st = "reserved";
-      if (st === "boxoffice") st = "sold";
-      seatStatus.set(nk, st);
+      const seatLabel = normalizePlaceKeyToSeatLabel(k);
+      if (!seatLabel) continue;
+
+      const st = (v && v.status) ? v.status : "free";
+      let norm = st;
+      if (st === "hold") norm = "reserved";
+      if (st === "boxoffice") norm = "sold";
+      seatStatus.set(seatLabel, norm);
     }
 
-    // 2) apply local override
+    // apply local override
     const rawLocal = localStorage.getItem(lsKey("seatStatus"));
     if (rawLocal) {
       try {
@@ -554,9 +594,8 @@
       } catch {}
     }
 
-    // ops
-    ops = [];
     const rawOps = localStorage.getItem(lsKey("ops"));
+    ops = [];
     if (rawOps) {
       try { ops = JSON.parse(rawOps) || []; } catch { ops = []; }
     }
@@ -567,7 +606,6 @@
 
     saveSeatStatus();
     saveOps();
-
     renderHall();
     syncUI();
   }
@@ -597,34 +635,14 @@
 
     qs("#btnResetLocal")?.addEventListener("click", resetLocal);
 
-    // dates init
+    // dates UI (пока просто выставим)
     const from = qs("#rangeFrom");
     const to = qs("#rangeTo");
     const today = new Date();
     const pad = (n) => String(n).padStart(2, "0");
     const y = today.getFullYear(), m = pad(today.getMonth() + 1), d = pad(today.getDate());
-    if (from && !from.value) from.value = `${y}-${m}-01`;
-    if (to && !to.value) to.value = `${y}-${m}-${d}`;
-
-    // refilter seances on date change
-    from?.addEventListener("change", () => fillShowSelect());
-    to?.addEventListener("change", () => fillShowSelect());
-
-    // showSelect change
-    qs("#showSelect")?.addEventListener("change", async () => {
-      const v = qs("#showSelect").value || "";
-      if (!v) {
-        current = null; seance = null; hall = null;
-        setText("#seanceMeta", "Оберіть сеанс.");
-        renderHall();
-        loadLocalState();
-        return;
-      }
-      const [id, date] = v.split("__");
-      const found = AFISHA.find(x => x.id === id && x.date === date) || AFISHA.find(x => x.id === id) || null;
-      if (!found) return;
-      await loadSeance(found);
-    });
+    if (from) from.value = `${y}-${m}-01`;
+    if (to) to.value = `${y}-${m}-${d}`;
   }
 
   async function init() {
@@ -645,5 +663,4 @@
       alert("Помилка ініціалізації Backoffice. Відкрий консоль (F12) і покажи помилку.");
     });
   });
-
 })();
