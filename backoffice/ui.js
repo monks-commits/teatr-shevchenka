@@ -14,7 +14,6 @@
   function renderBasket(listEl, items, currency){
     clear(listEl);
     if (!listEl) return;
-
     if (!items.length) return;
 
     for (const it of items){
