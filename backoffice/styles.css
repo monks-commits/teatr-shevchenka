@@ -312,3 +312,107 @@ body{
   .layout{ grid-template-columns:56px minmax(0,1fr); }
   .right{ grid-column: 1 / -1; }
 }
+/* --- hall layout like spectacles/hall.html (backoffice) --- */
+.parterWrap{
+  display:flex;
+  gap:18px;
+  align-items:flex-start;
+  justify-content:center;
+  margin-top:10px;
+}
+
+.parterCenter{ min-width: 0; }
+
+.lodgeCol{
+  width:84px;
+  flex:0 0 84px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+.lodgeTitle{
+  font-size:12px;
+  font-weight:800;
+  color:#374151;
+  text-align:center;
+}
+
+.lodgeSeats{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.amphiWrap{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.amphiGap{
+  width:22px;
+  flex:0 0 22px;
+}
+
+.seatPh{
+  width:var(--seat-size);
+  height:var(--seat-size);
+  display:inline-block;
+  border-radius:8px;
+  background:transparent;
+  border:1px dashed transparent;
+}
+/* --- hall layout like spectacles/hall.html (backoffice) --- */
+.parterWrap{
+  display:flex;
+  gap:18px;
+  align-items:flex-start;
+  justify-content:center;
+  margin-top:10px;
+}
+
+.parterCenter{ min-width: 0; }
+
+.lodgeCol{
+  width:84px;
+  flex:0 0 84px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+.lodgeTitle{
+  font-size:12px;
+  font-weight:800;
+  color:#374151;
+  text-align:center;
+}
+
+.lodgeSeats{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.amphiWrap{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.amphiGap{
+  width:22px;
+  flex:0 0 22px;
+}
+
+.seatPh{
+  width:var(--seat-size);
+  height:var(--seat-size);
+  display:inline-block;
+  border-radius:8px;
+  background:transparent;
+  border:1px dashed transparent;
+}
