@@ -11,6 +11,16 @@
     <div class="brand">
       <div class="brand__title" id="boTitle">Білетний відділ</div>
       <div class="brand__sub">Backoffice (локально, без авторизації)</div>
+
+      <div class="tabs">
+        <button class="tab tab--active" type="button">Події</button>
+        <button class="tab" type="button">Розцінки</button>
+        <button class="tab" type="button">Клієнти</button>
+        <button class="tab" type="button">Замовлення</button>
+        <button class="tab" type="button">Звіти</button>
+        <button class="tab" type="button">Документи</button>
+        <button class="tab" type="button">Контроль</button>
+      </div>
     </div>
 
     <div class="topbar__controls">
@@ -32,7 +42,7 @@
 
       <div class="control">
         <label>Пошук</label>
-        <input id="searchInput" type="text" placeholder="ПІБ / телефон / примітка (поки демо)" />
+        <input id="searchInput" type="text" placeholder="ПІБ / телефон / примітка (демо)" />
       </div>
 
       <button class="btn btn--ghost" id="btnResetLocal" title="Очистити локальні дані по цьому сеансу">
@@ -47,7 +57,7 @@
       <button class="toolbtn" id="btnHome" title="На початок">🏠</button>
       <button class="toolbtn" id="btnZoomIn" title="Збільшити">＋</button>
       <button class="toolbtn" id="btnZoomOut" title="Зменшити">－</button>
-      <button class="toolbtn" id="btnList" title="Список/журнал (нижче)">≡</button>
+      <button class="toolbtn" id="btnList" title="До журналу">≡</button>
     </aside>
 
     <!-- Hall -->
@@ -78,7 +88,7 @@
       <div class="card" style="margin-top:12px;">
         <div class="card__head">
           <div class="h2">Журнал операцій (локально)</div>
-          <div class="muted">Експортується як CSV/JSON. Для синхронізації з онлайн — наступним етапом.</div>
+          <div class="muted">Експорт CSV/JSON. Синхронізація з онлайн — окремим етапом.</div>
         </div>
         <div class="ops">
           <div class="ops__actions">
@@ -94,6 +104,27 @@
     <!-- Right panel -->
     <aside class="right">
       <div class="card">
+        <div class="card__head">
+          <div>
+            <div class="h2">Клієнти / агенти</div>
+            <div class="muted">Поки макет “як у Карабаса” — підключимо дані пізніше.</div>
+          </div>
+          <div class="right__mini">
+            <button class="btn btn--ghost" type="button">＋ Додати</button>
+          </div>
+        </div>
+
+        <div class="table">
+          <div class="table__row table__row--head">
+            <div>ID</div><div>П.І.Б.</div><div>Email</div><div>Телефон</div><div>Тип</div><div>Примітка</div>
+          </div>
+          <div class="table__row">
+            <div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
         <div class="card__head">
           <div class="h2">Кошик (актуальне замовлення)</div>
         </div>
@@ -120,24 +151,7 @@
           </div>
 
           <div class="note">
-            <strong>Примітка:</strong> зараз все працює локально (localStorage).  
-            Ми НЕ чіпаємо онлайн. Синхронізація — наступним кроком.
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="card__head">
-          <div class="h2">Клієнти / агенти (поки макет)</div>
-          <div class="muted">Таблиця під “як у Карабаса”. Дані підключимо пізніше.</div>
-        </div>
-
-        <div class="table">
-          <div class="table__row table__row--head">
-            <div>ID</div><div>П.І.Б.</div><div>Email</div><div>Телефон</div><div>Тип</div><div>Примітка</div>
-          </div>
-          <div class="table__row">
-            <div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div>
+            <strong>Примітка:</strong> зараз все працює локально (localStorage). Онлайн не чіпаємо.
           </div>
         </div>
       </div>
