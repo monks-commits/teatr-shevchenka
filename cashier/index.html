@@ -19,7 +19,7 @@
     <section class="section">
       <div class="container k-wrap">
         <h1>Панель касира</h1>
-        <p class="k-meta">Оберіть сеанс → відкриється <b>hall-cash</b> (режим каси, без LiqPay).</p>
+        <p class="k-meta">Оберіть сеанс → відкриється схема залу у режимі каси (офлайн + SYNC).</p>
 
         <div id="grid" class="k-grid"></div>
         <p id="empty" class="k-meta" style="display:none;margin-top:12px">Наразі немає запланованих подій.</p>
@@ -46,33 +46,27 @@
         return;
       }
 
-      // сортируем по дате/времени
-      items.sort((a,b)=>{
-        const ad = `${a.date||""} ${a.time||""}`.trim();
-        const bd = `${b.date||""} ${b.time||""}`.trim();
-        return ad.localeCompare(bd);
-      });
-
       function cardHTML(s){
         const id = s.id || "";
         const when = [s.date, s.time].filter(Boolean).join(" • ");
         const place = [s.theatre, s.stage].filter(Boolean).join(" • ");
         const poster = s.poster || "";
 
-        // ВАЖНО: открываем именно hall-cash.html
+        // IMPORTANT: касса открывает hall-cash.html
         const cashierHall = `../spectacles/hall-cash.html?show=${encodeURIComponent(id)}`;
-        const buyerHall   = `../spectacles/hall.html?show=${encodeURIComponent(id)}`;
+        const buyerHall   = `../spectacles/hall.html?show=${encodeURIComponent(id)}&title=${encodeURIComponent(s.title||id)}`;
 
         return `
           <article class="k-card">
             ${poster ? `<img class="k-poster" src="${poster}" alt="${(s.title||"")}" onerror="this.style.display='none'">` : ""}
+
             <div><strong>${s.title || ""}</strong></div>
             ${when ? `<div class="k-meta">${when}</div>` : ""}
             ${place ? `<div class="k-meta">${place}</div>` : ""}
 
             <div class="k-btnrow">
-              <a class="btn" href="${cashierHall}">Відкрити (каса)</a>
-              <a class="btn secondary" href="${buyerHall}">Як покупець</a>
+              <a class="btn" href="${cashierHall}">Відкрити касу</a>
+              <a class="btn secondary" href="${buyerHall}">Подивитись як покупець</a>
             </div>
           </article>
         `;
