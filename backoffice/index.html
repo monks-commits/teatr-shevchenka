@@ -2,175 +2,358 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <title>Білетний відділ — Театр ім. Т. Г. Шевченка</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="./styles.css" />
+  <title>Білетний відділ</title>
+  <link rel="stylesheet" href="../styles.css" />
+
+  <style>
+    /* layout */
+    .bo-top{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .bo-title{font-size:20px;font-weight:800;margin:0}
+    .bo-tabs{display:flex;gap:10px;flex-wrap:wrap}
+    .tabbtn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .tabbtn.active{background:#111827;color:#fff;border-color:#111827}
+
+    .bo-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+    @media (max-width: 980px){ .bo-grid{grid-template-columns:1fr} }
+
+    .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
+    .muted{color:#6b7280}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .field{display:grid;gap:6px}
+    .field label{font-size:12px;color:#6b7280}
+    .field input,.field select,.field textarea{
+      border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;min-width:180px;
+      background:#fff;
+    }
+    .field textarea{min-height:84px;min-width:260px}
+    .btn2{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .btn2.primary{background:#2563eb;color:#fff}
+    .btn2.gray{background:#e5e7eb;color:#111827}
+    .btn2.red{background:#ef4444;color:#fff}
+    .btn2.green{background:#16a34a;color:#fff}
+    .btn2.orange{background:#f59e0b;color:#111827}
+    .btn2:disabled{opacity:.5;cursor:not-allowed}
+
+    /* Hall */
+    .hallWrap{
+      background:#f3f4f6;border-radius:16px;padding:12px;overflow:auto;border:1px solid #e5e7eb;
+      max-height:70vh;
+    }
+    .sectionTitle{
+      text-align:center;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+      color:#6b7280;margin:10px 0 6px;
+    }
+    .rowLine{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+    .rowLabel{width:22px;flex:0 0 22px;text-align:right;color:#6b7280;font-size:11px}
+
+    .seatsRow{display:flex;gap:4px;flex-wrap:nowrap}
+    .seat{
+      width:24px;height:24px;border-radius:6px;border:1px solid #d1d5db;background:#fff;
+      font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
+      user-select:none;
+    }
+    .gapRight{margin-right:16px}
+    .amphiWrap{display:flex;align-items:center;gap:10px}
+    .amphiGap{width:24px;flex:0 0 24px}
+
+    /* lodges: A LEFT, B RIGHT */
+    .parterWrap{display:flex;justify-content:center;align-items:flex-start;gap:24px}
+    .lodgeCol{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .lodgeTitle{font-size:11px;color:#6b7280;margin-bottom:4px}
+    .lodgeSeats{display:flex;flex-direction:column;gap:4px}
+
+    /* statuses */
+    .seat[data-st="free"]{background:#fff}
+    .seat[data-st="basket"]{background:#2563eb;color:#fff;border-color:#2563eb}
+    .seat[data-st="reserved"]{background:#f59e0b;color:#111827;border-color:#f59e0b}
+    .seat[data-st="sold"]{background:#9ca3af;color:#fff;border-color:#9ca3af;cursor:not-allowed}
+    .seat[data-st="realization"]{background:#22c55e;color:#0f172a;border-color:#22c55e}
+    .seat[data-st="invite"]{background:#a78bfa;color:#0f172a;border-color:#a78bfa}
+    .seat[data-st="blocked"]{background:#111827;color:#fff;border-color:#111827;cursor:not-allowed}
+
+    /* sidebar blocks */
+    .sideTitle{font-weight:900;margin:0 0 8px}
+    .list{display:grid;gap:8px}
+    .item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #e5e7eb;padding-bottom:6px}
+    .item:last-child{border-bottom:0;padding-bottom:0}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#e5e7eb;font-size:11px}
+    .ops{max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
+    .ops .op{font-size:12px;color:#374151;border-bottom:1px dashed #e5e7eb;padding:6px 0}
+    .ops .op:last-child{border-bottom:0}
+    .hr{height:1px;background:#e5e7eb;margin:12px 0}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;font-size:13px;text-align:left}
+    .table th{color:#6b7280;font-weight:800;font-size:12px}
+    .small{font-size:12px;color:#6b7280}
+  </style>
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand__title" id="boTitle">Білетний відділ</div>
-      <div class="brand__sub">Backoffice (локально, без авторизації)</div>
+  <main class="main">
+    <div class="container">
+      <div class="bo-top">
+        <div>
+          <h1 class="bo-title" id="boTitle">Білетний відділ</h1>
+          <div class="muted">Backoffice (локально, без авторизації)</div>
+        </div>
 
-      <div class="tabs">
-        <button class="tab tab--active" type="button">Події</button>
-        <button class="tab" type="button">Розцінки</button>
-        <button class="tab" type="button">Клієнти</button>
-        <button class="tab" type="button">Замовлення</button>
-        <button class="tab" type="button">Звіти</button>
-        <button class="tab" type="button">Документи</button>
-        <button class="tab" type="button">Контроль</button>
+        <div class="bo-tabs" id="tabs">
+          <button class="tabbtn active" data-tab="events">Події</button>
+          <button class="tabbtn" data-tab="pricing">Розцінки</button>
+          <button class="tabbtn" data-tab="clients">Клієнти</button>
+          <button class="tabbtn" data-tab="orders">Замовлення</button>
+          <button class="tabbtn" data-tab="reports">Звіти</button>
+          <button class="tabbtn" data-tab="docs">Документи</button>
+          <button class="tabbtn" data-tab="control">Контроль</button>
+        </div>
       </div>
+
+      <!-- EVENTS / HALL -->
+      <section class="panel" data-pane="events">
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <div class="field">
+              <label>Подія / сеанс</label>
+              <select id="showSelect"></select>
+            </div>
+            <div class="field">
+              <label>Пошук місця (формат P2-M10)</label>
+              <input id="seatSearch" placeholder="P2-M10" />
+            </div>
+            <button class="btn2 gray" id="btnResetLocal">Скинути локальні</button>
+          </div>
+
+          <div class="row">
+            <button class="btn2 gray" id="btnZoomOut">－</button>
+            <button class="btn2 gray" id="btnZoomIn">＋</button>
+            <button class="btn2 gray" id="btnHome">⌂</button>
+          </div>
+        </div>
+
+        <div class="muted" id="seanceMeta" style="margin-top:8px">Оберіть сеанс.</div>
+
+        <div class="bo-grid" style="margin-top:12px">
+          <div class="panel" style="padding:12px">
+            <h2 class="sideTitle" style="margin-bottom:6px">Схема залу</h2>
+            <div class="small">Ложа <b>A</b> — зліва • Ложа <b>B</b> — справа</div>
+            <div class="hallWrap" id="hallWrap">
+              <div id="hallRoot"></div>
+            </div>
+
+            <div class="hr"></div>
+
+            <h3 class="sideTitle" style="font-size:14px;margin-bottom:6px">Журнал операцій (локально)</h3>
+            <div class="small">Експорт CSV/JSON. Онлайн-синхронізація — окремим етапом.</div>
+            <div class="row" style="margin:10px 0">
+              <button class="btn2 gray" id="btnExportOpsCsv">Експорт журналу (CSV)</button>
+              <button class="btn2 gray" id="btnExportOpsJson">Експорт журналу (JSON)</button>
+              <button class="btn2 red" id="btnClearOps">Очистити журнал</button>
+            </div>
+            <div class="ops" id="opsList"></div>
+          </div>
+
+          <aside class="panel">
+            <h3 class="sideTitle">Кошик (актуальне замовлення)</h3>
+            <div id="basketMeta" class="small muted">Поки що нічого не обрано.</div>
+            <div class="hr"></div>
+            <div id="basketList" class="list"></div>
+            <div class="hr"></div>
+
+            <div class="row" style="justify-content:space-between">
+              <div class="small muted">Всього до сплати:</div>
+              <div style="font-weight:900"><span id="basketTotal">0</span> <span id="currency">грн</span></div>
+            </div>
+
+            <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+              <button class="btn2 red" id="btnSell">ПРОДАТИ</button>
+              <button class="btn2 green" id="btnRealize">ПІД РЕАЛІЗАЦІЮ</button>
+              <button class="btn2 orange" id="btnReserve">ДО РЕЗЕРВУ</button>
+              <button class="btn2 gray" id="btnInvite">ЗАПРОШЕННЯ</button>
+              <button class="btn2 gray" id="btnClearBasket">ОЧИСТИТИ</button>
+            </div>
+
+            <div class="hr"></div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn2 gray" id="btnExportStateJson">Експорт стану місць (JSON)</button>
+              <button class="btn2 gray" id="btnExportSalesCsv">Експорт продажів (CSV)</button>
+              <button class="btn2 primary" id="btnCreateOrder">Створити замовлення</button>
+            </div>
+
+            <div class="small muted" style="margin-top:10px">
+              Примітка: зараз все працює локально (localStorage). Онлайн не чіпаємо.
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- PRICING -->
+      <section class="panel" data-pane="pricing" hidden>
+        <h2 class="sideTitle">Розцінки (довідник)</h2>
+        <div class="small muted">Поки що беремо ціни з seance.json → prices, або з data/settings.json.</div>
+        <div class="hr"></div>
+        <pre id="pricingDump" style="white-space:pre-wrap;margin:0"></pre>
+      </section>
+
+      <!-- CLIENTS -->
+      <section class="panel" data-pane="clients" hidden>
+        <div class="row" style="justify-content:space-between">
+          <h2 class="sideTitle">Клієнти / агенти</h2>
+          <button class="btn2 primary" id="btnClientNew">＋ Додати</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div class="field">
+            <label>Пошук (ПІБ/телефон)</label>
+            <input id="clientSearch" placeholder="Ірина або 068..." />
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="panel" id="clientForm" hidden>
+          <h3 class="sideTitle" style="font-size:14px">Картка клієнта</h3>
+          <div class="row">
+            <div class="field"><label>П.І.Б.</label><input id="cName"></div>
+            <div class="field"><label>Email</label><input id="cEmail"></div>
+            <div class="field"><label>Телефон</label><input id="cPhone"></div>
+            <div class="field">
+              <label>Тип</label>
+              <select id="cType">
+                <option value="client">Клієнт</option>
+                <option value="agent">Агент</option>
+                <option value="org">Організація</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="field" style="flex:1">
+              <label>Примітка</label>
+              <textarea id="cNote" style="width:100%"></textarea>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="btn2 primary" id="btnClientSave">Зберегти</button>
+            <button class="btn2 gray" id="btnClientCancel">Скасувати</button>
+            <button class="btn2 red" id="btnClientDelete">Видалити</button>
+          </div>
+          <div class="small muted" style="margin-top:6px">Зберігається локально у цьому браузері.</div>
+        </div>
+
+        <table class="table" style="margin-top:10px">
+          <thead>
+            <tr>
+              <th>ID</th><th>П.І.Б.</th><th>Email</th><th>Телефон</th><th>Тип</th><th>Примітка</th>
+            </tr>
+          </thead>
+          <tbody id="clientsTbody"></tbody>
+        </table>
+      </section>
+
+      <!-- ORDERS -->
+      <section class="panel" data-pane="orders" hidden>
+        <div class="row" style="justify-content:space-between">
+          <h2 class="sideTitle">Замовлення (локально)</h2>
+          <button class="btn2 primary" id="btnOrderNew">＋ Нове</button>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <div class="field">
+            <label>Пошук (номер / клієнт)</label>
+            <input id="orderSearch" placeholder="ORD-..." />
+          </div>
+          <div class="field">
+            <label>Фільтр статус</label>
+            <select id="orderFilterStatus">
+              <option value="">Усі</option>
+              <option value="draft">Чернетка</option>
+              <option value="paid">Оплачено</option>
+              <option value="closed">Закрито</option>
+              <option value="canceled">Скасовано</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="panel" id="orderForm" hidden>
+          <h3 class="sideTitle" style="font-size:14px">Картка замовлення</h3>
+          <div class="row">
+            <div class="field"><label>Номер</label><input id="oId" disabled></div>
+            <div class="field"><label>Статус</label>
+              <select id="oStatus">
+                <option value="draft">Чернетка</option>
+                <option value="paid">Оплачено</option>
+                <option value="closed">Закрито</option>
+                <option value="canceled">Скасовано</option>
+              </select>
+            </div>
+            <div class="field" style="min-width:260px">
+              <label>Клієнт (ID або телефон)</label>
+              <input id="oClient" placeholder="client_id або 068..." />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <div class="field" style="flex:1">
+              <label>Склад (місця)</label>
+              <textarea id="oSeats" placeholder="P1-M1, P1-M2"></textarea>
+            </div>
+            <div class="field">
+              <label>Сума</label>
+              <input id="oAmount" type="number" min="0" step="1" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px">
+            <button class="btn2 primary" id="btnOrderSave">Зберегти</button>
+            <button class="btn2 gray" id="btnOrderCancel">Скасувати</button>
+            <button class="btn2 red" id="btnOrderDelete">Видалити</button>
+            <button class="btn2 gray" id="btnOrderPrint">Друк</button>
+          </div>
+          <div class="small muted" style="margin-top:6px">Замовлення з кошика створюється кнопкою “Створити замовлення”.</div>
+        </div>
+
+        <table class="table" style="margin-top:10px">
+          <thead>
+            <tr>
+              <th>Номер</th><th>Статус</th><th>Клієнт</th><th>Сума</th><th>Місця</th><th>Створено</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTbody"></tbody>
+        </table>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="panel" data-pane="reports" hidden>
+        <h2 class="sideTitle">Звіти (локально)</h2>
+        <div class="small muted">Поки базові: експорт замовлень та клієнтів.</div>
+        <div class="hr"></div>
+
+        <div class="row">
+          <button class="btn2 gray" id="btnExportClientsJson">Експорт клієнтів (JSON)</button>
+          <button class="btn2 gray" id="btnExportClientsCsv">Експорт клієнтів (CSV)</button>
+          <button class="btn2 gray" id="btnExportOrdersJson">Експорт замовлень (JSON)</button>
+          <button class="btn2 gray" id="btnExportOrdersCsv">Експорт замовлень (CSV)</button>
+        </div>
+      </section>
+
+      <!-- DOCS -->
+      <section class="panel" data-pane="docs" hidden>
+        <h2 class="sideTitle">Документи</h2>
+        <div class="muted">Наступний крок: шаблони (акт, накладна, реєстр), друк квитків з QR — окремо.</div>
+      </section>
+
+      <!-- CONTROL -->
+      <section class="panel" data-pane="control" hidden>
+        <h2 class="sideTitle">Контроль</h2>
+        <div class="muted">Тут потім: підключення онлайн, синхронізація, права, журнал змін.</div>
+      </section>
+
     </div>
-
-    <div class="topbar__controls">
-      <div class="control">
-        <label>Період</label>
-        <input id="rangeFrom" type="date" />
-      </div>
-      <div class="control">
-        <label>&nbsp;</label>
-        <input id="rangeTo" type="date" />
-      </div>
-
-      <div class="control control--wide">
-        <label>Подія / сеанс</label>
-        <select id="showSelect">
-          <option value="">— завантаження… —</option>
-        </select>
-      </div>
-
-      <div class="control">
-        <label>Пошук</label>
-        <input id="searchInput" type="text" placeholder="ПІБ / телефон / примітка (демо)" />
-      </div>
-
-      <button class="btn btn--ghost" id="btnResetLocal" title="Очистити локальні дані по цьому сеансу">
-        Скинути локальні
-      </button>
-    </div>
-  </header>
-
-  <main class="layout">
-    <!-- Left tools -->
-    <aside class="tools">
-      <button class="toolbtn" id="btnHome" title="На початок">🏠</button>
-      <button class="toolbtn" id="btnZoomIn" title="Збільшити">＋</button>
-      <button class="toolbtn" id="btnZoomOut" title="Зменшити">－</button>
-      <button class="toolbtn" id="btnList" title="До журналу">≡</button>
-    </aside>
-
-    <!-- Hall -->
-    <section class="center">
-      <div class="card">
-        <div class="card__head">
-          <div>
-            <div class="h1">Схема залу</div>
-            <div class="muted" id="seanceMeta">Оберіть сеанс.</div>
-          </div>
-
-          <div class="legend" id="legend">
-            <span class="lg"><i class="dot st-free"></i>Вільно</span>
-            <span class="lg"><i class="dot st-basket"></i>У кошику</span>
-            <span class="lg"><i class="dot st-reserved"></i>Резерв</span>
-            <span class="lg"><i class="dot st-sold"></i>Продано</span>
-            <span class="lg"><i class="dot st-real"></i>Реалізація</span>
-            <span class="lg"><i class="dot st-invite"></i>Запрошення</span>
-            <span class="lg"><i class="dot st-blocked"></i>Блок</span>
-          </div>
-        </div>
-
-        <div class="hallWrap" id="hallWrap">
-          <div class="hall" id="hallRoot"></div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="card__head">
-          <div class="h2">Журнал операцій (локально)</div>
-          <div class="muted">Експорт CSV/JSON. Синхронізація з онлайн — окремим етапом.</div>
-        </div>
-        <div class="ops">
-          <div class="ops__actions">
-            <button class="btn btn--ghost" id="btnExportOpsCsv">Експорт журналу (CSV)</button>
-            <button class="btn btn--ghost" id="btnExportOpsJson">Експорт журналу (JSON)</button>
-            <button class="btn btn--ghost" id="btnClearOps">Очистити журнал</button>
-          </div>
-          <div class="ops__list" id="opsList"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Right panel -->
-    <aside class="right">
-      <div class="card">
-        <div class="card__head">
-          <div>
-            <div class="h2">Клієнти / агенти</div>
-            <div class="muted">Поки макет “як у Карабаса” — підключимо дані пізніше.</div>
-          </div>
-          <div class="right__mini">
-            <button class="btn btn--ghost" type="button">＋ Додати</button>
-          </div>
-        </div>
-
-        <div class="table">
-          <div class="table__row table__row--head">
-            <div>ID</div><div>П.І.Б.</div><div>Email</div><div>Телефон</div><div>Тип</div><div>Примітка</div>
-          </div>
-          <div class="table__row">
-            <div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div><div class="muted">—</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="card__head">
-          <div class="h2">Кошик (актуальне замовлення)</div>
-        </div>
-
-        <div class="basket">
-          <div class="basket__meta" id="basketMeta">Поки що нічого не обрано.</div>
-          <div class="basket__list" id="basketList"></div>
-
-          <div class="basket__sum">
-            <div>Всього до сплати:</div>
-            <div class="sum"><span id="basketTotal">0</span> <span id="currency">грн</span></div>
-          </div>
-
-          <div class="basket__sum muted">
-            Касовий збір: <strong>0</strong>
-          </div>
-
-          <div class="actions">
-            <button class="btn btn--sell" id="btnSell">ПРОДАТИ</button>
-            <button class="btn btn--real" id="btnRealize">ПІД РЕАЛІЗАЦІЮ</button>
-            <button class="btn btn--reserve" id="btnReserve">ДО РЕЗЕРВУ</button>
-            <button class="btn btn--invite" id="btnInvite">ЗАПРОШЕННЯ</button>
-            <button class="btn btn--danger" id="btnClearBasket">ОЧИСТИТИ</button>
-          </div>
-
-          <div class="note">
-            <strong>Примітка:</strong> зараз все працює локально (localStorage). Онлайн не чіпаємо.
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top:12px;">
-        <div class="card__head">
-          <div class="h2">Експорт</div>
-        </div>
-        <div class="exp">
-          <button class="btn btn--ghost" id="btnExportStateJson">Експорт стану місць (JSON)</button>
-          <button class="btn btn--ghost" id="btnExportSalesCsv">Експорт продажів (CSV)</button>
-        </div>
-      </div>
-    </aside>
   </main>
 
   <script src="./utils.js"></script>
   <script src="./ui.js"></script>
-  <script src="./supabaseClient.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
