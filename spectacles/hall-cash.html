@@ -37,9 +37,8 @@
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;user-select:none;
     }
+
     .seat--parter-front{background:#fef9c3;}
-    .seat--parter-mid{background:#dbeafe;}
-    .seat--parter-back{background:#e5e7eb;}
     .seat--amphi{background:#e0f2fe;}
     .seat--balcony{background:#f3e8ff;}
     .seat--lodge{background:#fee2e2;}
@@ -115,17 +114,19 @@
 
               <section class="hall-section">
                 <div class="hall-section-title">Партер</div>
+
                 <div class="parter-wrap">
+                  <!-- ВАЖНО: как в backoffice: Ложа Б слева, Ложа А справа -->
                   <div class="hall-lodge">
-                    <div class="hall-lodge-label">Ложа А</div>
-                    <div class="hall-lodge-seats" id="lodge-a-seats"></div>
+                    <div class="hall-lodge-label">Ложа Б</div>
+                    <div class="hall-lodge-seats" id="lodge-b-seats"></div>
                   </div>
 
                   <div id="parter-block"></div>
 
                   <div class="hall-lodge">
-                    <div class="hall-lodge-label">Ложа Б</div>
-                    <div class="hall-lodge-seats" id="lodge-b-seats"></div>
+                    <div class="hall-lodge-label">Ложа А</div>
+                    <div class="hall-lodge-seats" id="lodge-a-seats"></div>
                   </div>
                 </div>
               </section>
@@ -190,6 +191,9 @@
   <div id="site-footer"></div>
   <script type="module" src="../scripts/include.js"></script>
 
+  <!-- ЕДИНЫЙ рендер зала -->
+  <script src="../scripts/hallRenderer.js"></script>
+
   <script>
     const qs = new URLSearchParams(location.search);
     const showSlug = (qs.get("show") || "").trim();
@@ -198,54 +202,9 @@
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-    // Edge Function cash-sync-ts (ВАЖНО!)
+    // Edge Function cash-sync-ts
     const PROJECT_REF = "fhusjlkneckbvnrdhbil";
     const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync-ts`;
-
-    // ---- схема (как раньше) ----
-    const parterRows = Array.from({length:18}, (_,i)=>( {
-      row: i+1, seats: 20, zone: "Партер",
-      price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
-      className: i+1 <= 6 ? "seat--parter-front"
-               : i+1 <= 12 ? "seat--parter-mid"
-                           : "seat--parter-back"
-    } ));
-
-    const amphiLeftRows  = [
-      {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
-
-    const amphiRightRows = [
-      {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
-
-    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
-    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
-
-    const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, className:"seat--lodge" } ));
-
-    function seatKey(meta){
-      const row = meta.row ?? 0;
-      const seat = meta.seat ?? 0;
-      if (meta.zone === "Партер") return `P${row}-M${seat}`;
-      if (String(meta.zone).startsWith("Амфітеатр")) return `A${row}-M${seat}`;
-      if (meta.zone === "Балкон") return `B${row}-M${seat}`;
-      if (meta.zone === "Ложа А") return `A0-M${seat}`;
-      if (meta.zone === "Ложа Б") return `B0-M${seat}`;
-      return `P${row}-M${seat}`;
-    }
-
-    function seatKeyToHuman(k){
-      const m = String(k).match(/^([PAB])(\d+)-M(\d+)$/i);
-      if (!m) return k;
-      const prefix = m[1].toUpperCase();
-      const row = Number(m[2]);
-      const seat = Number(m[3]);
-      if (prefix === "P") return `Ряд ${row}, місце ${seat} (Партер)`;
-      if (prefix === "A") return row === 0 ? `Ложа А, місце ${seat}` : `Ряд ${row}, місце ${seat} (Амфітеатр)`;
-      if (prefix === "B") return row === 0 ? `Ложа Б, місце ${seat}` : `Ряд ${row}, місце ${seat} (Балкон)`;
-      return k;
-    }
 
     async function fetchJsonSafe(url){
       try{
@@ -333,62 +292,11 @@
 
     let CASH_PATCH = {};
     const selected = new Map(); // key -> {price}
-    const seatButtons = new Map(); // key -> button
+    let seatButtons = new Map();
 
-    function getEffectiveStatus(key){
+    function getStatus(key){
       if (takenSeatsOnline.has(key)) return "blocked";
       return CASH_PATCH[key]?.status || "free";
-    }
-
-    function applyStatusClass(btn, status){
-      btn.classList.remove("seat--sold","seat--reserved","seat--blocked");
-      btn.disabled = false;
-      if (status === "sold"){ btn.classList.add("seat--sold"); btn.disabled = true; }
-      if (status === "reserved"){ btn.classList.add("seat--reserved"); }
-      if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
-    }
-
-    function makeSeatElement(key,label,extraClass,price){
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
-      btn.dataset.price = String(price);
-
-      applyStatusClass(btn, getEffectiveStatus(key));
-
-      btn.addEventListener("click", ()=>{
-        const st = getEffectiveStatus(key);
-        if (st === "sold" || st === "blocked") return;
-
-        if (btn.classList.contains("seat--selected")){
-          btn.classList.remove("seat--selected");
-          selected.delete(key);
-        } else {
-          btn.classList.add("seat--selected");
-          selected.set(key, { price });
-        }
-        updateSummary();
-      });
-
-      seatButtons.set(key, btn);
-      return btn;
-    }
-
-    function clearSelection(){
-      for (const k of selected.keys()){
-        const b = seatButtons.get(k);
-        if (b) b.classList.remove("seat--selected");
-      }
-      selected.clear();
-      updateSummary();
-    }
-
-    function reapplyAllStatuses(){
-      for (const [k, b] of seatButtons.entries()){
-        applyStatusClass(b, getEffectiveStatus(k));
-      }
     }
 
     function updateSummary(){
@@ -407,23 +315,49 @@
       }
 
       const total = Array.from(selected.values()).reduce((s,x)=>s+(x.price||0),0);
-      placesEl.textContent = "Обрані місця: " + keys.map(seatKeyToHuman).join("; ");
+      placesEl.textContent = "Обрані місця: " + keys.map(HallRenderer.humanizeSeatKey).join("; ");
       amountEl.textContent = "Сума: " + total + " грн";
       btnSell.disabled = false;
       btnRes.disabled  = false;
     }
 
-    function applyStatusToSelectedLocal(status){
-      const keys = Array.from(selected.keys());
-      if (!keys.length) return;
-
-      for (const k of keys){
-        if (takenSeatsOnline.has(k)) continue;
-        CASH_PATCH[k] = { status, ts: Date.now() };
+    function clearSelection(){
+      for (const k of selected.keys()){
+        const b = seatButtons.get(k);
+        if (b) b.classList.remove("seat--selected");
       }
-      saveCashPatch(CASH_PATCH);
-      clearSelection();
-      reapplyAllStatuses();
+      selected.clear();
+      updateSummary();
+    }
+
+    function reapplyAllStatuses(){
+      for (const [k, b] of seatButtons.entries()){
+        b.classList.remove("seat--sold","seat--reserved","seat--blocked","seat--external");
+        b.disabled = false;
+
+        const st = getStatus(k);
+        if (st === "sold"){ b.classList.add("seat--sold"); b.disabled = true; }
+        else if (st === "reserved"){ b.classList.add("seat--reserved"); }
+        else if (st === "blocked"){ b.classList.add("seat--blocked"); b.disabled = true; }
+        else if (st === "external"){ b.classList.add("seat--external"); b.disabled = true; }
+      }
+    }
+
+    function onToggle(key, meta){
+      const btn = seatButtons.get(key);
+      if (!btn) return;
+
+      const st = getStatus(key);
+      if (st === "sold" || st === "blocked") return;
+
+      if (btn.classList.contains("seat--selected")){
+        btn.classList.remove("seat--selected");
+        selected.delete(key);
+      } else {
+        btn.classList.add("seat--selected");
+        selected.set(key, { price: Number(btn.dataset.price||0) });
+      }
+      updateSummary();
     }
 
     // ---- op_id generator ----
@@ -439,13 +373,11 @@
       return `KR-SHEV-${yyyy}${mm}${dd}-${hh}${mi}${ss}-${rnd}`;
     }
 
-    // order_id как на сервере (cash-sync-ts)
     function calcCashOrderId(seance_id, show_slug, op_id){
       const base = seance_id ? seance_id : show_slug;
       return `CASH-${base}-${op_id}`;
     }
 
-    // ---- печать билетов (с QR) ----
     async function openPrintWindowOffline(tickets, meta){
       const theatre = "Театр ім. Т. Г. Шевченка";
       const title = meta?.title || showSlug || "Квиток";
@@ -454,8 +386,6 @@
 
       const cardsHtml = [];
       for (const t of tickets){
-        // QR ДОЛЖЕН быть совместим со scan-ticket:
-        // order:...|show:...|seat:...
         const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
 
         let qrDataUrl = "";
@@ -472,7 +402,7 @@
             <div class="show">${title}</div>
             <div class="meta">
               ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
-              <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
+              <div><b>${HallRenderer.humanizeSeatKey(t.seat_label)}</b></div>
               ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
               <div class="muted">Order: ${t.order_id}</div>
             </div>
@@ -524,7 +454,6 @@
       setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 250);
     }
 
-    // ---- SYNC secret (опционально) ----
     function getCashierSecret(){
       return localStorage.getItem("cashier_sync_secret") || "";
     }
@@ -579,7 +508,20 @@
       alert(`SYNC: ok=${okOps.size}, залишилось у черзі=${left.length}`);
     }
 
-    // ---- ПРОДАЖА (офлайн) ----
+    function applyStatusToSelectedLocal(status){
+      const keys = Array.from(selected.keys());
+      if (!keys.length) return;
+
+      for (const k of keys){
+        if (takenSeatsOnline.has(k)) continue;
+        CASH_PATCH[k] = { status, ts: Date.now() };
+      }
+      saveCashPatch(CASH_PATCH);
+
+      clearSelection();
+      reapplyAllStatuses();
+    }
+
     async function sellAndPrintOffline(){
       const keys = Array.from(selected.keys());
       if (!keys.length) return;
@@ -590,11 +532,9 @@
       }
 
       const op_id = genOpId();
-
       const prices = {};
       for (const k of keys) prices[k] = Number(selected.get(k)?.price || 0);
 
-      // IMPORTANT: структура ops как ожидает cash-sync-ts
       const op = {
         op_id,
         type: "sale",
@@ -617,7 +557,7 @@
       }
       saveCashPatch(CASH_PATCH);
 
-      // 3) печать с QR (order/show/seat) — совместимо со scan-ticket
+      // 3) печать с QR
       const order_id = calcCashOrderId(SEANCE_ID, showSlug, op_id);
       const tickets = keys.map(k => ({
         op_id,
@@ -631,7 +571,7 @@
       reapplyAllStatuses();
       await openPrintWindowOffline(tickets, SHOW_META);
 
-      // 4) если онлайн — пробуем синкнуть тихо
+      // 4) если онлайн — пробуем синкнуть
       try{
         if (navigator.onLine) {
           const q2 = loadQueue();
@@ -640,145 +580,25 @@
       }catch(e){}
     }
 
-    // ---- render blocks ----
-    function renderParter(){
-      const block = document.getElementById("parter-block");
-      block.innerHTML = "";
-      parterRows.forEach(r=>{
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
-
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = r.row;
-        rowLine.appendChild(lab);
-
-        const seatsRow = document.createElement("div");
-        seatsRow.className = "seats-row";
-
-        for (let s=1; s<=r.seats; s++){
-          const key = seatKey({zone:"Партер", row:r.row, seat:s});
-          const cls = r.className + (s===10 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
-        }
-
-        rowLine.appendChild(seatsRow);
-        block.appendChild(rowLine);
-      });
-    }
-
-    function renderLodges(){
-      const a = document.getElementById("lodge-a-seats");
-      const b = document.getElementById("lodge-b-seats");
-      a.innerHTML = ""; b.innerHTML = "";
-
-      lodgeSeats.forEach(ls=>{
-        const keyA = seatKey({zone:"Ложа А", row:0, seat:ls.index});
-        const keyB = seatKey({zone:"Ложа Б", row:0, seat:ls.index});
-        a.appendChild(makeSeatElement(keyA, ls.index, ls.className, 10));
-        b.appendChild(makeSeatElement(keyB, ls.index, ls.className, 10));
-      });
-    }
-
-    function renderAmphi(){
-      const block = document.getElementById("amphi-block");
-      block.innerHTML = "";
-      [19,20,21,22,23].forEach(rowNum=>{
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
-
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = rowNum;
-        rowLine.appendChild(lab);
-
-        const left = document.createElement("div");
-        left.className = "seats-row";
-        const right = document.createElement("div");
-        right.className = "seats-row";
-        const gap = document.createElement("div");
-        gap.className = "amphi-gap";
-
-        const leftCfg = amphiLeftRows.find(r=>r.row===rowNum);
-        const rightCfg = amphiRightRows.find(r=>r.row===rowNum);
-
-        if (leftCfg){
-          for(let s=1;s<=leftCfg.seats;s++){
-            const key = seatKey({zone:leftCfg.zone, row:rowNum, seat:s});
-            left.appendChild(makeSeatElement(key, s, leftCfg.className, 120));
-          }
-        }
-        if (rightCfg){
-          for(let s=1;s<=rightCfg.seats;s++){
-            const seatNum = s+11;
-            const key = seatKey({zone:rightCfg.zone, row:rowNum, seat:seatNum});
-            right.appendChild(makeSeatElement(key, seatNum, rightCfg.className, 120));
-          }
-        }
-
-        rowLine.appendChild(left);
-        rowLine.appendChild(gap);
-        rowLine.appendChild(right);
-        block.appendChild(rowLine);
-      });
-    }
-
-    function renderBalcony(){
-      const block = document.getElementById("balcony-block");
-      block.innerHTML = "";
-
-      balconyRows15.forEach(r=>{
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
-
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = r.row;
-        rowLine.appendChild(lab);
-
-        const seatsRow = document.createElement("div");
-        seatsRow.className = "seats-row";
-
-        for(let pos=1;pos<=28;pos++){
-          const key = seatKey({zone:"Балкон", row:r.row, seat:pos});
-          const cls = r.className + (pos===14 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
-        }
-
-        rowLine.appendChild(seatsRow);
-        block.appendChild(rowLine);
-      });
-
-      const rowLine = document.createElement("div");
-      rowLine.className = "row-line";
-
-      const lab = document.createElement("div");
-      lab.className = "row-label";
-      lab.textContent = 6;
-      rowLine.appendChild(lab);
-
-      const seatsRow = document.createElement("div");
-      seatsRow.className = "seats-row";
-
-      for(let pos=1;pos<=28;pos++){
-        if (pos<=10){
-          const key = seatKey({zone:"Балкон", row:6, seat:pos});
-          const cls = "seat--balcony" + (pos===10 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, pos, cls, 80));
-        } else if (pos>=19){
-          const seatNum = pos-8;
-          const key = seatKey({zone:"Балкон", row:6, seat:seatNum});
-          seatsRow.appendChild(makeSeatElement(key, seatNum, "seat--balcony", 80));
-        } else {
-          const empty = document.createElement("button");
-          empty.type="button";
-          empty.className="seat seat--empty";
-          seatsRow.appendChild(empty);
-        }
+    // цены (как раньше)
+    function getPrice({ zone, rowCfg }) {
+      if (zone === "parter") {
+        const r = Number(rowCfg?.row || 0);
+        return r <= 6 ? 200 : (r <= 12 ? 160 : 140);
       }
+      if (zone === "amphi") return 120;
+      if (zone === "balcony") {
+        const r = Number(rowCfg?.row || 0);
+        return r <= 5 ? 100 : 80;
+      }
+      if (zone === "boxes") return 10;
+      return 0;
+    }
 
-      rowLine.appendChild(seatsRow);
-      block.appendChild(rowLine);
+    async function loadHallJson(){
+      const res = await fetch("../data/halls/shevchenko-big.json", { cache:"no-store" });
+      if (!res.ok) throw new Error("Cannot load hall json");
+      return await res.json();
     }
 
     // ---- кнопки ----
@@ -796,7 +616,6 @@
       alert("Локальні зміни скинуто.");
     });
 
-    // auto sync when online comes back
     window.addEventListener("online", async ()=>{
       try{
         const q = loadQueue();
@@ -810,11 +629,23 @@
       refreshQueueCount();
 
       await loadTakenSeatsOnline().catch(()=>{});
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
+
+      const HALL = await loadHallJson();
+
+      seatButtons = HallRenderer.renderHall({
+        hall: HALL,
+        parterEl: document.getElementById("parter-block"),
+        amphiEl: document.getElementById("amphi-block"),
+        balconyEl: document.getElementById("balcony-block"),
+        lodgeAEl: document.getElementById("lodge-a-seats"),
+        lodgeBEl: document.getElementById("lodge-b-seats"),
+        getPrice,
+        getStatus: (key)=>getStatus(key),
+        onToggle
+      });
+
       updateSummary();
+      reapplyAllStatuses();
     })();
   </script>
 </body>
