@@ -1,73 +1,32 @@
-// backoffice/app.js (REPLACE FULL FILE)
 (() => {
-  const U = window.BO_UTILS || {};
-  const UI = window.BO_UI || {};
+  const { qs, qsa, nowIso, fmtDT, downloadText, toCsv, fetchJson } = window.BO_UTILS;
+  const { setText, renderBasket, renderOps } = window.BO_UI;
 
-  const qs = U.qs || ((sel) => document.querySelector(sel));
-  const nowIso = U.nowIso || (() => new Date().toISOString());
-  const fmtDT = U.fmtDT || ((ms) => new Date(ms).toLocaleString());
-  const downloadText = U.downloadText || ((name, text) => {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  });
-  const toCsv = U.toCsv || ((rows) => rows.map(r => r.map(x => {
-    const s = String(x ?? "");
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  }).join(",")).join("\n"));
-  const fetchJson = U.fetchJson || (async (url) => (await (await fetch(url, { cache: "no-store" })).json()));
+  const LS_PREFIX = "bo_v2_";
 
-  const setText = UI.setText || ((sel, txt) => { const el = qs(sel); if (el) el.textContent = txt; });
-  const renderBasket = UI.renderBasket || ((listEl, basket, currency) => {
-    if (!listEl) return;
-    if (!basket || !basket.length) { listEl.innerHTML = `<div class="muted">Поки що нічого не обрано.</div>`; return; }
-    listEl.innerHTML = basket
-      .slice()
-      .sort((a, b) => a.label.localeCompare(b.label))
-      .map(x => `<div class="bo-basket-item"><div>${escapeHtml(x.label)}</div><div><b>${Number(x.price)||0} ${escapeHtml(currency||"")}</b></div></div>`)
-      .join("");
-  });
-  const renderOps = UI.renderOps || ((opsEl, ops) => {
-    if (!opsEl) return;
-    if (!ops || !ops.length) { opsEl.innerHTML = `<div class="muted">Операцій ще немає.</div>`; return; }
-    opsEl.innerHTML = ops.slice().reverse().map(o => `
-      <div class="bo-op">
-        <div><b>${escapeHtml(o.action||"")}</b> • ${escapeHtml(o.tsHuman||"")}</div>
-        <div class="muted">${escapeHtml(o.showLabel||"")} • місць: ${o.count||0} • сума: ${o.total||0} ${escapeHtml(o.currency||"")}</div>
-      </div>
-    `).join("");
-  });
-
-  function escapeHtml(s){
-    return String(s ?? "").replace(/[&<>"']/g,(c)=>({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    }[c]));
-  }
-
-  const LS_PREFIX = "bo_v1_";
-
-  let SETTINGS = { theatre: {}, pricing_defaults: {}, pricing_defaults_fallback: {} };
+  let SETTINGS = { theatre: {}, pricing_defaults: {} };
   let AFISHA = [];
   let current = null; // {id,title,date,time,...}
   let seance = null;  // data/seances/*.json
   let hall = null;    // data/halls/*.json
   let currency = "грн";
 
-  // state per seance
-  let seatStatus = new Map(); // seat_label -> status (free/reserved/sold/realization/invite/blocked/external)
-  let basket = [];            // [{key,label,price}]
-  let ops = [];               // log operations
+  // state per seance (seat_label -> status)
+  let seatStatus = new Map();
+  let basket = []; // [{key,label,price}]
+  let ops = [];
   let zoom = 1;
 
-  // -------------------- seat key helpers (унифицируем под формат seat_label) --------------------
-  // Партер:  P{row}-M{seat}
-  // Амфи:    A{row}-M{seat}
-  // Балкон:  B{row}-M{seat}
-  // Ложа A:  A0-M{seat}
-  // Ложа B:  B0-M{seat}
+  // clients/orders local db
+  let CLIENTS = []; // [{id,name,email,phone,type,note,created_at}]
+  let ORDERS  = []; // [{id,status,client,amount,seats,created_at}]
+
+  // -------------------- seat label helpers (unified) --------------------
+  // Parter:  P{row}-M{seat}
+  // Amphi:   A{row}-M{seat}
+  // Balcony: B{row}-M{seat}
+  // BoxA:    A0-M{seat}   (ВАЖНО: A слева)
+  // BoxB:    B0-M{seat}   (B справа)
   function seatLabelKey(zone, row, seat, boxId) {
     if (boxId === "boxA") return `A0-M${seat}`;
     if (boxId === "boxB") return `B0-M${seat}`;
@@ -85,12 +44,12 @@
     const seat = Number(m[3]);
 
     if (prefix === "P") return `Партер • ряд ${row} • місце ${seat}`;
-    if (prefix === "A") return row === 0 ? `Ложа А • місце ${seat}` : `Амфітеатр • ряд ${row} • місце ${seat}`;
-    if (prefix === "B") return row === 0 ? `Ложа Б • місце ${seat}` : `Балкон • ряд ${row} • місце ${seat}`;
+    if (prefix === "A") return row === 0 ? `Ложа A (зліва) • місце ${seat}` : `Амфітеатр • ряд ${row} • місце ${seat}`;
+    if (prefix === "B") return row === 0 ? `Ложа B (справа) • місце ${seat}` : `Балкон • ряд ${row} • місце ${seat}`;
     return k;
   }
 
-  // поддержка старого формата places: "1-2" и "boxA-5"
+  // support old seance.places keys: "1-2" and "boxA-5"
   function normalizePlaceKeyToSeatLabel(k) {
     const s = String(k || "").trim();
     if (!s) return "";
@@ -108,20 +67,17 @@
       const seat = Number(simple[2]);
       return `P${row}-M${seat}`;
     }
+
     return s;
   }
 
-  // -------------------- pricing helpers --------------------
+  // -------------------- pricing --------------------
   function priceByGroup(groupKey) {
     const sp = (seance && seance.prices) ? seance.prices : null;
     if (sp && sp[groupKey] != null) return Number(sp[groupKey]) || 0;
 
     const d = SETTINGS.pricing_defaults || {};
     if (d && d[groupKey] != null) return Number(d[groupKey]) || 0;
-
-    // fallback
-    const f = SETTINGS.pricing_defaults_fallback || {};
-    if (f && f[groupKey] != null) return Number(f[groupKey]) || 0;
 
     return 0;
   }
@@ -131,7 +87,7 @@
   }
 
   function isLockedStatus(st) {
-    return st === "sold" || st === "blocked" || st === "external";
+    return st === "sold" || st === "blocked";
   }
 
   function humanActionName(status) {
@@ -145,12 +101,39 @@
     }
   }
 
-  // -------------------- localStorage helpers --------------------
+  // -------------------- localStorage keys --------------------
   function lsKey(name) {
     const showKey = current ? `${current.id}_${current.date}` : "no_show";
     return `${LS_PREFIX}${name}_${showKey}`;
   }
+  function lsKeyGlobal(name){
+    return `${LS_PREFIX}${name}_global`;
+  }
 
+  // -------------------- clients/orders storage --------------------
+  function loadClients(){
+    try{
+      const raw = localStorage.getItem(lsKeyGlobal("clients"));
+      CLIENTS = raw ? (JSON.parse(raw) || []) : [];
+      if(!Array.isArray(CLIENTS)) CLIENTS = [];
+    }catch{ CLIENTS = []; }
+  }
+  function saveClients(){
+    localStorage.setItem(lsKeyGlobal("clients"), JSON.stringify(CLIENTS));
+  }
+
+  function loadOrders(){
+    try{
+      const raw = localStorage.getItem(lsKeyGlobal("orders"));
+      ORDERS = raw ? (JSON.parse(raw) || []) : [];
+      if(!Array.isArray(ORDERS)) ORDERS = [];
+    }catch{ ORDERS = []; }
+  }
+  function saveOrders(){
+    localStorage.setItem(lsKeyGlobal("orders"), JSON.stringify(ORDERS));
+  }
+
+  // -------------------- seat local state --------------------
   function loadLocalState() {
     seatStatus = new Map();
     basket = [];
@@ -168,8 +151,6 @@
     if (raw2) {
       try { ops = JSON.parse(raw2) || []; } catch { ops = []; }
     }
-
-    syncUI();
   }
 
   function saveSeatStatus() {
@@ -182,6 +163,15 @@
     localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
   }
 
+  function resetLocal() {
+    if (!current) return;
+    localStorage.removeItem(lsKey("seatStatus"));
+    localStorage.removeItem(lsKey("ops"));
+    loadLocalState();
+    renderHall();
+    syncUI();
+  }
+
   // -------------------- zoom --------------------
   function setZoom(value) {
     zoom = Math.max(0.6, Math.min(1.8, value));
@@ -189,7 +179,7 @@
     if (root) root.style.transform = `scale(${zoom})`;
   }
 
-  // -------------------- seat dom --------------------
+  // -------------------- seat DOM --------------------
   function seatDom(key, label, price, aisleGap = false) {
     const btn = document.createElement("button");
     btn.className = "seat" + (aisleGap ? " gapRight" : "");
@@ -203,7 +193,6 @@
     btn.dataset.st = st;
     btn.title = `${label}\n${price} ${currency}\nСтатус: ${stBase}`;
 
-    // текст кнопки = номер места
     const m = String(key).match(/-M(\d+)$/i);
     btn.textContent = m ? m[1] : key;
 
@@ -217,14 +206,13 @@
       if (idx >= 0) basket.splice(idx, 1);
       else basket.push({ key, label, price });
 
-      btn.dataset.st = basket.some(x => x.key === key) ? "basket" : base;
       syncUI();
     });
 
     return btn;
   }
 
-  // -------------------- render hall (из hall.json) --------------------
+  // -------------------- render hall from data/halls/*.json --------------------
   function renderHall() {
     const root = qs("#hallRoot");
     if (!root) return;
@@ -236,14 +224,11 @@
       return;
     }
 
-    const rows = Array.isArray(hall.rows) ? hall.rows.slice() : [];
+    const rows = (hall.rows || []).slice();
     const boxes = Array.isArray(hall.boxes) ? hall.boxes : [];
 
-    // Заголовок/инфо
-    // (в meta строке выводится отдельно через setText)
-
-    // 1) Партер + ложи
-    const parter = rows.filter(x => x.zone === "parter");
+    // --- Parter ---
+    const parterRows = rows.filter(x => x.zone === "parter");
 
     const title = document.createElement("div");
     title.className = "sectionTitle";
@@ -253,30 +238,27 @@
     const parterWrap = document.createElement("div");
     parterWrap.className = "parterWrap";
 
-    // ВАЖНО: Ложа А должна быть СЛЕВА, Ложа Б СПРАВА
+    // LEFT: BoxA (Ложа A слева)
     const boxA = boxes.find(b => String(b.id).toLowerCase() === "boxa");
-    const boxB = boxes.find(b => String(b.id).toLowerCase() === "boxb");
-
-    // left = boxA
     const leftBox = document.createElement("div");
     leftBox.className = "lodgeCol";
-    leftBox.innerHTML = `<div class="lodgeTitle">Ложа А</div>`;
+    leftBox.innerHTML = `<div class="lodgeTitle">Ложа A</div>`;
     const leftSeats = document.createElement("div");
     leftSeats.className = "lodgeSeats";
     if (boxA) {
       const price = priceByGroup(boxA.price_group || "p_boxes");
       for (let i = 1; i <= Number(boxA.seats || 18); i++) {
         const key = seatLabelKey(null, 0, i, "boxA");
-        leftSeats.appendChild(seatDom(key, `Ложа А • місце ${i}`, price));
+        leftSeats.appendChild(seatDom(key, `Ложа A • місце ${i}`, price));
       }
     }
     leftBox.appendChild(leftSeats);
 
-    // center parter
+    // CENTER: parter rows
     const center = document.createElement("div");
     center.className = "parterCenter";
 
-    for (const r of parter) {
+    for (const r of parterRows) {
       const line = document.createElement("div");
       line.className = "rowLine";
 
@@ -301,17 +283,18 @@
       center.appendChild(line);
     }
 
-    // right = boxB
+    // RIGHT: BoxB (Ложа B справа)
+    const boxB = boxes.find(b => String(b.id).toLowerCase() === "boxb");
     const rightBox = document.createElement("div");
     rightBox.className = "lodgeCol";
-    rightBox.innerHTML = `<div class="lodgeTitle">Ложа Б</div>`;
+    rightBox.innerHTML = `<div class="lodgeTitle">Ложа B</div>`;
     const rightSeats = document.createElement("div");
     rightSeats.className = "lodgeSeats";
     if (boxB) {
       const price = priceByGroup(boxB.price_group || "p_boxes");
       for (let i = 1; i <= Number(boxB.seats || 18); i++) {
         const key = seatLabelKey(null, 0, i, "boxB");
-        rightSeats.appendChild(seatDom(key, `Ложа Б • місце ${i}`, price));
+        rightSeats.appendChild(seatDom(key, `Ложа B • місце ${i}`, price));
       }
     }
     rightBox.appendChild(rightSeats);
@@ -321,7 +304,7 @@
     parterWrap.appendChild(rightBox);
     root.appendChild(parterWrap);
 
-    // 2) Амфітеатр (seats_left / seats_right)
+    // --- Amphi ---
     const amphi = rows.filter(x => x.zone === "amphi");
     if (amphi.length) {
       const t2 = document.createElement("div");
@@ -343,14 +326,13 @@
 
         const left = document.createElement("div");
         left.className = "seatsRow";
-
         const gap = document.createElement("div");
         gap.className = "amphiGap";
-
         const right = document.createElement("div");
         right.className = "seatsRow";
 
         const price = priceByGroup(r.price_group || "");
+
         const L = Number(r.seats_left || 0);
         const R = Number(r.seats_right || 0);
 
@@ -359,7 +341,7 @@
           left.appendChild(seatDom(key, keyToHuman(key), price));
         }
         for (let s = 1; s <= R; s++) {
-          const seatNum = L + s; // справа продолжает нумерацию
+          const seatNum = L + s;
           const key = seatLabelKey("amphi", Number(r.row), seatNum);
           right.appendChild(seatDom(key, keyToHuman(key), price));
         }
@@ -367,13 +349,13 @@
         wrap.appendChild(left);
         wrap.appendChild(gap);
         wrap.appendChild(right);
-
         line.appendChild(wrap);
+
         root.appendChild(line);
       }
     }
 
-    // 3) Балкон
+    // --- Balcony ---
     const balcony = rows.filter(x => x.zone === "balcony");
     if (balcony.length) {
       const t3 = document.createElement("div");
@@ -395,7 +377,6 @@
 
         const price = priceByGroup(r.price_group || "");
 
-        // Ряды 1-5: seats=28
         if (r.seats) {
           const cnt = Number(r.seats || 0);
           for (let s = 1; s <= cnt; s++) {
@@ -404,7 +385,7 @@
             rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
           }
         } else {
-          // Ряд 6: seats_left/seats_right, визуально как 1-10, пропуск, 11-20
+          // row 6 style
           const L = Number(r.seats_left || 0);
           const R = Number(r.seats_right || 0);
 
@@ -413,14 +394,13 @@
             const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
             rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
           }
-
-          // пустые слоты (визуальный пропуск)
           for (let i = 0; i < 8; i++) {
             const ph = document.createElement("span");
-            ph.className = "seatPh";
+            ph.className = "seat";
+            ph.style.visibility = "hidden";
+            ph.style.pointerEvents = "none";
             rowWrap.appendChild(ph);
           }
-
           for (let s = 1; s <= R; s++) {
             const seatNum = L + s;
             const key = seatLabelKey("balcony", Number(r.row), seatNum);
@@ -438,18 +418,16 @@
 
   // -------------------- UI sync --------------------
   function syncUI() {
-    const meta = qs("#basketMeta");
-    const list = qs("#basketList");
     const totalEl = qs("#basketTotal");
-
-    if (meta) meta.textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
     if (totalEl) totalEl.textContent = String(totalBasket());
-    renderBasket(list, basket, currency);
+    renderBasket(qs("#basketList"), basket, currency);
 
-    const opsList = qs("#opsList");
-    renderOps(opsList, ops);
+    const meta = qs("#basketMeta");
+    if (meta) meta.textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
 
-    // обновляем статусы на кнопках
+    renderOps(qs("#opsList"), ops);
+
+    // update seat buttons states
     const hallRoot = qs("#hallRoot");
     if (hallRoot) {
       hallRoot.querySelectorAll(".seat[data-key]").forEach(btn => {
@@ -457,7 +435,6 @@
         const base = seatStatus.get(key) || "free";
         const inB = basket.some(x => x.key === key);
         btn.dataset.st = inB ? "basket" : base;
-
         if (isLockedStatus(base)) btn.setAttribute("disabled", "disabled");
         else btn.removeAttribute("disabled");
       });
@@ -509,7 +486,7 @@
     for (const [k, v] of seatStatus.entries()) obj[k] = v;
     downloadText(
       `backoffice_state_${current.id}_${current.date}.json`,
-      JSON.stringify({ show: current, seance, hall, state: obj, ops }, null, 2)
+      JSON.stringify({ show: current, seance, state: obj, ops }, null, 2)
     );
   }
 
@@ -542,14 +519,6 @@
     syncUI();
   }
 
-  function resetLocal() {
-    if (!current) return;
-    localStorage.removeItem(lsKey("seatStatus"));
-    localStorage.removeItem(lsKey("ops"));
-    loadLocalState();
-    renderHall();
-  }
-
   // -------------------- data loading --------------------
   async function loadSettings() {
     try {
@@ -558,22 +527,15 @@
       setText("#boTitle", SETTINGS?.theatre?.name ? `Білетний відділ — ${SETTINGS.theatre.name}` : "Білетний відділ");
       return SETTINGS;
     } catch (e) {
-      console.warn("settings.json не прочитался", e);
-      SETTINGS = { theatre: {}, pricing_defaults: {}, pricing_defaults_fallback: {} };
+      SETTINGS = { theatre: {}, pricing_defaults: {} };
       currency = "грн";
-      setText("#boTitle", "Білетний відділ");
       return SETTINGS;
     }
   }
 
   async function loadAfisha() {
-    try {
-      AFISHA = await fetchJson("../data/afisha.json");
-      if (!Array.isArray(AFISHA)) AFISHA = [];
-    } catch (e) {
-      console.warn("afisha.json не прочитался", e);
-      AFISHA = [];
-    }
+    AFISHA = await fetchJson("../data/afisha.json");
+    if(!Array.isArray(AFISHA)) AFISHA = [];
     return AFISHA;
   }
 
@@ -595,16 +557,15 @@
         current = null; seance = null; hall = null;
         setText("#seanceMeta", "Оберіть сеанс.");
         renderHall();
-        loadLocalState();
+        seatStatus = new Map();
+        basket = [];
+        ops = [];
+        syncUI();
         return;
       }
       const [id, date] = v.split("__");
-      const found =
-        AFISHA.find(x => x.id === id && x.date === date) ||
-        AFISHA.find(x => x.id === id) ||
-        null;
+      const found = AFISHA.find(x => x.id === id && x.date === date) || AFISHA.find(x => x.id === id) || null;
       if (!found) return;
-
       await loadSeance(found);
     });
   }
@@ -616,7 +577,6 @@
     try {
       seance = await fetchJson(seanceUrl);
     } catch (e) {
-      console.error("Cannot load seance:", seanceUrl, e);
       alert(`Не можу завантажити сеанс: ${seanceUrl}\nПеревір: чи є файл у /data/seances/`);
       seance = null;
       return;
@@ -627,13 +587,12 @@
     try {
       hall = await fetchJson(hallUrl);
     } catch (e) {
-      console.error("Cannot load hall:", hallUrl, e);
       alert(`Не можу завантажити зал: ${hallUrl}`);
       hall = null;
       return;
     }
 
-    // init statuses from seance.places
+    // init statuses from seance.places (normalize keys)
     seatStatus = new Map();
     const places = seance.places || {};
     for (const [k, v] of Object.entries(places)) {
@@ -656,6 +615,7 @@
       } catch {}
     }
 
+    // ops
     const rawOps = localStorage.getItem(lsKey("ops"));
     ops = [];
     if (rawOps) {
@@ -663,8 +623,13 @@
     }
 
     basket = [];
-
     setText("#seanceMeta", `${show.title} • ${show.date} ${show.time} • hall_id: ${hallId}`);
+
+    // pricing dump
+    const pd = qs("#pricingDump");
+    if(pd){
+      pd.textContent = JSON.stringify({ seance_prices: seance?.prices || {}, defaults: SETTINGS?.pricing_defaults || {} }, null, 2);
+    }
 
     saveSeatStatus();
     saveOps();
@@ -672,7 +637,275 @@
     syncUI();
   }
 
-  // -------------------- init toolbar --------------------
+  // -------------------- tabs --------------------
+  function setTab(name){
+    qsa("#tabs .tabbtn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    qsa("[data-pane]").forEach(p => p.hidden = (p.dataset.pane !== name));
+  }
+
+  function initTabs(){
+    qs("#tabs")?.addEventListener("click", (e)=>{
+      const b = e.target.closest(".tabbtn");
+      if(!b) return;
+      setTab(b.dataset.tab);
+      if(b.dataset.tab === "clients") renderClients();
+      if(b.dataset.tab === "orders") renderOrders();
+    });
+  }
+
+  // -------------------- clients UI --------------------
+  let editingClientId = null;
+
+  function uid(prefix){
+    const rnd = Math.random().toString(16).slice(2,8);
+    return `${prefix}-${Date.now()}-${rnd}`;
+  }
+
+  function renderClients(){
+    const tbody = qs("#clientsTbody");
+    if(!tbody) return;
+
+    const q = (qs("#clientSearch")?.value || "").trim().toLowerCase();
+    const list = CLIENTS.filter(c => {
+      const s = `${c.name||""} ${c.phone||""} ${c.email||""} ${c.note||""}`.toLowerCase();
+      return !q || s.includes(q);
+    });
+
+    tbody.innerHTML = list.map(c => `
+      <tr data-id="${c.id}">
+        <td><b>${c.id}</b></td>
+        <td>${c.name||""}</td>
+        <td>${c.email||""}</td>
+        <td>${c.phone||""}</td>
+        <td>${c.type||""}</td>
+        <td>${c.note||""}</td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("tr").forEach(tr=>{
+      tr.addEventListener("click", ()=>{
+        const id = tr.dataset.id;
+        openClientForm(id);
+      });
+    });
+  }
+
+  function openClientForm(id){
+    const form = qs("#clientForm");
+    if(!form) return;
+
+    editingClientId = id || null;
+    const c = CLIENTS.find(x => x.id === id) || { id: "", name:"", email:"", phone:"", type:"client", note:"" };
+
+    qs("#cName").value = c.name || "";
+    qs("#cEmail").value = c.email || "";
+    qs("#cPhone").value = c.phone || "";
+    qs("#cType").value = c.type || "client";
+    qs("#cNote").value = c.note || "";
+
+    form.hidden = false;
+  }
+
+  function closeClientForm(){
+    const form = qs("#clientForm");
+    if(form) form.hidden = true;
+    editingClientId = null;
+  }
+
+  function saveClient(){
+    const name = (qs("#cName").value || "").trim();
+    const email = (qs("#cEmail").value || "").trim();
+    const phone = (qs("#cPhone").value || "").trim();
+    const type = qs("#cType").value;
+    const note = (qs("#cNote").value || "").trim();
+
+    if(!name && !phone){
+      alert("Вкажіть хоча б П.І.Б. або телефон.");
+      return;
+    }
+
+    if(editingClientId){
+      const idx = CLIENTS.findIndex(x => x.id === editingClientId);
+      if(idx >= 0){
+        CLIENTS[idx] = { ...CLIENTS[idx], name, email, phone, type, note };
+      }
+    }else{
+      CLIENTS.push({
+        id: uid("CL"),
+        name, email, phone, type, note,
+        created_at: nowIso()
+      });
+    }
+
+    saveClients();
+    renderClients();
+    closeClientForm();
+  }
+
+  function deleteClient(){
+    if(!editingClientId) return;
+    if(!confirm("Видалити клієнта?")) return;
+    CLIENTS = CLIENTS.filter(x => x.id !== editingClientId);
+    saveClients();
+    renderClients();
+    closeClientForm();
+  }
+
+  // -------------------- orders UI --------------------
+  let editingOrderId = null;
+
+  function nextOrderId(){
+    const n = ORDERS.length + 1;
+    return `ORD-${String(n).padStart(5,"0")}`;
+  }
+
+  function renderOrders(){
+    const tbody = qs("#ordersTbody");
+    if(!tbody) return;
+
+    const q = (qs("#orderSearch")?.value || "").trim().toLowerCase();
+    const fs = (qs("#orderFilterStatus")?.value || "");
+
+    const list = ORDERS.filter(o => {
+      const s = `${o.id||""} ${o.client||""}`.toLowerCase();
+      if(q && !s.includes(q)) return false;
+      if(fs && o.status !== fs) return false;
+      return true;
+    });
+
+    tbody.innerHTML = list.slice().reverse().map(o => `
+      <tr data-id="${o.id}">
+        <td><b>${o.id}</b></td>
+        <td>${o.status}</td>
+        <td>${o.client||""}</td>
+        <td><b>${o.amount||0}</b> ${currency}</td>
+        <td>${(o.seats||[]).join(", ")}</td>
+        <td class="muted">${o.created_at ? o.created_at.slice(0,19).replace("T"," ") : ""}</td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("tr").forEach(tr=>{
+      tr.addEventListener("click", ()=>{
+        openOrderForm(tr.dataset.id);
+      });
+    });
+  }
+
+  function openOrderForm(id){
+    const form = qs("#orderForm");
+    if(!form) return;
+
+    editingOrderId = id || null;
+    const o = ORDERS.find(x => x.id === id) || { id: nextOrderId(), status:"draft", client:"", amount:0, seats:[], created_at: nowIso() };
+
+    qs("#oId").value = o.id || "";
+    qs("#oStatus").value = o.status || "draft";
+    qs("#oClient").value = o.client || "";
+    qs("#oSeats").value = (o.seats||[]).join(", ");
+    qs("#oAmount").value = Number(o.amount || 0);
+
+    form.hidden = false;
+  }
+
+  function closeOrderForm(){
+    const form = qs("#orderForm");
+    if(form) form.hidden = true;
+    editingOrderId = null;
+  }
+
+  function saveOrder(){
+    const id = (qs("#oId").value || "").trim();
+    const status = qs("#oStatus").value;
+    const client = (qs("#oClient").value || "").trim();
+    const seats = (qs("#oSeats").value || "").split(",").map(s=>s.trim()).filter(Boolean);
+    const amount = Number(qs("#oAmount").value || 0);
+
+    if(!id){ alert("Немає номеру."); return; }
+
+    const existing = ORDERS.findIndex(x => x.id === id);
+    const payload = { id, status, client, seats, amount, created_at: (existing>=0 ? ORDERS[existing].created_at : nowIso()) };
+
+    if(existing>=0) ORDERS[existing] = payload;
+    else ORDERS.push(payload);
+
+    saveOrders();
+    renderOrders();
+    closeOrderForm();
+  }
+
+  function deleteOrder(){
+    const id = (qs("#oId").value || "").trim();
+    if(!id) return;
+    if(!confirm("Видалити замовлення?")) return;
+    ORDERS = ORDERS.filter(x => x.id !== id);
+    saveOrders();
+    renderOrders();
+    closeOrderForm();
+  }
+
+  function printOrder(){
+    const id = (qs("#oId").value || "").trim();
+    const o = ORDERS.find(x => x.id === id);
+    if(!o){ alert("Не знайдено замовлення."); return; }
+
+    const html = `<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"/>
+<title>${o.id}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:18px;color:#111827}
+  .card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;max-width:520px}
+  h1{margin:0 0 6px;font-size:18px}
+  .muted{color:#6b7280;font-size:12px}
+  .row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #e5e7eb;padding:6px 0}
+  .row:last-child{border-bottom:0}
+</style></head>
+<body>
+  <div class="card">
+    <h1>Замовлення ${o.id}</h1>
+    <div class="muted">Статус: ${o.status} • Створено: ${o.created_at || ""}</div>
+    <div class="row"><div>Клієнт</div><div><b>${o.client||"—"}</b></div></div>
+    <div class="row"><div>Сума</div><div><b>${o.amount||0}</b> ${currency}</div></div>
+    <div class="row"><div>Місця</div><div><b>${(o.seats||[]).join(", ")}</b></div></div>
+    <div class="row"><div>Подія</div><div>${current ? `${current.title} • ${current.date} ${current.time}` : "—"}</div></div>
+  </div>
+<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if(!w){ alert("Браузер заблокував pop-up для друку."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
+  function createOrderFromBasket(){
+    if(!basket.length){ alert("Кошик порожній."); return; }
+    const id = nextOrderId();
+    const seats = basket.map(x => x.key);
+    const amount = totalBasket();
+    ORDERS.push({ id, status:"draft", client:"", amount, seats, created_at: nowIso() });
+    saveOrders();
+    setTab("orders");
+    openOrderForm(id);
+    renderOrders();
+  }
+
+  // -------------------- reports --------------------
+  function exportClientsJson(){
+    downloadText("clients.json", JSON.stringify(CLIENTS, null, 2));
+  }
+  function exportClientsCsv(){
+    const rows = [["id","name","email","phone","type","note","created_at"]];
+    CLIENTS.forEach(c => rows.push([c.id,c.name,c.email,c.phone,c.type,c.note,c.created_at]));
+    downloadText("clients.csv", toCsv(rows));
+  }
+  function exportOrdersJson(){
+    downloadText("orders.json", JSON.stringify(ORDERS, null, 2));
+  }
+  function exportOrdersCsv(){
+    const rows = [["id","status","client","amount","seats","created_at"]];
+    ORDERS.forEach(o => rows.push([o.id,o.status,o.client,o.amount,(o.seats||[]).join(" "),o.created_at]));
+    downloadText("orders.csv", toCsv(rows));
+  }
+
+  // -------------------- toolbar / events --------------------
   function initToolbar() {
     qs("#btnZoomIn")?.addEventListener("click", () => setZoom(zoom + 0.1));
     qs("#btnZoomOut")?.addEventListener("click", () => setZoom(zoom - 0.1));
@@ -680,7 +913,6 @@
       const w = qs("#hallWrap");
       if (w) w.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     });
-    qs("#btnList")?.addEventListener("click", () => qs("#opsList")?.scrollIntoView({ behavior: "smooth" }));
 
     qs("#btnSell")?.addEventListener("click", sell);
     qs("#btnReserve")?.addEventListener("click", reserve);
@@ -697,18 +929,56 @@
 
     qs("#btnResetLocal")?.addEventListener("click", resetLocal);
 
-    // dates UI (пока просто выставим)
-    const from = qs("#rangeFrom");
-    const to = qs("#rangeTo");
-    const today = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    const y = today.getFullYear(), m = pad(today.getMonth() + 1), d = pad(today.getDate());
-    if (from) from.value = `${y}-${m}-01`;
-    if (to) to.value = `${y}-${m}-${d}`;
+    qs("#btnCreateOrder")?.addEventListener("click", createOrderFromBasket);
+
+    // seat search (scroll to seat)
+    qs("#seatSearch")?.addEventListener("keydown", (e)=>{
+      if(e.key !== "Enter") return;
+      const key = (e.target.value||"").trim();
+      if(!key) return;
+      const btn = qs(`.seat[data-key="${CSS.escape(key)}"]`);
+      if(btn) btn.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
+      else alert("Не знайдено місце: " + key);
+    });
   }
 
+  // -------------------- init: clients/orders UI events --------------------
+  function initClientsUi(){
+    qs("#clientSearch")?.addEventListener("input", renderClients);
+    qs("#btnClientNew")?.addEventListener("click", ()=> openClientForm(null));
+    qs("#btnClientCancel")?.addEventListener("click", closeClientForm);
+    qs("#btnClientSave")?.addEventListener("click", saveClient);
+    qs("#btnClientDelete")?.addEventListener("click", deleteClient);
+  }
+
+  function initOrdersUi(){
+    qs("#orderSearch")?.addEventListener("input", renderOrders);
+    qs("#orderFilterStatus")?.addEventListener("change", renderOrders);
+    qs("#btnOrderNew")?.addEventListener("click", ()=> openOrderForm(null));
+    qs("#btnOrderCancel")?.addEventListener("click", closeOrderForm);
+    qs("#btnOrderSave")?.addEventListener("click", saveOrder);
+    qs("#btnOrderDelete")?.addEventListener("click", deleteOrder);
+    qs("#btnOrderPrint")?.addEventListener("click", printOrder);
+  }
+
+  function initReportsUi(){
+    qs("#btnExportClientsJson")?.addEventListener("click", exportClientsJson);
+    qs("#btnExportClientsCsv")?.addEventListener("click", exportClientsCsv);
+    qs("#btnExportOrdersJson")?.addEventListener("click", exportOrdersJson);
+    qs("#btnExportOrdersCsv")?.addEventListener("click", exportOrdersCsv);
+  }
+
+  // -------------------- boot --------------------
   async function init() {
+    initTabs();
     initToolbar();
+    initClientsUi();
+    initOrdersUi();
+    initReportsUi();
+
+    loadClients();
+    loadOrders();
+
     await loadSettings();
     await loadAfisha();
     fillShowSelect();
@@ -717,6 +987,9 @@
     renderHall();
     syncUI();
     setZoom(1);
+
+    // default tab
+    setTab("events");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
