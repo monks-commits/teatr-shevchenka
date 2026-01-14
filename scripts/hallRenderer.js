@@ -1,44 +1,55 @@
 /* scripts/hallRenderer.js
    Единый рендер зала из data/halls/*.json
-   Возвращает Map seatKey -> button
-   seatKey:
+
+   seat_label формат (ЕДИНЫЙ):
      Партер:  P{row}-M{seat}
      Амфи:    A{row}-M{seat}
      Балкон:  B{row}-M{seat}
-     Ложи:    boxA-{n}, boxB-{n}
+     Ложа A:  A0-M{seat}
+     Ложа B:  B0-M{seat}
+
+   hall.json ожидается в виде:
+   {
+     "id":"shevchenko-big",
+     "rows":[
+       {"zone":"parter","row":1,"seats":20,"aisle_after":10,"price_group":"p_parter_1_6"},
+       {"zone":"amphi","row":19,"seats_left":11,"seats_right":11,"price_group":"p_amphi_all"},
+       {"zone":"balcony","row":1,"seats":28,"aisle_after":14,"price_group":"p_balcony_1_5"},
+       {"zone":"balcony","row":6,"seats_left":10,"seats_right":10,"aisle_after":10,"price_group":"p_balcony_6"}
+     ],
+     "boxes":[
+       {"id":"boxA","seats":18,"price_group":"p_boxes"},
+       {"id":"boxB","seats":18,"price_group":"p_boxes"}
+     ]
+   }
 */
+
 (function () {
-  function zonePrefix(zone) {
-    if (zone === "parter") return "P";
-    if (zone === "amphi") return "A";
-    if (zone === "balcony") return "B";
-    return "P";
+  function seatKey(zone, row, seat) {
+    if (zone === "parter") return `P${row}-M${seat}`;
+    if (zone === "amphi") return `A${row}-M${seat}`;
+    if (zone === "balcony") return `B${row}-M${seat}`;
+    return `P${row}-M${seat}`;
   }
 
-  function seatKeyFrom(zone, row, seat) {
-    const pref = zonePrefix(zone);
-    return `${pref}${row}-M${seat}`;
+  function boxSeatKey(boxId, seat) {
+    const id = String(boxId || "").toLowerCase();
+    if (id === "boxa") return `A0-M${seat}`;
+    if (id === "boxb") return `B0-M${seat}`;
+    // fallback
+    return `A0-M${seat}`;
   }
 
   function humanizeSeatKey(key) {
-    // boxA-5 / boxB-3
-    const bm = String(key).match(/^(boxA|boxB)-(\d+)$/i);
-    if (bm) {
-      const box = bm[1].toLowerCase() === "boxa" ? "Ложа А" : "Ложа Б";
-      return `${box}, місце ${Number(bm[2])}`;
-    }
-
-    // P12-M7 / A19-M3 / B6-M14
     const m = String(key).match(/^([PAB])(\d+)-M(\d+)$/i);
     if (!m) return key;
-
     const pref = m[1].toUpperCase();
     const row = Number(m[2]);
     const seat = Number(m[3]);
 
     if (pref === "P") return `Ряд ${row}, місце ${seat} (Партер)`;
-    if (pref === "A") return `Ряд ${row}, місце ${seat} (Амфітеатр)`;
-    if (pref === "B") return `Ряд ${row}, місце ${seat} (Балкон)`;
+    if (pref === "A") return row === 0 ? `Ложа А, місце ${seat}` : `Ряд ${row}, місце ${seat} (Амфітеатр)`;
+    if (pref === "B") return row === 0 ? `Ложа Б, місце ${seat}` : `Ряд ${row}, місце ${seat} (Балкон)`;
     return key;
   }
 
@@ -51,9 +62,11 @@
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "seat";
+
+    // базовые классы
     if (extraClass) btn.className += " " + extraClass;
 
-    // цена -> цвет (как у тебя в styles.css)
+    // цена -> цвет (у тебя в styles.css есть seat--p200, seat--p160 и т.д.)
     btn.className += " " + priceClass(price);
 
     btn.textContent = String(label);
@@ -66,9 +79,11 @@
       btn.disabled = true;
     } else if (status === "reserved") {
       btn.classList.add("seat--reserved");
-    } else if (status === "blocked" || status === "external") {
-      // external = Карабас/внешний канал
-      btn.classList.add(status === "external" ? "seat--external" : "seat--blocked");
+    } else if (status === "blocked") {
+      btn.classList.add("seat--blocked");
+      btn.disabled = true;
+    } else if (status === "external") {
+      btn.classList.add("seat--external");
       btn.disabled = true;
     }
 
@@ -76,11 +91,8 @@
     return btn;
   }
 
-  // hall.rows содержит и партер, и амфи, и балкон.
-  // В твоём JSON отличаем амфи по seats_left/seats_right.
-  function renderRowsBlock({ container, hall, zone, getPrice, getStatus, onToggle }) {
+  function renderRows({ container, hall, zone, getPrice, getStatus, onToggle }) {
     const seatButtons = new Map();
-
     const rows = (hall.rows || []).filter((r) => r.zone === zone);
 
     rows.forEach((r) => {
@@ -92,10 +104,9 @@
       lab.textContent = String(r.row);
       rowLine.appendChild(lab);
 
-      // Амфи: left + gap + right (если есть seats_left/seats_right)
-      const isAmphiSplit = (r.seats_left != null) || (r.seats_right != null);
+      const isSplit = r.seats_left != null || r.seats_right != null;
 
-      if (isAmphiSplit) {
+      if (isSplit) {
         const left = document.createElement("div");
         left.className = "seats-row";
 
@@ -105,40 +116,44 @@
         const right = document.createElement("div");
         right.className = "seats-row";
 
-        const leftCount = Number(r.seats_left || 0);
-        const rightCount = Number(r.seats_right || 0);
+        const L = Number(r.seats_left || 0);
+        const R = Number(r.seats_right || 0);
 
-        // слева 1..leftCount
-        for (let s = 1; s <= leftCount; s++) {
-          const key = seatKeyFrom(zone, r.row, s);
-          const price = getPrice({ zone, row: r.row, seat: s, rowCfg: r });
-          const status = getStatus(key, { zone, row: r.row, seat: s, rowCfg: r });
+        for (let s = 1; s <= L; s++) {
+          const key = seatKey(zone, Number(r.row), s);
+          const price = getPrice({ zone, row: Number(r.row), seat: s, rowCfg: r });
+          const status = getStatus(key, { zone, row: Number(r.row), seat: s, rowCfg: r });
+
+          const extra = zone === "amphi" ? "seat--amphi" : (zone === "balcony" ? "seat--balcony" : "");
           const btn = makeSeatButton({
             key,
             label: s,
             price,
-            extraClass: "seat--amphi",
+            extraClass: extra,
             status,
-            onClick: () => onToggle && onToggle(key, { zone, row: r.row, seat: s, price, status }),
+            onClick: () => onToggle && onToggle(key, { zone, row: Number(r.row), seat: s, price, status }),
           });
+
           seatButtons.set(key, btn);
           left.appendChild(btn);
         }
 
-        // справа (нумерация как у тебя: после 11 → 12..)
-        for (let i = 1; i <= rightCount; i++) {
-          const seatNum = leftCount + i;
-          const key = seatKeyFrom(zone, r.row, seatNum);
-          const price = getPrice({ zone, row: r.row, seat: seatNum, rowCfg: r });
-          const status = getStatus(key, { zone, row: r.row, seat: seatNum, rowCfg: r });
+        for (let i = 1; i <= R; i++) {
+          const seatNum = L + i; // справа продолжает нумерацию
+          const key = seatKey(zone, Number(r.row), seatNum);
+          const price = getPrice({ zone, row: Number(r.row), seat: seatNum, rowCfg: r });
+          const status = getStatus(key, { zone, row: Number(r.row), seat: seatNum, rowCfg: r });
+
+          const extra = zone === "amphi" ? "seat--amphi" : (zone === "balcony" ? "seat--balcony" : "");
           const btn = makeSeatButton({
             key,
             label: seatNum,
             price,
-            extraClass: "seat--amphi",
+            extraClass: extra,
             status,
-            onClick: () => onToggle && onToggle(key, { zone, row: r.row, seat: seatNum, price, status }),
+            onClick: () => onToggle && onToggle(key, { zone, row: Number(r.row), seat: seatNum, price, status }),
           });
+
           seatButtons.set(key, btn);
           right.appendChild(btn);
         }
@@ -150,33 +165,31 @@
         return;
       }
 
-      // Обычные ряды (партер/балкон)
+      // обычные ряды
       const seatsRow = document.createElement("div");
       seatsRow.className = "seats-row";
 
-      // Балкон ряд 6 у тебя “особый” (seats_left/seats_right в JSON тоже есть),
-      // но если он задан как seats:20 + seats_left/right — мы это уже обработали выше.
-      // Здесь стандартный вариант: seats = N.
-      const seatsCount = Number(r.seats || 0);
+      const cnt = Number(r.seats || 0);
       const aisleAfter = Number(r.aisle_after || 0);
 
-      for (let s = 1; s <= seatsCount; s++) {
-        const key = seatKeyFrom(zone, r.row, s);
-        const price = getPrice({ zone, row: r.row, seat: s, rowCfg: r });
-        const status = getStatus(key, { zone, row: r.row, seat: s, rowCfg: r });
+      for (let s = 1; s <= cnt; s++) {
+        const key = seatKey(zone, Number(r.row), s);
+        const price = getPrice({ zone, row: Number(r.row), seat: s, rowCfg: r });
+        const status = getStatus(key, { zone, row: Number(r.row), seat: s, rowCfg: r });
 
-        let extraClass = "";
-        if (zone === "parter") extraClass = "seat--parter-front";
-        if (zone === "balcony") extraClass = "seat--balcony";
-        if (aisleAfter && s === aisleAfter) extraClass += " seat--gap-right";
+        let extra = "";
+        if (zone === "parter") extra = "seat--parter-front";
+        if (zone === "balcony") extra = "seat--balcony";
+
+        if (aisleAfter && s === aisleAfter) extra = (extra ? extra + " " : "") + "seat--gap-right";
 
         const btn = makeSeatButton({
           key,
           label: s,
           price,
-          extraClass: extraClass.trim(),
+          extraClass: extra,
           status,
-          onClick: () => onToggle && onToggle(key, { zone, row: r.row, seat: s, price, status }),
+          onClick: () => onToggle && onToggle(key, { zone, row: Number(r.row), seat: s, price, status }),
         });
 
         seatButtons.set(key, btn);
@@ -190,27 +203,26 @@
     return seatButtons;
   }
 
-  function renderBoxes({ containerA, containerB, hall, getPrice, getStatus, onToggle }) {
+  function renderBoxes({ lodgeAEl, lodgeBEl, hall, getPrice, getStatus, onToggle }) {
     const seatButtons = new Map();
-    const boxes = hall.boxes || [];
+    const boxes = Array.isArray(hall.boxes) ? hall.boxes : [];
 
-    function renderOne(box, container) {
-      if (!box || !container) return;
-      const boxId = String(box.id || "");
-      const seats = Number(box.seats || 0);
+    function renderOne(boxCfg, container) {
+      if (!boxCfg || !container) return;
+      const seats = Number(boxCfg.seats || 0);
 
-      for (let n = 1; n <= seats; n++) {
-        const key = `${boxId}-${n}`;
-        const price = getPrice({ zone: "boxes", box: boxId, seat: n, boxCfg: box });
-        const status = getStatus(key, { zone: "boxes", box: boxId, seat: n, boxCfg: box });
+      for (let i = 1; i <= seats; i++) {
+        const key = boxSeatKey(boxCfg.id, i);
+        const price = getPrice({ zone: "boxes", boxId: boxCfg.id, seat: i, boxCfg });
+        const status = getStatus(key, { zone: "boxes", boxId: boxCfg.id, seat: i, boxCfg });
 
         const btn = makeSeatButton({
           key,
-          label: n,
+          label: i,
           price,
           extraClass: "seat--lodge",
           status,
-          onClick: () => onToggle && onToggle(key, { zone: "boxes", box: boxId, seat: n, price, status }),
+          onClick: () => onToggle && onToggle(key, { zone: "boxes", boxId: boxCfg.id, seat: i, price, status }),
         });
 
         seatButtons.set(key, btn);
@@ -218,11 +230,11 @@
       }
     }
 
-    const boxA = boxes.find((b) => String(b.id).toLowerCase() === "boxa");
-    const boxB = boxes.find((b) => String(b.id).toLowerCase() === "boxb");
+    const boxA = boxes.find((b) => String(b.id || "").toLowerCase() === "boxa");
+    const boxB = boxes.find((b) => String(b.id || "").toLowerCase() === "boxb");
 
-    renderOne(boxA, containerA);
-    renderOne(boxB, containerB);
+    renderOne(boxA, lodgeAEl);
+    renderOne(boxB, lodgeBEl);
 
     return seatButtons;
   }
@@ -230,76 +242,42 @@
   function renderHall(opts) {
     const {
       hall,
-      // DOM containers:
       parterEl,
       amphiEl,
       balconyEl,
       lodgeAEl,
       lodgeBEl,
-      // pricing/status callbacks:
       getPrice,
       getStatus,
       onToggle,
     } = opts;
 
-    if (!hall) throw new Error("renderHall: hall is required");
+    if (!hall) throw new Error("HallRenderer: hall is required");
 
-    parterEl && (parterEl.innerHTML = "");
-    amphiEl && (amphiEl.innerHTML = "");
-    balconyEl && (balconyEl.innerHTML = "");
-    lodgeAEl && (lodgeAEl.innerHTML = "");
-    lodgeBEl && (lodgeBEl.innerHTML = "");
+    if (parterEl) parterEl.innerHTML = "";
+    if (amphiEl) amphiEl.innerHTML = "";
+    if (balconyEl) balconyEl.innerHTML = "";
+    if (lodgeAEl) lodgeAEl.innerHTML = "";
+    if (lodgeBEl) lodgeBEl.innerHTML = "";
 
     const buttons = new Map();
 
     // Boxes
-    if (lodgeAEl || lodgeBEl) {
-      const b = renderBoxes({
-        containerA: lodgeAEl,
-        containerB: lodgeBEl,
-        hall,
-        getPrice,
-        getStatus,
-        onToggle,
-      });
-      b.forEach((v, k) => buttons.set(k, v));
-    }
+    const b = renderBoxes({ lodgeAEl, lodgeBEl, hall, getPrice, getStatus, onToggle });
+    b.forEach((v, k) => buttons.set(k, v));
 
-    // Parter / Amphi / Balcony from hall.rows
+    // Zones
     if (parterEl) {
-      const b = renderRowsBlock({
-        container: parterEl,
-        hall,
-        zone: "parter",
-        getPrice,
-        getStatus,
-        onToggle,
-      });
-      b && b.forEach((v, k) => buttons.set(k, v));
+      const m = renderRows({ container: parterEl, hall, zone: "parter", getPrice, getStatus, onToggle });
+      m.forEach((v, k) => buttons.set(k, v));
     }
-
     if (amphiEl) {
-      const b = renderRowsBlock({
-        container: amphiEl,
-        hall,
-        zone: "amphi",
-        getPrice,
-        getStatus,
-        onToggle,
-      });
-      b && b.forEach((v, k) => buttons.set(k, v));
+      const m = renderRows({ container: amphiEl, hall, zone: "amphi", getPrice, getStatus, onToggle });
+      m.forEach((v, k) => buttons.set(k, v));
     }
-
     if (balconyEl) {
-      const b = renderRowsBlock({
-        container: balconyEl,
-        hall,
-        zone: "balcony",
-        getPrice,
-        getStatus,
-        onToggle,
-      });
-      b && b.forEach((v, k) => buttons.set(k, v));
+      const m = renderRows({ container: balconyEl, hall, zone: "balcony", getPrice, getStatus, onToggle });
+      m.forEach((v, k) => buttons.set(k, v));
     }
 
     return buttons;
@@ -308,6 +286,5 @@
   window.HallRenderer = {
     renderHall,
     humanizeSeatKey,
-    seatKeyFrom,
   };
 })();
