@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Каса — вибір події</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    .wrap{max-width:860px;margin:0 auto;padding:24px;}
+    .card2{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    select,input{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;}
+    button{border:0;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;background:#bbf7d0;}
+    .muted{color:#6b7280;font-size:13px;}
+    .list{margin-top:14px;display:grid;gap:8px;}
+    .item{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e5e7eb;border-radius:14px;}
+    .item b{font-size:14px;}
+    .item .meta{color:#6b7280;font-size:12px;}
+    .btnLink{background:#e2e8f0;}
+  </style>
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="main">
+    <div class="wrap">
+      <h1>Каса — вибір події</h1>
+
+      <div class="card2">
+        <div class="row">
+          <label class="muted">Пошук:</label>
+          <input id="q" placeholder="введіть назву (наприклад: Вісім)" />
+          <button id="btnClear" class="btnLink">Очистити</button>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          Оберіть подію зі списку — відкриється <b>hall-cash.html?show=...</b>
+        </div>
+
+        <div id="list" class="list"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script type="module" src="../scripts/include.js"></script>
+
+  <script>
+    async function fetchJson(url){
+      const r = await fetch(url, {cache:"no-store"});
+      if(!r.ok) return null;
+      return await r.json();
+    }
+
+    function itemHtml(s){
+      const title = s.title || s.id;
+      const dt = [s.date, s.time].filter(Boolean).join(" ");
+      return `
+        <div class="item">
+          <div>
+            <b>${title}</b>
+            <div class="meta">${dt} • id: ${s.id}</div>
+          </div>
+          <div class="row">
+            <button data-id="${s.id}">Відкрити касу</button>
+          </div>
+        </div>
+      `;
+    }
+
+    let AF = [];
+    function render(filter){
+      const list = document.getElementById("list");
+      const f = (filter||"").trim().toLowerCase();
+      const arr = !f ? AF : AF.filter(s => String(s.title||"").toLowerCase().includes(f) || String(s.id||"").toLowerCase().includes(f));
+      list.innerHTML = arr.length ? arr.map(itemHtml).join("") : `<div class="muted">Нічого не знайдено.</div>`;
+
+      list.querySelectorAll("button[data-id]").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const id = btn.getAttribute("data-id");
+          location.href = `hall-cash.html?show=${encodeURIComponent(id)}`;
+        });
+      });
+    }
+
+    (async ()=>{
+      AF = await fetchJson("../data/afisha.json") || [];
+      render("");
+      document.getElementById("q").addEventListener("input", (e)=> render(e.target.value));
+      document.getElementById("btnClear").addEventListener("click", ()=>{ document.getElementById("q").value=""; render(""); });
+    })();
+  </script>
+</body>
+</html>
