@@ -1,53 +1,42 @@
-// backoffice/ui.js
-(function(){
+(() => {
   const { qs } = window.BO_UTILS;
 
-  function setText(id, text){
-    const el = qs(id);
-    if (el) el.textContent = text;
+  function setText(sel, text){
+    const el = qs(sel);
+    if(el) el.textContent = text ?? "";
   }
 
-  function clear(el){
-    if (el) el.innerHTML = '';
-  }
-
-  function renderBasket(listEl, items, currency){
-    clear(listEl);
-    if (!listEl) return;
-    if (!items.length) return;
-
-    for (const it of items){
-      const row = document.createElement('div');
-      row.className = 'bItem';
-      row.innerHTML = `<span>${it.label}</span><span><strong>${it.price}</strong> ${currency}</span>`;
-      listEl.appendChild(row);
-    }
-  }
-
-  function renderOps(listEl, ops){
-    clear(listEl);
-    if (!listEl) return;
-
-    if (!ops.length){
-      listEl.innerHTML = `<div class="muted">Поки що немає операцій.</div>`;
+  function renderBasket(root, basket, currency){
+    if(!root) return;
+    if(!basket || !basket.length){
+      root.innerHTML = `<div class="muted">Поки що нічого не обрано.</div>`;
       return;
     }
-
-    for (const o of ops.slice().reverse()){
-      const div = document.createElement('div');
-      div.className = 'op';
-      div.innerHTML = `
-        <div class="t">${o.action} • ${o.count} • ${o.total} ${o.currency}</div>
-        <div class="m">${o.showLabel || ''} • ${o.tsHuman || o.ts}</div>
-        <div class="m">${(o.seats||[]).join(', ')}</div>
-      `;
-      listEl.appendChild(div);
-    }
+    root.innerHTML = basket
+      .slice()
+      .sort((a,b)=> String(a.key).localeCompare(String(b.key)))
+      .map(x => `
+        <div class="item">
+          <div>${x.label}</div>
+          <div><b>${x.price}</b> ${currency}</div>
+        </div>
+      `).join("");
   }
 
-  window.BO_UI = {
-    setText,
-    renderBasket,
-    renderOps
-  };
+  function renderOps(root, ops){
+    if(!root) return;
+    if(!ops || !ops.length){
+      root.innerHTML = `<div class="muted">Поки немає операцій.</div>`;
+      return;
+    }
+    root.innerHTML = ops.slice().reverse().map(o => `
+      <div class="op">
+        <div><b>${o.action}</b> <span class="pill">${o.count}</span></div>
+        <div class="muted">${o.tsHuman} • ${o.showLabel}</div>
+        <div class="muted">Seats: ${(o.seats||[]).join(", ")}</div>
+      </div>
+    `).join("");
+  }
+
+  window.BO_UI = { setText, renderBasket, renderOps };
 })();
