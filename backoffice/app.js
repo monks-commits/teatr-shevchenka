@@ -10,7 +10,7 @@
   let seance = null;  // data/seances/*.json
   let currency = "грн";
 
-  // local state (мы оставляем как было: корзина/журнал/клиенты/заказы локально)
+  // local state (корзина/журнал/клиенты/заказы локально)
   let basket = []; // [{key,label,price}]
   let ops = [];
   let zoom = 1;
@@ -31,22 +31,69 @@
   // -------------------- iframe helpers --------------------
   function cashFrameEl(){ return qs("#cashFrame"); }
   function cashHintEl(){ return qs("#cashHint"); }
+  function hallWrapEl(){ return qs("#hallWrap"); }
 
   function setCashVisible(yes){
     const fr = cashFrameEl();
     const hint = cashHintEl();
     if(fr) fr.style.display = yes ? "block" : "none";
-    if(hint) hint.style.display = yes ? "none" : "block";
+    if(hint) hint.style.display = yes ? "none" : "flex";
   }
 
   function buildCashUrl(show){
-    // show.id обязателен для hall-cash
-    // date добавляем для удобства (может пригодиться hall-cash)
     const base = "../spectacles/hall-cash.html";
     const url = new URL(base, window.location.href);
     url.searchParams.set("show", show.id);
     if (show.date) url.searchParams.set("date", show.date);
     return url.toString();
+  }
+
+  function postToCash(type, payload){
+    const fr = cashFrameEl();
+    if(!fr || !fr.contentWindow) return;
+    fr.contentWindow.postMessage({ source: "backoffice", type, payload }, "*");
+  }
+
+  // Автоподгон масштаба: хотим, чтобы iframe влезал в hallWrap целиком
+  function fitIframeToWrap(){
+    const fr = cashFrameEl();
+    const wrap = hallWrapEl();
+    if(!fr || !wrap) return;
+
+    // размеры контейнера на странице
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    if(!w || !h) return;
+
+    // размеры контента iframe (same-origin, должен читаться)
+    let contentW = 1200;
+    let contentH = 800;
+
+    try{
+      const doc = fr.contentWindow && fr.contentWindow.document;
+      if(doc){
+        const de = doc.documentElement;
+        contentW = Math.max(800, de.scrollWidth || de.clientWidth || 1200);
+        contentH = Math.max(600, de.scrollHeight || de.clientHeight || 800);
+      }
+    }catch(e){
+      // если по какой-то причине не читается — остаёмся на дефолтах
+    }
+
+    // считаем масштаб, но НЕ увеличиваем выше 1.0 (чтобы не распухало)
+    const scale = Math.min(1, w / contentW, h / contentH);
+    setZoom(scale);
+  }
+
+  function applyIframeZoom(){
+    const fr = cashFrameEl();
+    if(!fr) return;
+    fr.style.zoom = String(zoom); // Chrome/Edge ок
+  }
+
+  function setZoom(value) {
+    zoom = Math.max(0.55, Math.min(1.0, value)); // для монитора: не увеличиваем больше 1
+    applyIframeZoom();
   }
 
   function openCash(show){
@@ -57,29 +104,11 @@
     fr.src = url;
     setCashVisible(true);
 
-    // сброс zoom при открытии нового события
-    zoom = 1;
-    applyIframeZoom();
-  }
-
-  function postToCash(type, payload){
-    const fr = cashFrameEl();
-    if(!fr || !fr.contentWindow) return;
-    fr.contentWindow.postMessage({ source: "backoffice", type, payload }, "*");
-  }
-
-  function applyIframeZoom(){
-    const fr = cashFrameEl();
-    if(!fr) return;
-
-    // CSS zoom (простое масштабирование iframe контента)
-    // Примечание: zoom не стандартизован везде идеально, но в Chromium ок.
-    fr.style.zoom = String(zoom);
-  }
-
-  function setZoom(value) {
-    zoom = Math.max(0.6, Math.min(1.8, value));
-    applyIframeZoom();
+    // после загрузки — вписать в экран
+    fr.onload = () => {
+      // небольшой таймаут, чтобы hall-cash успел отрисовать DOM
+      setTimeout(() => fitIframeToWrap(), 80);
+    };
   }
 
   // -------------------- clients/orders storage --------------------
@@ -183,7 +212,7 @@
     });
     saveOps();
 
-    // Также отправим действие в hall-cash (если он поддерживает)
+    // отправим действие в hall-cash (если он поддерживает)
     postToCash("apply_status", { status, seats: seatKeys, show: current });
 
     clearBasket();
@@ -197,9 +226,6 @@
 
   function exportStateJson() {
     if (!current) { alert("Оберіть сеанс."); return; }
-
-    // В варианте с iframe у нас нет локальной карты статусов по креслам.
-    // Экспортируем то, что реально есть в backoffice: show + ops + basket (пустой обычно).
     downloadText(
       `backoffice_state_${current.id}_${current.date}.json`,
       JSON.stringify({ show: current, seance, ops }, null, 2)
@@ -310,12 +336,11 @@
       );
     }
 
-    // ops from localStorage (per show/date)
     loadOps();
     basket = [];
     syncUI();
 
-    // открыть кассу в iframe
+    // открыть кассу в iframe и вписать в экран
     openCash(show);
   }
 
@@ -570,17 +595,13 @@
   }
 
   // -------------------- reports --------------------
-  function exportClientsJson(){
-    downloadText("clients.json", JSON.stringify(CLIENTS, null, 2));
-  }
+  function exportClientsJson(){ downloadText("clients.json", JSON.stringify(CLIENTS, null, 2)); }
   function exportClientsCsv(){
     const rows = [["id","name","email","phone","type","note","created_at"]];
     CLIENTS.forEach(c => rows.push([c.id,c.name,c.email,c.phone,c.type,c.note,c.created_at]));
     downloadText("clients.csv", toCsv(rows));
   }
-  function exportOrdersJson(){
-    downloadText("orders.json", JSON.stringify(ORDERS, null, 2));
-  }
+  function exportOrdersJson(){ downloadText("orders.json", JSON.stringify(ORDERS, null, 2)); }
   function exportOrdersCsv(){
     const rows = [["id","status","client","amount","seats","created_at"]];
     ORDERS.forEach(o => rows.push([o.id,o.status,o.client,o.amount,(o.seats||[]).join(" "),o.created_at]));
@@ -589,12 +610,9 @@
 
   // -------------------- toolbar / events --------------------
   function initToolbar() {
-    qs("#btnZoomIn")?.addEventListener("click", () => setZoom(zoom + 0.1));
-    qs("#btnZoomOut")?.addEventListener("click", () => setZoom(zoom - 0.1));
-    qs("#btnHome")?.addEventListener("click", () => {
-      const w = qs("#hallWrap");
-      if (w) w.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    });
+    qs("#btnFit")?.addEventListener("click", fitIframeToWrap);
+    qs("#btnZoomIn")?.addEventListener("click", () => setZoom(zoom + 0.05));
+    qs("#btnZoomOut")?.addEventListener("click", () => setZoom(zoom - 0.05));
 
     qs("#btnSell")?.addEventListener("click", sell);
     qs("#btnReserve")?.addEventListener("click", reserve);
@@ -613,7 +631,7 @@
 
     qs("#btnCreateOrder")?.addEventListener("click", createOrderFromBasket);
 
-    // seat search: отправляем в hall-cash (если он поддерживает)
+    // seat search: отправляем в hall-cash (без алертов)
     qs("#seatSearch")?.addEventListener("keydown", (e)=>{
       if(e.key !== "Enter") return;
       const key = (e.target.value||"").trim();
@@ -623,12 +641,12 @@
         alert("Оберіть сеанс.");
         return;
       }
-
-      // пробуем отправить в iframe
       postToCash("seat_search", { key });
+    });
 
-      // если hall-cash не поддерживает, хотя бы подскажем
-      alert("Запит на пошук місця відправлено у касу (hall-cash). Якщо не спрацювало — додамо listener у hall-cash.");
+    // при изменении размера окна — снова вписать
+    window.addEventListener("resize", () => {
+      if(current) fitIframeToWrap();
     });
   }
 
@@ -681,7 +699,6 @@
     syncUI();
     setZoom(1);
 
-    // default tab
     setTab("events");
   }
 
@@ -691,4 +708,20 @@
       alert("Помилка ініціалізації Backoffice. Відкрий консоль (F12) і покажи помилку.");
     });
   });
+
+  // tabs handlers (оставил как было)
+  function initTabs(){
+    qs("#tabs")?.addEventListener("click", (e)=>{
+      const b = e.target.closest(".tabbtn");
+      if(!b) return;
+      setTab(b.dataset.tab);
+      if(b.dataset.tab === "clients") renderClients();
+      if(b.dataset.tab === "orders") renderOrders();
+    });
+  }
+
+  function setTab(name){
+    qsa("#tabs .tabbtn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    qsa("[data-pane]").forEach(p => p.hidden = (p.dataset.pane !== name));
+  }
 })();
