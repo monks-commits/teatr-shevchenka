@@ -448,7 +448,6 @@
         `;
       }).join("");
 
-      // enable reprint if last entry is sale and has tickets
       const last = arr[0];
       document.getElementById("btn-reprint").disabled = !(last && last.type==="SALE" && Array.isArray(last.tickets) && last.tickets.length);
     }
@@ -487,7 +486,6 @@
       document.getElementById("summary-show").textContent = `Вистава: ${title}${dt}`;
       document.getElementById("summary-seance").textContent = `Seance: ${SEANCE_ID || "—"}`;
 
-      // cash log depends on SEANCE_ID
       renderCashLog();
     }
 
@@ -630,9 +628,9 @@
       btnRes.disabled  = false;
     }
 
-    function applyStatusToSelectedLocal(status){
-      const keys = Array.from(selected.keys());
-      if (!keys.length) return;
+    function applyStatusToSeatsLocal(seatKeys, status){
+      const keys = (seatKeys || []).map(x=>String(x)).filter(Boolean);
+      if (!keys.length) return { ok:false, msg:"empty" };
 
       for (const k of keys){
         if (takenSeatsOnline.has(k)) continue;
@@ -640,16 +638,22 @@
       }
       saveCashPatch(CASH_PATCH);
 
-      // log
       pushCashLog({
         ts: Date.now(),
         type: status === "reserved" ? "RESERVE" : String(status||"").toUpperCase(),
         seats: keys,
-        total: Array.from(selected.values()).reduce((s,x)=>s+(x.price||0),0)
+        total: 0
       });
 
-      clearSelection();
+      // снять выделение, если вдруг совпало
+      for (const k of keys){
+        const b = seatButtons.get(k);
+        if (b) b.classList.remove("seat--selected");
+        selected.delete(k);
+      }
+      updateSummary();
       reapplyAllStatuses();
+      return { ok:true, applied: keys.length };
     }
 
     // ---- op_id generator ----
@@ -680,8 +684,6 @@
 
       const cardsHtml = [];
       for (const t of tickets){
-        // QR ДОЛЖЕН быть совместим со scan-ticket:
-        // order:...|show:...|seat:...
         const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
 
         let qrDataUrl = "";
@@ -792,7 +794,6 @@
       setLastSync(Date.now());
       setSyncPill(`SYNC: ok=${okOps.size}, left=${left.length}`, okOps.size ? "ok" : "");
 
-      // если были ошибки — покажем кратко
       const bad = resArr.filter(x=>x && x.ok !== true);
       if (bad.length){
         const msg = bad.slice(0,6).map(x=>`${x.op_id}: ${(x.error||x.details||"error")}`).join("\n");
@@ -818,7 +819,6 @@
       const prices = {};
       for (const k of keys) prices[k] = Number(selected.get(k)?.price || 0);
 
-      // IMPORTANT: структура ops как ожидает cash-sync-ts
       const op = {
         op_id,
         type: "sale",
@@ -829,19 +829,16 @@
         sold_at: new Date().toISOString(),
       };
 
-      // 1) в очередь
       const queue = loadQueue();
       queue.push(op);
       saveQueue(queue);
 
-      // 2) локально помечаем sold
       for (const k of keys){
         if (takenSeatsOnline.has(k)) continue;
         CASH_PATCH[k] = { status: "sold", ts: Date.now(), op_id };
       }
       saveCashPatch(CASH_PATCH);
 
-      // 3) печать с QR (order/show/seat) — совместимо со scan-ticket
       const order_id = calcCashOrderId(SEANCE_ID, showSlug, op_id);
       const tickets = keys.map(k => ({
         op_id,
@@ -851,7 +848,6 @@
         price: Number(prices[k] || 0),
       }));
 
-      // log + сохранение последней продажи для reprint
       pushCashLog({
         ts: Date.now(),
         type: "SALE",
@@ -864,7 +860,6 @@
       reapplyAllStatuses();
       await openPrintWindowOffline(tickets, SHOW_META);
 
-      // 4) если онлайн — пробуем синкнуть тихо
       try{
         if (navigator.onLine) {
           const q2 = loadQueue();
@@ -873,7 +868,6 @@
       }catch(e){}
     }
 
-    // ---- reprint last sale ----
     async function reprintLastSale(){
       const arr = loadCashLog();
       const last = arr.find(x=>x && x.type==="SALE" && Array.isArray(x.tickets) && x.tickets.length) || null;
@@ -1024,7 +1018,7 @@
 
     // ---- кнопки ----
     document.getElementById("btn-clear").addEventListener("click", ()=> clearSelection());
-    document.getElementById("btn-reserve").addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
+    document.getElementById("btn-reserve").addEventListener("click", ()=> applyStatusToSeatsLocal(Array.from(selected.keys()), "reserved"));
     document.getElementById("btn-sell").addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync").addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint").addEventListener("click", ()=> reprintLastSale());
@@ -1038,7 +1032,6 @@
       alert("Локальні зміни скинуто.");
     });
 
-    // export cash log CSV
     document.getElementById("btnExportCashCsv").addEventListener("click", ()=>{
       const arr = loadCashLog();
       const rows = [["time","type","seats","total"]];
@@ -1055,7 +1048,6 @@
       saveCashLog([]);
     });
 
-    // auto sync when online comes back
     window.addEventListener("online", async ()=>{
       setNetPill();
       try{
@@ -1084,6 +1076,65 @@
       alert("Збережено.");
     });
     modalBack.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
+
+    // -------------------- postMessage API for panels --------------------
+    function postAck(type, payload){
+      try{
+        if (window.parent && window.parent !== window){
+          window.parent.postMessage({ source:"hall-cash", type, payload }, "*");
+        }
+      }catch(e){}
+    }
+
+    function focusSeatByKey(key){
+      const k = String(key||"").trim();
+      if(!k) return { ok:false, msg:"empty_key" };
+      const btn = seatButtons.get(k);
+      if(!btn) return { ok:false, msg:"not_found", key:k };
+
+      const wrap = document.querySelector(".hall-scroll");
+      btn.scrollIntoView({ behavior:"smooth", block:"center", inline:"center" });
+
+      // мигнём подсветкой
+      btn.classList.add("seat--selected");
+      setTimeout(()=>btn.classList.remove("seat--selected"), 650);
+
+      // если контейнер есть — тоже прокрутим к центру (на всякий)
+      if (wrap){
+        // ничего критичного: scrollIntoView уже сделал основное
+      }
+      return { ok:true, key:k };
+    }
+
+    window.addEventListener("message", (ev)=>{
+      const d = ev.data || {};
+      if (!d || typeof d !== "object") return;
+      if (d.source !== "backoffice" && d.source !== "cashier") return;
+
+      if (d.type === "seat_search"){
+        const r = focusSeatByKey(d.payload?.key);
+        postAck("cash_ack", { req:"seat_search", ...r });
+      }
+
+      if (d.type === "apply_status"){
+        const status = String(d.payload?.status || "").trim();
+        const seats  = Array.isArray(d.payload?.seats) ? d.payload.seats : [];
+        if (!status || !seats.length){
+          postAck("cash_ack", { req:"apply_status", ok:false, msg:"bad_payload" });
+          return;
+        }
+        const r = applyStatusToSeatsLocal(seats, status);
+        postAck("cash_ack", { req:"apply_status", ...r, status });
+      }
+
+      if (d.type === "reload_online"){
+        (async ()=>{
+          await loadTakenSeatsOnline().catch(()=>{});
+          reapplyAllStatuses();
+          postAck("cash_ack", { req:"reload_online", ok:true, count: takenSeatsOnline.size });
+        })();
+      }
+    });
 
     // ---- boot ----
     (async ()=>{
