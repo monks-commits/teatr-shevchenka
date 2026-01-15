@@ -2,32 +2,50 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
+  <!-- Для монитора оставляем, но верстку НЕ адаптируем под телефон -->
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Білетний відділ</title>
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
-    /* layout */
-    .bo-top{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+    html, body { height: 100%; }
+    body { overflow: hidden; } /* на мониторе не скроллим страницу, всё помещаем внутри блоков */
+
+    .container{
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 12px;
+      height: calc(100vh - 24px);
+    }
+
+    /* top */
+    .bo-top{display:flex;gap:14px;flex-wrap:nowrap;align-items:center;justify-content:space-between;margin-bottom:10px}
     .bo-title{font-size:20px;font-weight:800;margin:0}
-    .bo-tabs{display:flex;gap:10px;flex-wrap:wrap}
-    .tabbtn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .bo-tabs{display:flex;gap:10px;flex-wrap:nowrap}
+    .tabbtn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
     .tabbtn.active{background:#111827;color:#fff;border-color:#111827}
 
-    .bo-grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
-    @media (max-width: 980px){ .bo-grid{grid-template-columns:1fr} }
+    /* main grid: ТОЛЬКО монитор (2 колонки всегда) */
+    .bo-grid{
+      display:grid;
+      grid-template-columns: minmax(860px, 1fr) 380px;
+      gap: 12px;
+      align-items: start;
+      height: calc(100vh - 120px); /* место под шапку */
+    }
 
-    .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
+    .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
     .muted{color:#6b7280}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row{display:flex;gap:10px;flex-wrap:nowrap;align-items:center}
+
     .field{display:grid;gap:6px}
     .field label{font-size:12px;color:#6b7280}
     .field input,.field select,.field textarea{
-      border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;min-width:180px;
+      border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;
       background:#fff;
     }
-    .field textarea{min-height:84px;min-width:260px}
-    .btn2{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer}
+    .field select{min-width:320px}
+    .btn2{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;white-space:nowrap}
     .btn2.primary{background:#2563eb;color:#fff}
     .btn2.gray{background:#e5e7eb;color:#111827}
     .btn2.red{background:#ef4444;color:#fff}
@@ -35,38 +53,39 @@
     .btn2.orange{background:#f59e0b;color:#111827}
     .btn2:disabled{opacity:.5;cursor:not-allowed}
 
-    /* Hall wrapper (iframe container) */
+    .hr{height:1px;background:#e5e7eb;margin:10px 0}
+
+    /* iframe area */
     .hallWrap{
-      background:#f3f4f6;border-radius:16px;padding:12px;overflow:hidden;border:1px solid #e5e7eb;
+      background:#f3f4f6;border-radius:16px;border:1px solid #e5e7eb;
+      height: calc(100vh - 260px); /* ключ: помещаемся в экран */
+      overflow: hidden;
+      position: relative;
+    }
+    #cashFrame{
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+      display: none;
+    }
+    #cashHint{
+      position:absolute; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      color:#6b7280; font-weight:700;
     }
 
-    /* sidebar blocks */
+    /* sidebar */
     .sideTitle{font-weight:900;margin:0 0 8px}
     .list{display:grid;gap:8px}
-    .item{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #e5e7eb;padding-bottom:6px}
-    .item:last-child{border-bottom:0;padding-bottom:0}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#e5e7eb;font-size:11px}
     .ops{max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
     .ops .op{font-size:12px;color:#374151;border-bottom:1px dashed #e5e7eb;padding:6px 0}
     .ops .op:last-child{border-bottom:0}
-    .hr{height:1px;background:#e5e7eb;margin:12px 0}
+    .small{font-size:12px;color:#6b7280}
+
     .table{width:100%;border-collapse:collapse}
     .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;font-size:13px;text-align:left}
     .table th{color:#6b7280;font-weight:800;font-size:12px}
-    .small{font-size:12px;color:#6b7280}
-
-    /* iframe */
-    #cashFrame{
-      width:100%;
-      height:78vh;
-      border:0;
-      border-radius:14px;
-      background:#fff;
-      display:none; /* show when event selected */
-    }
-    #cashHint{
-      padding:10px 0;
-    }
   </style>
 </head>
 
@@ -76,7 +95,7 @@
       <div class="bo-top">
         <div>
           <h1 class="bo-title" id="boTitle">Білетний відділ</h1>
-          <div class="muted">Backoffice (локально, без авторизації)</div>
+          <div class="muted">Backoffice (ПК/монітор, без мобільного режиму)</div>
         </div>
 
         <div class="bo-tabs" id="tabs">
@@ -98,47 +117,43 @@
               <label>Подія / сеанс</label>
               <select id="showSelect"></select>
             </div>
-            <div class="field">
-              <label>Пошук місця (формат P2-M10)</label>
+            <div class="field" style="min-width:260px">
+              <label>Пошук місця (наприклад P2-M10)</label>
               <input id="seatSearch" placeholder="P2-M10" />
             </div>
             <button class="btn2 gray" id="btnResetLocal">Скинути локальні</button>
           </div>
 
           <div class="row">
+            <button class="btn2 gray" id="btnFit">Вписати в екран</button>
             <button class="btn2 gray" id="btnZoomOut">－</button>
             <button class="btn2 gray" id="btnZoomIn">＋</button>
-            <button class="btn2 gray" id="btnHome">⌂</button>
           </div>
         </div>
 
         <div class="muted" id="seanceMeta" style="margin-top:8px">Оберіть сеанс.</div>
 
-        <div class="bo-grid" style="margin-top:12px">
+        <div class="bo-grid" style="margin-top:10px">
           <div class="panel" style="padding:12px">
-            <h2 class="sideTitle" style="margin-bottom:6px">Каса (схема залу)</h2>
-            <div class="small">Відкривається <b>hall-cash</b> всередині панелі. “Істина” — Supabase + робоча каса.</div>
+            <h2 class="sideTitle" style="margin-bottom:6px">Схема (реальна з Supabase через hall-cash)</h2>
+            <div class="small">Працюємо “оболонкою” поверх працюючої схеми. Масштабування — автоматом.</div>
 
             <div class="hallWrap" id="hallWrap">
-              <div class="muted" id="cashHint">
-                Обери подію — і тут відкриється каса (hall-cash) всередині панелі.
-              </div>
-              <iframe
-                id="cashFrame"
-                title="Каса (hall-cash)"
-                src=""
-              ></iframe>
+              <div id="cashHint">Оберіть сеанс, щоб відкрити схему каси.</div>
+              <iframe id="cashFrame" src="about:blank"></iframe>
             </div>
 
             <div class="hr"></div>
 
             <h3 class="sideTitle" style="font-size:14px;margin-bottom:6px">Журнал операцій (локально)</h3>
             <div class="small">Експорт CSV/JSON. Онлайн-синхронізація — окремим етапом.</div>
+
             <div class="row" style="margin:10px 0">
               <button class="btn2 gray" id="btnExportOpsCsv">Експорт журналу (CSV)</button>
               <button class="btn2 gray" id="btnExportOpsJson">Експорт журналу (JSON)</button>
               <button class="btn2 red" id="btnClearOps">Очистити журнал</button>
             </div>
+
             <div class="ops" id="opsList"></div>
           </div>
 
@@ -164,13 +179,13 @@
 
             <div class="hr"></div>
             <div class="row" style="gap:8px;flex-wrap:wrap">
-              <button class="btn2 gray" id="btnExportStateJson">Експорт стану місць (JSON)</button>
+              <button class="btn2 gray" id="btnExportStateJson">Експорт стану (JSON)</button>
               <button class="btn2 gray" id="btnExportSalesCsv">Експорт продажів (CSV)</button>
               <button class="btn2 primary" id="btnCreateOrder">Створити замовлення</button>
             </div>
 
             <div class="small muted" style="margin-top:10px">
-              Примітка: зараз все працює локально (localStorage). Онлайн не чіпаємо.
+              Примітка: клієнти/замовлення/журнал — localStorage цього ПК.
             </div>
           </aside>
         </div>
