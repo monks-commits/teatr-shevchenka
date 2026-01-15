@@ -8,9 +8,11 @@
   let AFISHA = [];
   let current = null; // {id,title,date,time,...}
   let seance = null;  // data/seances/*.json
+  let hall = null;    // data/halls/*.json
   let currency = "грн";
 
-  // local state (мы оставляем как было: корзина/журнал/клиенты/заказы локально)
+  // state per seance (seat_label -> status)
+  let seatStatus = new Map();
   let basket = []; // [{key,label,price}]
   let ops = [];
   let zoom = 1;
@@ -19,6 +21,86 @@
   let CLIENTS = []; // [{id,name,email,phone,type,note,created_at}]
   let ORDERS  = []; // [{id,status,client,amount,seats,created_at}]
 
+  // -------------------- seat label helpers (unified) --------------------
+  // Parter:  P{row}-M{seat}
+  // Amphi:   A{row}-M{seat}
+  // Balcony: B{row}-M{seat}
+  // BoxA:    A0-M{seat}   (ВАЖНО: A слева)
+  // BoxB:    B0-M{seat}   (B справа)
+  function seatLabelKey(zone, row, seat, boxId) {
+    if (boxId === "boxA") return `A0-M${seat}`;
+    if (boxId === "boxB") return `B0-M${seat}`;
+    if (zone === "parter") return `P${row}-M${seat}`;
+    if (zone === "amphi") return `A${row}-M${seat}`;
+    if (zone === "balcony") return `B${row}-M${seat}`;
+    return `P${row}-M${seat}`;
+  }
+
+  function keyToHuman(k) {
+    const m = String(k).match(/^([PAB])(\d+)-M(\d+)$/i);
+    if (!m) return k;
+    const prefix = m[1].toUpperCase();
+    const row = Number(m[2]);
+    const seat = Number(m[3]);
+
+    if (prefix === "P") return `Партер • ряд ${row} • місце ${seat}`;
+    if (prefix === "A") return row === 0 ? `Ложа A (зліва) • місце ${seat}` : `Амфітеатр • ряд ${row} • місце ${seat}`;
+    if (prefix === "B") return row === 0 ? `Ложа B (справа) • місце ${seat}` : `Балкон • ряд ${row} • місце ${seat}`;
+    return k;
+  }
+
+  // support old seance.places keys: "1-2" and "boxA-5"
+  function normalizePlaceKeyToSeatLabel(k) {
+    const s = String(k || "").trim();
+    if (!s) return "";
+    if (/^[PAB]\d+-M\d+$/i.test(s)) return s;
+
+    const box = s.match(/^box([ab])-(\d+)$/i);
+    if (box) {
+      const idx = Number(box[2]);
+      return box[1].toLowerCase() === "a" ? `A0-M${idx}` : `B0-M${idx}`;
+    }
+
+    const simple = s.match(/^(\d+)-(\d+)$/);
+    if (simple) {
+      const row = Number(simple[1]);
+      const seat = Number(simple[2]);
+      return `P${row}-M${seat}`;
+    }
+
+    return s;
+  }
+
+  // -------------------- pricing --------------------
+  function priceByGroup(groupKey) {
+    const sp = (seance && seance.prices) ? seance.prices : null;
+    if (sp && sp[groupKey] != null) return Number(sp[groupKey]) || 0;
+
+    const d = SETTINGS.pricing_defaults || {};
+    if (d && d[groupKey] != null) return Number(d[groupKey]) || 0;
+
+    return 0;
+  }
+
+  function totalBasket() {
+    return basket.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  }
+
+  function isLockedStatus(st) {
+    return st === "sold" || st === "blocked";
+  }
+
+  function humanActionName(status) {
+    switch (status) {
+      case "sold": return "ПРОДАЖ";
+      case "reserved": return "РЕЗЕРВ";
+      case "realization": return "РЕАЛІЗАЦІЯ";
+      case "invite": return "ЗАПРОШЕННЯ";
+      case "clear": return "ОЧИЩЕННЯ";
+      default: return status;
+    }
+  }
+
   // -------------------- localStorage keys --------------------
   function lsKey(name) {
     const showKey = current ? `${current.id}_${current.date}` : "no_show";
@@ -26,60 +108,6 @@
   }
   function lsKeyGlobal(name){
     return `${LS_PREFIX}${name}_global`;
-  }
-
-  // -------------------- iframe helpers --------------------
-  function cashFrameEl(){ return qs("#cashFrame"); }
-  function cashHintEl(){ return qs("#cashHint"); }
-
-  function setCashVisible(yes){
-    const fr = cashFrameEl();
-    const hint = cashHintEl();
-    if(fr) fr.style.display = yes ? "block" : "none";
-    if(hint) hint.style.display = yes ? "none" : "block";
-  }
-
-  function buildCashUrl(show){
-    // show.id обязателен для hall-cash
-    // date добавляем для удобства (может пригодиться hall-cash)
-    const base = "../spectacles/hall-cash.html";
-    const url = new URL(base, window.location.href);
-    url.searchParams.set("show", show.id);
-    if (show.date) url.searchParams.set("date", show.date);
-    return url.toString();
-  }
-
-  function openCash(show){
-    const fr = cashFrameEl();
-    if(!fr || !show || !show.id) return;
-
-    const url = buildCashUrl(show);
-    fr.src = url;
-    setCashVisible(true);
-
-    // сброс zoom при открытии нового события
-    zoom = 1;
-    applyIframeZoom();
-  }
-
-  function postToCash(type, payload){
-    const fr = cashFrameEl();
-    if(!fr || !fr.contentWindow) return;
-    fr.contentWindow.postMessage({ source: "backoffice", type, payload }, "*");
-  }
-
-  function applyIframeZoom(){
-    const fr = cashFrameEl();
-    if(!fr) return;
-
-    // CSS zoom (простое масштабирование iframe контента)
-    // Примечание: zoom не стандартизован везде идеально, но в Chromium ок.
-    fr.style.zoom = String(zoom);
-  }
-
-  function setZoom(value) {
-    zoom = Math.max(0.6, Math.min(1.8, value));
-    applyIframeZoom();
   }
 
   // -------------------- clients/orders storage --------------------
@@ -105,54 +133,276 @@
     localStorage.setItem(lsKeyGlobal("orders"), JSON.stringify(ORDERS));
   }
 
-  // -------------------- ops local state --------------------
-  function loadOps() {
-    ops = [];
-    const raw2 = localStorage.getItem(lsKey("ops"));
-    if (raw2) {
-      try { ops = JSON.parse(raw2) || []; } catch { ops = []; }
+  // -------------------- zoom --------------------
+  function setZoom(value) {
+    zoom = Math.max(0.6, Math.min(1.8, value));
+    const root = qs("#hallRoot");
+    if (root) {
+      root.style.transformOrigin = "top left";
+      root.style.transform = `scale(${zoom})`;
     }
   }
 
-  function saveOps() {
-    localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
+  // -------------------- seat DOM --------------------
+  function seatDom(key, label, price, aisleGap = false) {
+    const btn = document.createElement("button");
+    btn.className = "seat" + (aisleGap ? " gapRight" : "");
+    btn.type = "button";
+    btn.dataset.key = key;
+
+    const stBase = seatStatus.get(key) || "free";
+    const inBasket = basket.some(x => x.key === key);
+    const st = inBasket ? "basket" : stBase;
+
+    btn.dataset.st = st;
+    btn.title = `${label}\n${price} ${currency}\nСтатус: ${stBase}`;
+
+    const m = String(key).match(/-M(\d+)$/i);
+    btn.textContent = m ? m[1] : key;
+
+    if (isLockedStatus(stBase)) btn.disabled = true;
+
+    btn.addEventListener("click", () => {
+      const base = seatStatus.get(key) || "free";
+      if (isLockedStatus(base)) return;
+
+      const idx = basket.findIndex(x => x.key === key);
+      if (idx >= 0) basket.splice(idx, 1);
+      else basket.push({ key, label, price });
+
+      syncUI();
+    });
+
+    return btn;
   }
 
-  function resetLocal() {
-    if (!current) return;
-    localStorage.removeItem(lsKey("ops"));
-    loadOps();
-    basket = [];
-    syncUI();
-  }
+  // -------------------- render hall from data/halls/*.json --------------------
+  function renderHall() {
+    const root = qs("#hallRoot");
+    if (!root) return;
 
-  // -------------------- pricing --------------------
-  function totalBasket() {
-    return basket.reduce((s, i) => s + (Number(i.price) || 0), 0);
-  }
+    root.innerHTML = "";
 
-  function humanActionName(status) {
-    switch (status) {
-      case "sold": return "ПРОДАЖ";
-      case "reserved": return "РЕЗЕРВ";
-      case "realization": return "РЕАЛІЗАЦІЯ";
-      case "invite": return "ЗАПРОШЕННЯ";
-      case "clear": return "ОЧИЩЕННЯ";
-      default: return status;
+    if (!current || !seance || !hall) {
+      root.innerHTML = `<div class="muted">Оберіть сеанс, щоб побачити зал.</div>`;
+      return;
     }
+
+    const rows = (hall.rows || []).slice();
+    const boxes = Array.isArray(hall.boxes) ? hall.boxes : [];
+
+    // --- Parter ---
+    const parterRows = rows.filter(x => x.zone === "parter");
+
+    const title = document.createElement("div");
+    title.className = "sectionTitle";
+    title.textContent = "Партер";
+    root.appendChild(title);
+
+    const parterWrap = document.createElement("div");
+    parterWrap.className = "parterWrap";
+
+    // LEFT: BoxA (Ложа A слева)
+    const boxA = boxes.find(b => String(b.id).toLowerCase() === "boxa");
+    const leftBox = document.createElement("div");
+    leftBox.className = "lodgeCol";
+    leftBox.innerHTML = `<div class="lodgeTitle">Ложа A</div>`;
+    const leftSeats = document.createElement("div");
+    leftSeats.className = "lodgeSeats";
+    if (boxA) {
+      const price = priceByGroup(boxA.price_group || "p_boxes");
+      for (let i = 1; i <= Number(boxA.seats || 18); i++) {
+        const key = seatLabelKey(null, 0, i, "boxA");
+        leftSeats.appendChild(seatDom(key, `Ложа A • місце ${i}`, price));
+      }
+    }
+    leftBox.appendChild(leftSeats);
+
+    // CENTER: parter rows
+    const center = document.createElement("div");
+    center.className = "parterCenter";
+
+    for (const r of parterRows) {
+      const line = document.createElement("div");
+      line.className = "rowLine";
+
+      const lab = document.createElement("div");
+      lab.className = "rowLabel";
+      lab.textContent = String(r.row);
+      line.appendChild(lab);
+
+      const rowWrap = document.createElement("div");
+      rowWrap.className = "seatsRow";
+
+      const price = priceByGroup(r.price_group || "");
+      const cnt = Number(r.seats || 0);
+
+      for (let s = 1; s <= cnt; s++) {
+        const key = seatLabelKey("parter", Number(r.row), s);
+        const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+        rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+      }
+
+      line.appendChild(rowWrap);
+      center.appendChild(line);
+    }
+
+    // RIGHT: BoxB (Ложа B справа)
+    const boxB = boxes.find(b => String(b.id).toLowerCase() === "boxb");
+    const rightBox = document.createElement("div");
+    rightBox.className = "lodgeCol";
+    rightBox.innerHTML = `<div class="lodgeTitle">Ложа B</div>`;
+    const rightSeats = document.createElement("div");
+    rightSeats.className = "lodgeSeats";
+    if (boxB) {
+      const price = priceByGroup(boxB.price_group || "p_boxes");
+      for (let i = 1; i <= Number(boxB.seats || 18); i++) {
+        const key = seatLabelKey(null, 0, i, "boxB");
+        rightSeats.appendChild(seatDom(key, `Ложа B • місце ${i}`, price));
+      }
+    }
+    rightBox.appendChild(rightSeats);
+
+    parterWrap.appendChild(leftBox);
+    parterWrap.appendChild(center);
+    parterWrap.appendChild(rightBox);
+    root.appendChild(parterWrap);
+
+    // --- Amphi ---
+    const amphi = rows.filter(x => x.zone === "amphi");
+    if (amphi.length) {
+      const t2 = document.createElement("div");
+      t2.className = "sectionTitle";
+      t2.textContent = "Амфітеатр";
+      root.appendChild(t2);
+
+      for (const r of amphi) {
+        const line = document.createElement("div");
+        line.className = "rowLine";
+
+        const lab = document.createElement("div");
+        lab.className = "rowLabel";
+        lab.textContent = String(r.row);
+        line.appendChild(lab);
+
+        const wrap = document.createElement("div");
+        wrap.className = "amphiWrap";
+
+        const left = document.createElement("div");
+        left.className = "seatsRow";
+        const gap = document.createElement("div");
+        gap.className = "amphiGap";
+        const right = document.createElement("div");
+        right.className = "seatsRow";
+
+        const price = priceByGroup(r.price_group || "");
+
+        const L = Number(r.seats_left || 0);
+        const R = Number(r.seats_right || 0);
+
+        for (let s = 1; s <= L; s++) {
+          const key = seatLabelKey("amphi", Number(r.row), s);
+          left.appendChild(seatDom(key, keyToHuman(key), price));
+        }
+        for (let s = 1; s <= R; s++) {
+          const seatNum = L + s;
+          const key = seatLabelKey("amphi", Number(r.row), seatNum);
+          right.appendChild(seatDom(key, keyToHuman(key), price));
+        }
+
+        wrap.appendChild(left);
+        wrap.appendChild(gap);
+        wrap.appendChild(right);
+        line.appendChild(wrap);
+
+        root.appendChild(line);
+      }
+    }
+
+    // --- Balcony ---
+    const balcony = rows.filter(x => x.zone === "balcony");
+    if (balcony.length) {
+      const t3 = document.createElement("div");
+      t3.className = "sectionTitle";
+      t3.textContent = "Балкон";
+      root.appendChild(t3);
+
+      for (const r of balcony) {
+        const line = document.createElement("div");
+        line.className = "rowLine";
+
+        const lab = document.createElement("div");
+        lab.className = "rowLabel";
+        lab.textContent = String(r.row);
+        line.appendChild(lab);
+
+        const rowWrap = document.createElement("div");
+        rowWrap.className = "seatsRow";
+
+        const price = priceByGroup(r.price_group || "");
+
+        if (r.seats) {
+          const cnt = Number(r.seats || 0);
+          for (let s = 1; s <= cnt; s++) {
+            const key = seatLabelKey("balcony", Number(r.row), s);
+            const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+          }
+        } else {
+          // row 6 style
+          const L = Number(r.seats_left || 0);
+          const R = Number(r.seats_right || 0);
+
+          for (let s = 1; s <= L; s++) {
+            const key = seatLabelKey("balcony", Number(r.row), s);
+            const aisleGap = r.aisle_after && Number(r.aisle_after) === s;
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price, aisleGap));
+          }
+          for (let i = 0; i < 8; i++) {
+            const ph = document.createElement("span");
+            ph.className = "seat";
+            ph.style.visibility = "hidden";
+            ph.style.pointerEvents = "none";
+            rowWrap.appendChild(ph);
+          }
+          for (let s = 1; s <= R; s++) {
+            const seatNum = L + s;
+            const key = seatLabelKey("balcony", Number(r.row), seatNum);
+            rowWrap.appendChild(seatDom(key, keyToHuman(key), price));
+          }
+        }
+
+        line.appendChild(rowWrap);
+        root.appendChild(line);
+      }
+    }
+
+    setZoom(zoom);
   }
 
   // -------------------- UI sync --------------------
   function syncUI() {
     const totalEl = qs("#basketTotal");
     if (totalEl) totalEl.textContent = String(totalBasket());
-
     renderBasket(qs("#basketList"), basket, currency);
 
     const meta = qs("#basketMeta");
     if (meta) meta.textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
 
     renderOps(qs("#opsList"), ops);
+
+    // update seat buttons states
+    const hallRoot = qs("#hallRoot");
+    if (hallRoot) {
+      hallRoot.querySelectorAll(".seat[data-key]").forEach(btn => {
+        const key = btn.dataset.key;
+        const base = seatStatus.get(key) || "free";
+        const inB = basket.some(x => x.key === key);
+        btn.dataset.st = inB ? "basket" : base;
+        if (isLockedStatus(base)) btn.setAttribute("disabled", "disabled");
+        else btn.removeAttribute("disabled");
+      });
+    }
 
     const curEl = qs("#currency");
     if (curEl) curEl.textContent = currency;
@@ -166,9 +416,11 @@
     if (!basket.length) return;
 
     const seatKeys = basket.map(x => x.key);
+    for (const k of seatKeys) seatStatus.set(k, status);
+    saveSeatStatus();
+
     const total = totalBasket();
     const showLabel = `${current.title} — ${current.date} ${current.time}`;
-
     ops.push({
       ts: nowIso(),
       tsHuman: fmtDT(Date.now()),
@@ -183,9 +435,6 @@
     });
     saveOps();
 
-    // Также отправим действие в hall-cash (если он поддерживает)
-    postToCash("apply_status", { status, seats: seatKeys, show: current });
-
     clearBasket();
     syncUI();
   }
@@ -197,12 +446,11 @@
 
   function exportStateJson() {
     if (!current) { alert("Оберіть сеанс."); return; }
-
-    // В варианте с iframe у нас нет локальной карты статусов по креслам.
-    // Экспортируем то, что реально есть в backoffice: show + ops + basket (пустой обычно).
+    const obj = {};
+    for (const [k, v] of seatStatus.entries()) obj[k] = v;
     downloadText(
       `backoffice_state_${current.id}_${current.date}.json`,
-      JSON.stringify({ show: current, seance, ops }, null, 2)
+      JSON.stringify({ show: current, seance, state: obj, ops }, null, 2)
     );
   }
 
@@ -233,6 +481,50 @@
     ops = [];
     saveOps();
     syncUI();
+  }
+
+  // -------------------- local state --------------------
+  function saveSeatStatus() {
+    const obj = {};
+    for (const [k, v] of seatStatus.entries()) obj[k] = v;
+    localStorage.setItem(lsKey("seatStatus"), JSON.stringify(obj));
+  }
+
+  function saveOps() {
+    localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
+  }
+
+  function resetLocal() {
+    if (!current) return;
+    localStorage.removeItem(lsKey("seatStatus"));
+    localStorage.removeItem(lsKey("ops"));
+
+    seatStatus = new Map();
+    basket = [];
+    ops = [];
+    renderHall();
+    syncUI();
+  }
+
+  // -------------------- CASH iframe --------------------
+  function cashUrlForShow(showSlug){
+    const base = "../spectacles/hall-cash.html";
+    return `${base}?show=${encodeURIComponent(showSlug || "")}`;
+  }
+
+  function setCashFrame(showSlug){
+    const frame = qs("#cashFrame");
+    const meta = qs("#cashMeta");
+    if(!frame) return;
+
+    if(!showSlug){
+      frame.src = "";
+      if(meta) meta.textContent = "Оберіть сеанс у вкладці “Події” (або у списку) — і каса переключиться.";
+      return;
+    }
+
+    frame.src = cashUrlForShow(showSlug);
+    if(meta) meta.textContent = `Каса: ${showSlug} • ${frame.src}`;
   }
 
   // -------------------- data loading --------------------
@@ -270,12 +562,14 @@
     sel.addEventListener("change", async () => {
       const v = sel.value || "";
       if (!v) {
-        current = null; seance = null;
+        current = null; seance = null; hall = null;
         setText("#seanceMeta", "Оберіть сеанс.");
-        setCashVisible(false);
+        renderHall();
+        seatStatus = new Map();
         basket = [];
         ops = [];
         syncUI();
+        setCashFrame("");
         return;
       }
       const [id, date] = v.split("__");
@@ -288,35 +582,71 @@
   async function loadSeance(show) {
     current = show;
 
-    // грузим seance только для: hall_id/цены/мета в UI
     const seanceUrl = `../data/seances/${show.id}-${show.date}.json`;
     try {
       seance = await fetchJson(seanceUrl);
     } catch (e) {
-      // даже если seance не найден — iframe кассы всё равно откроем по show.id
+      alert(`Не можу завантажити сеанс: ${seanceUrl}\nПеревір: чи є файл у /data/seances/`);
       seance = null;
+      return;
     }
 
-    const hallId = seance?.hall_id || seance?.hallId || "—";
+    const hallId = seance.hall_id || seance.hallId || "shevchenko-big";
+    const hallUrl = `../data/halls/${hallId}.json`;
+    try {
+      hall = await fetchJson(hallUrl);
+    } catch (e) {
+      alert(`Не можу завантажити зал: ${hallUrl}`);
+      hall = null;
+      return;
+    }
+
+    // init statuses from seance.places (normalize keys)
+    seatStatus = new Map();
+    const places = seance.places || {};
+    for (const [k, v] of Object.entries(places)) {
+      const seatLabel = normalizePlaceKeyToSeatLabel(k);
+      if (!seatLabel) continue;
+
+      const st = (v && v.status) ? v.status : "free";
+      let norm = st;
+      if (st === "hold") norm = "reserved";
+      if (st === "boxoffice") norm = "sold";
+      seatStatus.set(seatLabel, norm);
+    }
+
+    // apply local override
+    const rawLocal = localStorage.getItem(lsKey("seatStatus"));
+    if (rawLocal) {
+      try {
+        const obj = JSON.parse(rawLocal);
+        for (const [k, v] of Object.entries(obj)) seatStatus.set(k, v);
+      } catch {}
+    }
+
+    // ops
+    const rawOps = localStorage.getItem(lsKey("ops"));
+    ops = [];
+    if (rawOps) {
+      try { ops = JSON.parse(rawOps) || []; } catch { ops = []; }
+    }
+
+    basket = [];
     setText("#seanceMeta", `${show.title} • ${show.date} ${show.time} • hall_id: ${hallId}`);
 
     // pricing dump
     const pd = qs("#pricingDump");
     if(pd){
-      pd.textContent = JSON.stringify(
-        { seance_prices: seance?.prices || {}, defaults: SETTINGS?.pricing_defaults || {} },
-        null,
-        2
-      );
+      pd.textContent = JSON.stringify({ seance_prices: seance?.prices || {}, defaults: SETTINGS?.pricing_defaults || {} }, null, 2);
     }
 
-    // ops from localStorage (per show/date)
-    loadOps();
-    basket = [];
+    saveSeatStatus();
+    saveOps();
+    renderHall();
     syncUI();
 
-    // открыть кассу в iframe
-    openCash(show);
+    // IMPORTANT: переключаем "живую кассу" на этот show
+    setCashFrame(show.id || "");
   }
 
   // -------------------- tabs --------------------
@@ -613,22 +943,29 @@
 
     qs("#btnCreateOrder")?.addEventListener("click", createOrderFromBasket);
 
-    // seat search: отправляем в hall-cash (если он поддерживает)
+    // seat search (scroll to seat)
     qs("#seatSearch")?.addEventListener("keydown", (e)=>{
       if(e.key !== "Enter") return;
       const key = (e.target.value||"").trim();
       if(!key) return;
+      const btn = qs(`.seat[data-key="${CSS.escape(key)}"]`);
+      if(btn) btn.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
+      else alert("Не знайдено місце: " + key);
+    });
 
-      if(!current){
-        alert("Оберіть сеанс.");
+    // cash iframe controls
+    qs("#btnCashReload")?.addEventListener("click", ()=>{
+      const fr = qs("#cashFrame");
+      if(!fr) return;
+      fr.src = fr.src; // simple reload
+    });
+
+    qs("#btnCashOpenNew")?.addEventListener("click", ()=>{
+      if(!current?.id){
+        alert("Спочатку оберіть сеанс.");
         return;
       }
-
-      // пробуем отправить в iframe
-      postToCash("seat_search", { key });
-
-      // если hall-cash не поддерживает, хотя бы подскажем
-      alert("Запит на пошук місця відправлено у касу (hall-cash). Якщо не спрацювало — додамо listener у hall-cash.");
+      window.open(cashUrlForShow(current.id), "_blank");
     });
   }
 
@@ -674,12 +1011,12 @@
     fillShowSelect();
 
     setText("#seanceMeta", "Оберіть сеанс.");
-    setCashVisible(false);
-
-    loadOps();
-    basket = [];
+    renderHall();
     syncUI();
     setZoom(1);
+
+    // init cash frame empty
+    setCashFrame("");
 
     // default tab
     setTab("events");
