@@ -41,12 +41,16 @@
   }
 
   function buildCashUrl(show){
-    const base = "../spectacles/hall-cash.html";
-    const url = new URL(base, window.location.href);
-    url.searchParams.set("show", show.id);
-    if (show.date) url.searchParams.set("date", show.date);
-    return url.toString();
-  }
+  const base = "../spectacles/hall-cash.html";
+  const url = new URL(base, window.location.href);
+  url.searchParams.set("show", show.id);
+  if (show.date) url.searchParams.set("date", show.date);
+
+  // ВАЖНО: режим "встроено в backoffice" — без дубля кнопок в hall-cash
+  url.searchParams.set("embed", "1");
+
+  return url.toString();
+}
 
   function postToCash(type, payload){
     const fr = cashFrameEl();
