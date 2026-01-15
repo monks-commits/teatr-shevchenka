@@ -10,7 +10,7 @@
     body { overflow: hidden; }
 
     .c-wrap{
-      max-width: 1480px;
+      max-width: 1520px;
       margin: 0 auto;
       padding: 12px;
       height: calc(100vh - 24px);
@@ -66,19 +66,36 @@
     .btn2.gray{background:#e5e7eb;color:#111827}
     .btn2:disabled{opacity:.5;cursor:not-allowed}
 
+    .hr{height:1px;background:#e5e7eb;margin:10px 0}
+    .small{font-size:12px;color:#6b7280}
+    .k-meta{color:#6b7280;font-size:13px}
+
+    /* ---- iframe scaling ---- */
     .frameWrap{
       background:#f3f4f6;border:1px solid #e5e7eb;border-radius:16px;
       height: 100%;
-      overflow:hidden;
+      overflow:auto; /* важно: чтобы можно было прокрутить, если надо */
       position:relative;
       min-height:0;
     }
-    #cashFrame{
+    .frameStage{
+      position:relative;
       width:100%;
       height:100%;
+      min-height:600px;
+    }
+    #cashFrame{
       border:0;
-      display:none;
       background:#fff;
+      display:none;
+
+      /* transform scaling */
+      transform-origin: 0 0;
+      transform: scale(var(--k-scale, 0.85));
+
+      /* компенсируем масштаб, чтобы iframe не "обрезался" */
+      width: calc(100% / var(--k-scale, 0.85));
+      height: calc(100% / var(--k-scale, 0.85));
     }
     #hint{
       position:absolute; inset:0;
@@ -87,10 +104,14 @@
       padding:16px; text-align:center;
     }
 
-    .hr{height:1px;background:#e5e7eb;margin:10px 0}
-
-    .small{font-size:12px;color:#6b7280}
-    .k-meta{color:#6b7280;font-size:13px}
+    .scaleBox{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;
+      padding:10px 12px; margin-top:10px;
+    }
+    .scaleBox label{font-size:12px;color:#6b7280}
+    .scaleBox input[type="range"]{width:220px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#e5e7eb;font-size:12px;font-weight:800}
   </style>
 </head>
 
@@ -124,22 +145,35 @@
             <button class="btn2 gray" id="btnReload" disabled>Перезавантажити схему</button>
           </div>
 
+          <div class="scaleBox">
+            <div style="display:grid;gap:4px">
+              <label>Масштаб схеми (всередині панелі)</label>
+              <div class="small">Не браузерний zoom. Підбирай, щоб вліз партер/амфі/балкон.</div>
+            </div>
+            <input id="scale" type="range" min="0.60" max="1.10" step="0.02" value="0.85" />
+            <span class="pill" id="scaleVal">85%</span>
+            <button class="btn2 gray" id="btnFit" disabled>Вписати</button>
+          </div>
+
           <div class="hr"></div>
 
           <div class="k-meta">Події беруться з <b>/data/afisha.json</b>.</div>
           <div class="list" id="list"></div>
 
           <div class="small" style="margin-top:10px">
-            Примітка: панель не лізе в Supabase — це робить <b>hall-cash</b>. Тут лише “вхід” і зручність.
+            Примітка: панель не лізе в Supabase — це робить <b>hall-cash</b>. Тут лише “вхід” і масштаб.
           </div>
         </section>
 
         <!-- RIGHT -->
         <section class="panel right">
           <div class="k-meta" id="currentMeta">Оберіть сеанс.</div>
-          <div class="frameWrap" style="margin-top:10px">
-            <div id="hint">Оберіть подію зліва або введіть show id вручну.</div>
-            <iframe id="cashFrame" src="about:blank"></iframe>
+
+          <div class="frameWrap" id="frameWrap" style="margin-top:10px">
+            <div class="frameStage">
+              <div id="hint">Оберіть подію зліва або введіть show id вручну.</div>
+              <iframe id="cashFrame" src="about:blank"></iframe>
+            </div>
           </div>
         </section>
       </div>
@@ -157,13 +191,25 @@
       const btnOpenManual = document.getElementById("btnOpenManual");
       const btnOpenNewTab = document.getElementById("btnOpenNewTab");
       const btnReload = document.getElementById("btnReload");
+      const btnFit = document.getElementById("btnFit");
 
+      const frameWrap = document.getElementById("frameWrap");
       const frame = document.getElementById("cashFrame");
       const hint = document.getElementById("hint");
+
+      const scaleEl = document.getElementById("scale");
+      const scaleVal = document.getElementById("scaleVal");
 
       let AFISHA = [];
       let activeShowId = "";
       let activeShowObj = null;
+
+      function setScale(v){
+        v = Math.max(0.60, Math.min(1.10, Number(v) || 0.85));
+        document.documentElement.style.setProperty("--k-scale", String(v));
+        scaleEl.value = String(v);
+        scaleVal.textContent = Math.round(v * 100) + "%";
+      }
 
       function buildCashUrl(showId, date){
         const base = "../spectacles/hall-cash.html";
@@ -178,6 +224,7 @@
         hint.style.display = yes ? "none" : "flex";
         btnOpenNewTab.disabled = !yes;
         btnReload.disabled = !yes;
+        btnFit.disabled = !yes;
       }
 
       function setStatus(text){
@@ -200,6 +247,9 @@
           : `<b>${showId}</b>`;
 
         setStatus("Відкрито: " + showId);
+
+        // при открытии — ставим 85% (обычно уже влезает), кассир дальше подстроит
+        setScale(scaleEl.value || 0.85);
       }
 
       function openInNewTab(){
@@ -265,6 +315,19 @@
         }
       }
 
+      // Автовписывание по ширине: уменьшаем масштаб пока ширина iframe не "влезет" в контейнер
+      function fitByWidth(){
+        // берем текущую ширину контейнера
+        const wrapW = frameWrap.clientWidth - 8;
+        // iframe после scale "занимает" 100% контейнера, но контент внутри шире
+        // поэтому делаем простой практичный шаг: подбираем масштаб вниз
+        let v = 0.95;
+        // если монитор маленький — старт ниже
+        if(wrapW < 900) v = 0.80;
+        if(wrapW < 780) v = 0.72;
+        setScale(v);
+      }
+
       btnOpenManual.addEventListener("click", () => {
         const id = manualEl.value.trim();
         if(!id) return;
@@ -274,13 +337,17 @@
 
       btnOpenNewTab.addEventListener("click", openInNewTab);
       btnReload.addEventListener("click", reloadFrame);
+      btnFit.addEventListener("click", fitByWidth);
 
       qEl.addEventListener("input", renderList);
       manualEl.addEventListener("keydown", (e) => {
         if(e.key === "Enter") btnOpenManual.click();
       });
 
+      scaleEl.addEventListener("input", () => setScale(scaleEl.value));
+
       // init
+      setScale(0.85);
       setFrameVisible(false);
       await loadAfisha();
       renderList();
