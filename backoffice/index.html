@@ -35,43 +35,10 @@
     .btn2.orange{background:#f59e0b;color:#111827}
     .btn2:disabled{opacity:.5;cursor:not-allowed}
 
-    /* Hall */
+    /* Hall wrapper (iframe container) */
     .hallWrap{
-      background:#f3f4f6;border-radius:16px;padding:12px;overflow:auto;border:1px solid #e5e7eb;
-      max-height:70vh;
+      background:#f3f4f6;border-radius:16px;padding:12px;overflow:hidden;border:1px solid #e5e7eb;
     }
-    .sectionTitle{
-      text-align:center;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-      color:#6b7280;margin:10px 0 6px;
-    }
-    .rowLine{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-    .rowLabel{width:22px;flex:0 0 22px;text-align:right;color:#6b7280;font-size:11px}
-
-    .seatsRow{display:flex;gap:4px;flex-wrap:nowrap}
-    .seat{
-      width:24px;height:24px;border-radius:6px;border:1px solid #d1d5db;background:#fff;
-      font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;
-      user-select:none;
-    }
-    .gapRight{margin-right:16px}
-    .amphiWrap{display:flex;align-items:center;gap:10px}
-    .amphiGap{width:24px;flex:0 0 24px}
-
-    /* lodges: A LEFT, B RIGHT */
-    .parterWrap{display:flex;justify-content:center;align-items:flex-start;gap:24px}
-    .parterCenter{display:flex;flex-direction:column}
-    .lodgeCol{display:flex;flex-direction:column;align-items:center;gap:4px}
-    .lodgeTitle{font-size:11px;color:#6b7280;margin-bottom:4px}
-    .lodgeSeats{display:flex;flex-direction:column;gap:4px}
-
-    /* statuses */
-    .seat[data-st="free"]{background:#fff}
-    .seat[data-st="basket"]{background:#2563eb;color:#fff;border-color:#2563eb}
-    .seat[data-st="reserved"]{background:#f59e0b;color:#111827;border-color:#f59e0b}
-    .seat[data-st="sold"]{background:#9ca3af;color:#fff;border-color:#9ca3af;cursor:not-allowed}
-    .seat[data-st="realization"]{background:#22c55e;color:#0f172a;border-color:#22c55e}
-    .seat[data-st="invite"]{background:#a78bfa;color:#0f172a;border-color:#a78bfa}
-    .seat[data-st="blocked"]{background:#111827;color:#fff;border-color:#111827;cursor:not-allowed}
 
     /* sidebar blocks */
     .sideTitle{font-weight:900;margin:0 0 8px}
@@ -88,14 +55,18 @@
     .table th{color:#6b7280;font-weight:800;font-size:12px}
     .small{font-size:12px;color:#6b7280}
 
-    /* Cash iframe */
-    .cashFrameWrap{
-      border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;background:#fff;
-      min-height:72vh;
+    /* iframe */
+    #cashFrame{
+      width:100%;
+      height:78vh;
+      border:0;
+      border-radius:14px;
+      background:#fff;
+      display:none; /* show when event selected */
     }
-    .cashFrameTop{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:10px}
-    .cashHint{font-size:12px;color:#6b7280}
-    iframe.cashFrame{width:100%;height:72vh;border:0;display:block;background:#fff}
+    #cashHint{
+      padding:10px 0;
+    }
   </style>
 </head>
 
@@ -110,7 +81,6 @@
 
         <div class="bo-tabs" id="tabs">
           <button class="tabbtn active" data-tab="events">Події</button>
-          <button class="tabbtn" data-tab="cash">Каса (жива схема)</button>
           <button class="tabbtn" data-tab="pricing">Розцінки</button>
           <button class="tabbtn" data-tab="clients">Клієнти</button>
           <button class="tabbtn" data-tab="orders">Замовлення</button>
@@ -120,7 +90,7 @@
         </div>
       </div>
 
-      <!-- EVENTS / HALL (локальна схема) -->
+      <!-- EVENTS / HALL -->
       <section class="panel" data-pane="events">
         <div class="row" style="justify-content:space-between">
           <div class="row">
@@ -146,10 +116,18 @@
 
         <div class="bo-grid" style="margin-top:12px">
           <div class="panel" style="padding:12px">
-            <h2 class="sideTitle" style="margin-bottom:6px">Схема залу (локальна)</h2>
-            <div class="small">Ложа <b>A</b> — зліва • Ложа <b>B</b> — справа</div>
+            <h2 class="sideTitle" style="margin-bottom:6px">Каса (схема залу)</h2>
+            <div class="small">Відкривається <b>hall-cash</b> всередині панелі. “Істина” — Supabase + робоча каса.</div>
+
             <div class="hallWrap" id="hallWrap">
-              <div id="hallRoot"></div>
+              <div class="muted" id="cashHint">
+                Обери подію — і тут відкриється каса (hall-cash) всередині панелі.
+              </div>
+              <iframe
+                id="cashFrame"
+                title="Каса (hall-cash)"
+                src=""
+              ></iframe>
             </div>
 
             <div class="hr"></div>
@@ -192,32 +170,9 @@
             </div>
 
             <div class="small muted" style="margin-top:10px">
-              Примітка: вкладка “Каса (жива схема)” показує <b>працюючу</b> hall-cash з Supabase (tickets).
+              Примітка: зараз все працює локально (localStorage). Онлайн не чіпаємо.
             </div>
           </aside>
-        </div>
-      </section>
-
-      <!-- CASH (живая схема в iframe) -->
-      <section class="panel" data-pane="cash" hidden>
-        <div class="cashFrameTop">
-          <div>
-            <h2 class="sideTitle" style="margin-bottom:4px">Каса (жива схема з Supabase)</h2>
-            <div class="cashHint">
-              Тут вбудовано <code>/spectacles/hall-cash.html</code>. “Істина” — Supabase <b>tickets</b>.
-              Якщо інтернету нема — iframe може не завантажитись (але локальна вкладка “Події” працює).
-            </div>
-          </div>
-          <div class="row">
-            <button class="btn2 gray" id="btnCashOpenNew">Відкрити в новій вкладці</button>
-            <button class="btn2 gray" id="btnCashReload">Оновити</button>
-          </div>
-        </div>
-
-        <div class="muted" id="cashMeta" style="margin-bottom:10px">Оберіть сеанс у вкладці “Події” або в списку зверху — і каса переключиться.</div>
-
-        <div class="cashFrameWrap">
-          <iframe class="cashFrame" id="cashFrame" src="" title="Каса"></iframe>
         </div>
       </section>
 
