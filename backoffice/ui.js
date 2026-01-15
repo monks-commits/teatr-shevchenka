@@ -1,39 +1,48 @@
 (() => {
   const { qs } = window.BO_UTILS;
 
-  function setText(sel, text){
+  function setText(sel, text) {
     const el = qs(sel);
-    if(el) el.textContent = text ?? "";
+    if (el) el.textContent = text ?? "";
   }
 
-  function renderBasket(root, basket, currency){
-    if(!root) return;
-    if(!basket || !basket.length){
-      root.innerHTML = `<div class="muted">Поки що нічого не обрано.</div>`;
+  function renderBasket(rootEl, basket, currency) {
+    if (!rootEl) return;
+    if (!Array.isArray(basket) || !basket.length) {
+      rootEl.innerHTML = `<div class="muted small">Кошик порожній.</div>`;
       return;
     }
-    root.innerHTML = basket
-      .slice()
-      .sort((a,b)=> String(a.key).localeCompare(String(b.key)))
-      .map(x => `
-        <div class="item">
-          <div>${x.label}</div>
-          <div><b>${x.price}</b> ${currency}</div>
+
+    rootEl.innerHTML = basket.map(i => `
+      <div class="item">
+        <div>
+          <div style="font-weight:800">${i.key}</div>
+          <div class="small muted">${i.label || ""}</div>
         </div>
-      `).join("");
+        <div style="font-weight:900;white-space:nowrap">${Number(i.price||0)} ${currency}</div>
+      </div>
+    `).join("");
   }
 
-  function renderOps(root, ops){
-    if(!root) return;
-    if(!ops || !ops.length){
-      root.innerHTML = `<div class="muted">Поки немає операцій.</div>`;
+  function renderOps(rootEl, ops) {
+    if (!rootEl) return;
+    if (!Array.isArray(ops) || !ops.length) {
+      rootEl.innerHTML = `<div class="muted small">Поки що порожньо.</div>`;
       return;
     }
-    root.innerHTML = ops.slice().reverse().map(o => `
+
+    const list = ops.slice().reverse().slice(0, 200);
+    rootEl.innerHTML = list.map(o => `
       <div class="op">
-        <div><b>${o.action}</b> <span class="pill">${o.count}</span></div>
-        <div class="muted">${o.tsHuman} • ${o.showLabel}</div>
-        <div class="muted">Seats: ${(o.seats||[]).join(", ")}</div>
+        <div style="display:flex;justify-content:space-between;gap:10px">
+          <div><b>${o.action || ""}</b> <span class="pill">${o.status || ""}</span></div>
+          <div class="muted">${o.tsHuman || ""}</div>
+        </div>
+        <div class="small muted">${o.showLabel || ""}</div>
+        <div class="small">Місць: <b>${o.count || 0}</b> • Сума: <b>${o.total || 0}</b> ${o.currency || ""}</div>
+        <div class="small muted" style="margin-top:4px;word-break:break-word">
+          ${(o.seats || []).join(", ")}
+        </div>
       </div>
     `).join("");
   }
