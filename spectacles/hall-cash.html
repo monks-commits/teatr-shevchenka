@@ -708,7 +708,8 @@
 
         let qrDataUrl = "";
         try{
-          qrDataUrl = await QRCode.toDataURL(payload, { width: 240, margin: 1 });
+          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
+
         }catch(e){ qrDataUrl = ""; }
 
         cardsHtml.push(`
