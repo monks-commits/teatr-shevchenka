@@ -123,15 +123,14 @@
   if(price) document.getElementById("price").textContent = "Ціна: " + price + " грн";
 
   var qrBox = document.getElementById("qr");
-  qrBox.innerHTML = "";
+qrBox.innerHTML = "<div></div>"; // ← КРИТИЧНО
 
-  if (window.QRCode && qrBox) {
-    new QRCode(qrBox, {
-      text: payload,
-      width: 110,
-      height: 110,
-      correctLevel: QRCode.CorrectLevel.M
-    });
+new QRCode(qrBox, {
+  text: payload,
+  width: 110,
+  height: 110,
+  correctLevel: QRCode.CorrectLevel.M
+});
   } else {
     qrBox.textContent = "QR недоступний";
   }
