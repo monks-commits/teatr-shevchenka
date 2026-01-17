@@ -23,22 +23,26 @@
       border-radius:12px;
       box-shadow:0 6px 20px rgba(15,23,42,0.15);
       padding:14px 16px 12px;
+      box-sizing:border-box;
     }
 
-    .ticket-header{
+    .header{
       display:flex;
       justify-content:space-between;
       font-size:11px;
       margin-bottom:6px;
     }
 
-    .ticket-title{
+    .title{
       font-size:13px;
       font-weight:700;
       margin-bottom:6px;
     }
 
-    .row{ font-size:11px; margin:4px 0; }
+    .row{
+      font-size:11px;
+      margin:4px 0;
+    }
 
     .qr-wrap{
       margin:10px auto;
@@ -49,6 +53,7 @@
       justify-content:center;
       border:1px solid #e5e7eb;
       border-radius:10px;
+      background:#fff;
     }
 
     .qr-wrap img{
@@ -69,26 +74,24 @@
     }
   </style>
 
-  <!-- ВАЖНО: браузерная версия QRCode -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <!-- СТАБИЛЬНАЯ библиотека QR (constructor only) -->
+  <script src="../vendor/qrcode.min.js"></script>
 </head>
 
 <body>
   <div class="ticket">
-    <div class="ticket-header">
+    <div class="header">
       <div>Театр ім. Т. Г. Шевченка</div>
       <div id="order">—</div>
     </div>
 
-    <div class="ticket-title" id="title">Квиток</div>
+    <div class="title">Квиток</div>
 
     <div class="row">Канал: <b>Каса</b></div>
     <div class="row" id="seat">—</div>
     <div class="row" id="price">—</div>
 
-    <div class="qr-wrap" id="qrBox">
-      <span class="muted">QR…</span>
-    </div>
+    <div class="qr-wrap" id="qr"></div>
 
     <div class="muted">
       Покажіть цей квиток контролеру на вході
@@ -96,70 +99,25 @@
   </div>
 
 <script>
+(function(){
   function qp(){
-    const o = {};
-    location.search.slice(1).split("&").forEach(p=>{
-      const [k,v] = p.split("=");
-      if(k) o[decodeURIComponent(k)] = decodeURIComponent(v||"");
+    var o = {};
+    var s = location.search.slice(1);
+    if(!s) return o;
+    s.split("&").forEach(function(p){
+      var a = p.split("=");
+      if(a[0]) o[decodeURIComponent(a[0])] = decodeURIComponent(a[1] || "");
     });
     return o;
   }
 
-  function qrToDataUrl(text){
-    return new Promise((resolve, reject)=>{
-      if(!window.QRCode || typeof QRCode.toDataURL !== "function"){
-        reject("QRCode lib missing");
-        return;
-      }
-      QRCode.toDataURL(
-        text,
-        { width:110, margin:1, errorCorrectionLevel:"M" },
-        (err, url)=>{
-          if(err) reject(err);
-          else resolve(url);
-        }
-      );
-    });
-  }
+  var p = qp();
 
-  (async ()=>{
-    const p = qp();
+  var order = p.order || ("CASH-" + Date.now());
+  var seat  = p.seat  || "";
+  var price = p.price || "";
+  var payload = p.payload || ("order:" + order + "|seat:" + seat);
 
-    const order = p.order || ("CASH-" + Date.now());
-    const seat  = p.seat  || "";
-    const price = p.price || "";
-
-    document.getElementById("order").textContent = order;
-    if(seat)  document.getElementById("seat").textContent  = "Місце: " + seat;
-    if(price) document.getElementById("price").textContent = "Ціна: " + price + " грн";
-
-    const payload = p.payload || `order:${order}|seat:${seat}`;
-
-    const box = document.getElementById("qrBox");
-    box.innerHTML = "";
-
-    function renderCodes(payload){
-  const qrBox = document.getElementById("qr");
-  qrBox.innerHTML = "";
-
-  if (window.QRCode && qrBox) {
-    new QRCode(qrBox, {
-      text: payload,
-      width: 110,
-      height: 110,
-      correctLevel: QRCode.CorrectLevel.M
-    });
-  } else {
-    qrBox.textContent = "QR недоступний";
-  }
-}
-}
-
-    if(p.autoPrint === "1"){
-      setTimeout(()=>window.print(), 400);
-    }
-  })();
-</script>
-
-</body>
-</html>
+  document.getElementById("order").textContent = order;
+  if(seat)  document.getElementById("seat").textContent  = "Місце: " + seat;
+  if(price) document.getElementById("price").t
