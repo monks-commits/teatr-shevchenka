@@ -704,38 +704,64 @@
 
       const cardsHtml = [];
       for (const t of tickets){
-        const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
+  const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
 
-        let qrDataUrl = "";
-        try{
-          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
+  let qrDataUrl = "";
 
-        }catch(e){ qrDataUrl = ""; }
-
-        cardsHtml.push(`
-          <div class="t">
-            <div class="h">
-              <div class="theatre">${theatre}</div>
-              <div class="ord">Канал: Каса<br/>OP: ${t.op_id}</div>
-            </div>
-            <div class="show">${title}</div>
-            <div class="meta">
-              ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
-              <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
-              ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
-              <div class="muted">Order: ${t.order_id}</div>
-            </div>
-            <div class="price">Ціна: ${t.price} грн</div>
-
-            ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="QR"/>` : `<div class="qr-miss">QR не згенеровано</div>`}
-
-            <div class="note">
-              Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
-              Для гарантованого сканування натисніть SYNC (коли є інтернет).
-            </div>
-          </div>
-        `);
+  try {
+    qrDataUrl = await new Promise((resolve, reject) => {
+      if (!window.QRCode || typeof window.QRCode.toDataURL !== "function") {
+        reject(new Error("QRCode not available"));
+        return;
       }
+
+      window.QRCode.toDataURL(
+        String(payload),
+        {
+          width: 320,
+          margin: 2,
+          errorCorrectionLevel: "M"
+        },
+        (err, url) => {
+          if (err) reject(err);
+          else resolve(url);
+        }
+      );
+    });
+  } catch (e) {
+    console.error("QR generate error:", e);
+    qrDataUrl = "";
+  }
+
+  cardsHtml.push(`
+    <div class="t">
+      <div class="h">
+        <div class="theatre">Театр ім. Т. Г. Шевченка</div>
+        <div class="ord">Канал: Каса<br/>OP: ${t.op_id}</div>
+      </div>
+
+      <div class="show">${meta?.title || ""}</div>
+
+      <div class="meta">
+        <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
+        <div class="muted">Order: ${t.order_id}</div>
+      </div>
+
+      <div class="price">Ціна: ${t.price} грн</div>
+
+      ${
+        qrDataUrl
+          ? `<img class="qr" src="${qrDataUrl}" alt="QR"/>`
+          : `<div class="qr-miss">QR не згенеровано</div>`
+      }
+
+      <div class="note">
+        Квиток дійсний на одну особу.
+      </div>
+    </div>
+  `);
+}
+
 
       const html = `<!doctype html>
 <html lang="uk">
