@@ -72,14 +72,24 @@ function qp(){
   // 🔴 ЕДИНЫЙ PAYLOAD (он же онлайн)
   const payload = `order:${order_id}|show:${show_slug}|seat:${seat_label}`;
 
-  try{
-    await QRCode.toCanvas(payload,{width:110,margin:1,errorCorrectionLevel:"M"},(e,c)=>{
-      if(e) throw e;
-      document.getElementById("qr").appendChild(c);
-    });
-  }catch(e){
-    document.getElementById("qr").textContent="QR недоступний";
-  }
+  try {
+  const dataUrl = await QRCode.toDataURL(payload, {
+    width: 110,
+    margin: 1,
+    errorCorrectionLevel: "M"
+  });
+
+  const img = document.createElement("img");
+  img.src = dataUrl;
+  img.style.width = "110px";
+  img.style.height = "110px";
+
+  document.getElementById("qr").appendChild(img);
+
+} catch (e) {
+  console.error("QR error:", e);
+  document.getElementById("qr").textContent = "QR недоступний";
+}
 
   if(p.autoPrint==="1"){
     setTimeout(()=>window.print(),400);
