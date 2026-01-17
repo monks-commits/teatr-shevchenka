@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 
   <style>
-    .hall-layout{display:flex;gap:24px;align-items:flex-start;} 
+    .hall-layout{display:flex;gap:24px;align-items:flex-start;}
     .hall-left{flex:1 1 auto;min-width:0;}
     .hall-sidebar{width:360px;flex:0 0 360px;}
     .hall-card{margin-top:0;}
@@ -696,79 +696,46 @@
     }
 
     // ---- печать билетов (с QR) ----
-async function openPrintWindowOffline(tickets, meta){
-  const theatre = "Театр ім. Т. Г. Шевченка";
-  const title = meta?.title || showSlug || "Квиток";
-  const dt = (meta?.date && meta?.time) ? `${meta.date} ${meta.time}` : "";
-  const seance = SEANCE_ID || "";
+    async function openPrintWindowOffline(tickets, meta){
+      const theatre = "Театр ім. Т. Г. Шевченка";
+      const title = meta?.title || showSlug || "Квиток";
+      const dt = (meta?.date && meta?.time) ? `${meta.date} ${meta.time}` : "";
+      const seance = SEANCE_ID || "";
 
-  const cardsHtml = [];
+      const cardsHtml = [];
+      for (const t of tickets){
+        const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
 
-  for (const t of tickets){
-    const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
+        let qrDataUrl = "";
+        try{
+          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
 
-    let qrDataUrl = "";
+        }catch(e){ qrDataUrl = ""; }
 
-    try {
-      qrDataUrl = await new Promise((resolve) => {
-        if (!window.QRCode || typeof window.QRCode.toDataURL !== "function") {
-          console.warn("QRCode not available");
-          resolve("");
-          return;
-        }
+        cardsHtml.push(`
+          <div class="t">
+            <div class="h">
+              <div class="theatre">${theatre}</div>
+              <div class="ord">Канал: Каса<br/>OP: ${t.op_id}</div>
+            </div>
+            <div class="show">${title}</div>
+            <div class="meta">
+              ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
+              <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
+              ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
+              <div class="muted">Order: ${t.order_id}</div>
+            </div>
+            <div class="price">Ціна: ${t.price} грн</div>
 
-        window.QRCode.toDataURL(
-          payload,
-          {
-            width: 320,
-            margin: 2,
-            errorCorrectionLevel: "M"
-          },
-          (err, url) => {
-            if (err) {
-              console.warn("QR generate error", err);
-              resolve("");
-            } else {
-              resolve(url);
-            }
-          }
-        );
-      });
-    } catch (e) {
-      console.warn("QR exception", e);
-      qrDataUrl = "";
-    }
+            ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="QR"/>` : `<div class="qr-miss">QR не згенеровано</div>`}
 
-  cardsHtml.push(`
-  <div class="t">
-    <div class="h">
-      <div class="theatre">${theatre}</div>
-      <div class="ord">Канал: Каса<br/>OP: ${t.op_id || ""}</div>
-    </div>
-
-    <div class="show">${title}</div>
-
-    <div class="meta">
-      ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
-      <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
-      ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
-      <div class="muted">Order: ${t.order_id}</div>
-    </div>
-
-    <div class="price">Ціна: ${t.price} грн</div>
-
-    ${
-      qrDataUrl
-        ? `<img class="qr" src="${qrDataUrl}" alt="QR"/>`
-        : `<div class="qr-miss">QR не згенеровано</div>`
-    }
-
-    <div class="note">
-      Квиток дійсний на одну особу. Зберігайте до кінця вистави.
-    </div>
-  </div>
-`);
-
+            <div class="note">
+              Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
+              Для гарантованого сканування натисніть SYNC (коли є інтернет).
+            </div>
+          </div>
+        `);
+      }
 
       const html = `<!doctype html>
 <html lang="uk">
