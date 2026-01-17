@@ -707,10 +707,31 @@
         const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
 
         let qrDataUrl = "";
-        try{
-          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
 
-        }catch(e){ qrDataUrl = ""; }
+try {
+  qrDataUrl = await new Promise((resolve, reject) => {
+    if (!window.QRCode || typeof window.QRCode.toDataURL !== "function") {
+      reject(new Error("QRCode not available"));
+      return;
+    }
+
+    window.QRCode.toDataURL(
+      String(payload),
+      {
+        width: 320,
+        margin: 2,
+        errorCorrectionLevel: "M"
+      },
+      (err, url) => {
+        if (err) reject(err);
+        else resolve(url);
+      }
+    );
+  });
+} catch (e) {
+  console.error("QR error:", e);
+  qrDataUrl = "";
+}
 
         cardsHtml.push(`
           <div class="t">
