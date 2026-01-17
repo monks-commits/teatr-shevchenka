@@ -142,7 +142,7 @@
   const qrBox = document.getElementById("qr");
   qrBox.innerHTML = "";
 
-  if (window.QRCode) {
+  if (window.QRCode && qrBox) {
     new QRCode(qrBox, {
       text: payload,
       width: 110,
@@ -152,6 +152,7 @@
   } else {
     qrBox.textContent = "QR недоступний";
   }
+}
 }
 
     if(p.autoPrint === "1"){
