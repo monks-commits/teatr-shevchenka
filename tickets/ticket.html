@@ -138,18 +138,20 @@
     const box = document.getElementById("qrBox");
     box.innerHTML = "";
 
-    const box = document.getElementById("qrBox");
-box.innerHTML = "";
+    function renderCodes(payload){
+  const qrBox = document.getElementById("qr");
+  qrBox.innerHTML = "";
 
-if (window.QRCode) {
-  new QRCode(box, {
-    text: payload,
-    width: 110,
-    height: 110,
-    correctLevel: QRCode.CorrectLevel.M
-  });
-} else {
-  box.textContent = "QR недоступний";
+  if (window.QRCode) {
+    new QRCode(qrBox, {
+      text: payload,
+      width: 110,
+      height: 110,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    qrBox.textContent = "QR недоступний";
+  }
 }
 
     if(p.autoPrint === "1"){
