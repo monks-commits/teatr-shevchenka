@@ -1,100 +1,158 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8" />
-<title>Квиток</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <title>Квиток</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<style>
-@page { size: 80mm 200mm; margin: 5mm; }
-body{margin:0;font-family:system-ui;background:#f3f4f6;display:flex;justify-content:center;padding:12px}
-.ticket{width:260px;background:#fff;border-radius:10px;padding:14px}
-.h{display:flex;justify-content:space-between;font-size:11px}
-.t{font-weight:700;margin:6px 0}
-.m{font-size:11px;margin-top:6px}
-.qr{margin-top:10px;display:flex;justify-content:center}
-.qr canvas{width:110px;height:110px}
-.f{font-size:9px;margin-top:8px;color:#555}
-@media print{body{background:#fff}.ticket{box-shadow:none}}
-</style>
+  <style>
+    @page { size: 80mm 200mm; margin: 5mm; }
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:#f3f4f6;
+      display:flex;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .ticket{
+      width:260px;
+      background:#fff;
+      border-radius:12px;
+      box-shadow:0 6px 20px rgba(15,23,42,0.15);
+      padding:14px 16px 12px;
+    }
+
+    .ticket-header{
+      display:flex;
+      justify-content:space-between;
+      font-size:11px;
+      margin-bottom:6px;
+    }
+
+    .ticket-title{
+      font-size:13px;
+      font-weight:700;
+      margin-bottom:6px;
+    }
+
+    .row{ font-size:11px; margin:4px 0; }
+
+    .qr-wrap{
+      margin:10px auto;
+      width:120px;
+      height:120px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+    }
+
+    .qr-wrap img{
+      width:110px;
+      height:110px;
+    }
+
+    .muted{
+      font-size:10px;
+      color:#6b7280;
+      text-align:center;
+      margin-top:6px;
+    }
+
+    @media print{
+      body{background:#fff;padding:0;}
+      .ticket{box-shadow:none;border-radius:0;}
+    }
+  </style>
+
+  <!-- ВАЖНО: браузерная версия QRCode -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
 </head>
 
 <body>
-<div class="ticket">
-  <div class="h">
-    <div id="theatre">Театр ім. Т. Г. Шевченка</div>
-    <div id="order">—</div>
+  <div class="ticket">
+    <div class="ticket-header">
+      <div>Театр ім. Т. Г. Шевченка</div>
+      <div id="order">—</div>
+    </div>
+
+    <div class="ticket-title" id="title">Квиток</div>
+
+    <div class="row">Канал: <b>Каса</b></div>
+    <div class="row" id="seat">—</div>
+    <div class="row" id="price">—</div>
+
+    <div class="qr-wrap" id="qrBox">
+      <span class="muted">QR…</span>
+    </div>
+
+    <div class="muted">
+      Покажіть цей квиток контролеру на вході
+    </div>
   </div>
-
-  <div class="t" id="title">Назва вистави</div>
-  <div class="m" id="dt">—</div>
-  <div class="m"><b id="seat">—</b></div>
-  <div class="m">Ціна: <span id="price">—</span></div>
-  <div class="m">Канал: <span id="channel">Каса</span></div>
-
-  <div class="qr" id="qr"></div>
-
-  <div class="f">
-    Покажіть цей квиток контролеру на вході
-  </div>
-</div>
 
 <script>
-function qp(){
-  const o={};
-  location.search.slice(1).split("&").forEach(p=>{
-    const [k,v]=p.split("="); if(k) o[k]=decodeURIComponent(v||"");
-  });
-  return o;
-}
-
-(async function(){
-  const p = qp();
-
-  const order_id   = p.order_id || p.order || ("CASH-" + Date.now());
-  const show_slug  = p.show || "";
-  const seat_label = p.seat || "";
-  const price      = p.price || "";
-  const title      = p.title || "";
-  const date       = p.date || "";
-  const time       = p.time || "";
-  const channel    = p.channel || "Каса";
-
-  document.getElementById("order").textContent = order_id;
-  document.getElementById("title").textContent = title;
-  document.getElementById("dt").textContent = [date,time].filter(Boolean).join(" ");
-  document.getElementById("seat").textContent = seat_label;
-  document.getElementById("price").textContent = price;
-  document.getElementById("channel").textContent = channel;
-
-  // 🔴 ЕДИНЫЙ PAYLOAD (он же онлайн)
-  const payload = `order:${order_id}|show:${show_slug}|seat:${seat_label}`;
-
-  try {
-  const dataUrl = await QRCode.toDataURL(payload, {
-    width: 110,
-    margin: 1,
-    errorCorrectionLevel: "M"
-  });
-
-  const img = document.createElement("img");
-  img.src = dataUrl;
-  img.style.width = "110px";
-  img.style.height = "110px";
-
-  document.getElementById("qr").appendChild(img);
-
-} catch (e) {
-  console.error("QR error:", e);
-  document.getElementById("qr").textContent = "QR недоступний";
-}
-
-  if(p.autoPrint==="1"){
-    setTimeout(()=>window.print(),400);
+  function qp(){
+    const o = {};
+    location.search.slice(1).split("&").forEach(p=>{
+      const [k,v] = p.split("=");
+      if(k) o[decodeURIComponent(k)] = decodeURIComponent(v||"");
+    });
+    return o;
   }
-})();
+
+  function qrToDataUrl(text){
+    return new Promise((resolve, reject)=>{
+      if(!window.QRCode || typeof QRCode.toDataURL !== "function"){
+        reject("QRCode lib missing");
+        return;
+      }
+      QRCode.toDataURL(
+        text,
+        { width:110, margin:1, errorCorrectionLevel:"M" },
+        (err, url)=>{
+          if(err) reject(err);
+          else resolve(url);
+        }
+      );
+    });
+  }
+
+  (async ()=>{
+    const p = qp();
+
+    const order = p.order || ("CASH-" + Date.now());
+    const seat  = p.seat  || "";
+    const price = p.price || "";
+
+    document.getElementById("order").textContent = order;
+    if(seat)  document.getElementById("seat").textContent  = "Місце: " + seat;
+    if(price) document.getElementById("price").textContent = "Ціна: " + price + " грн";
+
+    const payload = p.payload || `order:${order}|seat:${seat}`;
+
+    const box = document.getElementById("qrBox");
+    box.innerHTML = "";
+
+    try{
+      const url = await qrToDataUrl(payload);
+      const img = document.createElement("img");
+      img.src = url;
+      box.appendChild(img);
+    }catch(e){
+      console.error("QR FAIL:", e);
+      box.textContent = "QR недоступний";
+    }
+
+    if(p.autoPrint === "1"){
+      setTimeout(()=>window.print(), 400);
+    }
+  })();
 </script>
+
 </body>
 </html>
