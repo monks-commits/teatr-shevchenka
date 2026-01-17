@@ -138,15 +138,19 @@
     const box = document.getElementById("qrBox");
     box.innerHTML = "";
 
-    try{
-      const url = await qrToDataUrl(payload);
-      const img = document.createElement("img");
-      img.src = url;
-      box.appendChild(img);
-    }catch(e){
-      console.error("QR FAIL:", e);
-      box.textContent = "QR недоступний";
-    }
+    const box = document.getElementById("qrBox");
+box.innerHTML = "";
+
+if (window.QRCode) {
+  new QRCode(box, {
+    text: payload,
+    width: 110,
+    height: 110,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+} else {
+  box.textContent = "QR недоступний";
+}
 
     if(p.autoPrint === "1"){
       setTimeout(()=>window.print(), 400);
