@@ -1,145 +1,90 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8" />
-  <title>Квиток</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<title>Квиток</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <style>
-    @page { size: 80mm 200mm; margin: 5mm; }
+<style>
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#f3f4f6;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+.ticket{
+  width:260px;
+  background:#fff;
+  border-radius:14px;
+  box-shadow:0 10px 25px rgba(0,0,0,.12);
+  padding:16px;
+}
+h1{font-size:16px;margin:0 0 8px}
+.row{font-size:13px;margin:4px 0}
+.qr-wrap{
+  margin:14px auto;
+  width:120px;
+  height:120px;
+  border:1px solid #ddd;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.footer{
+  font-size:11px;
+  color:#555;
+  text-align:center;
+  margin-top:10px;
+}
+</style>
 
-    body{
-      margin:0;
-      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      background:#f3f4f6;
-      display:flex;
-      justify-content:center;
-      padding:16px;
-    }
-
-    .ticket{
-      width:260px;
-      background:#fff;
-      border-radius:12px;
-      box-shadow:0 6px 20px rgba(15,23,42,0.15);
-      padding:14px 16px 12px;
-      box-sizing:border-box;
-    }
-
-    .header{
-      display:flex;
-      justify-content:space-between;
-      font-size:11px;
-      margin-bottom:6px;
-    }
-
-    .title{
-      font-size:13px;
-      font-weight:700;
-      margin-bottom:6px;
-    }
-
-    .row{
-      font-size:11px;
-      margin:4px 0;
-    }
-
-    .qr-wrap{
-      margin:10px auto;
-      width:120px;
-      height:120px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border:1px solid #e5e7eb;
-      border-radius:10px;
-      background:#fff;
-    }
-
-    .qr-wrap img{
-      width:110px;
-      height:110px;
-    }
-
-    .muted{
-      font-size:10px;
-      color:#6b7280;
-      text-align:center;
-      margin-top:6px;
-    }
-
-    @media print{
-      body{background:#fff;padding:0;}
-      .ticket{box-shadow:none;border-radius:0;}
-    }
-  </style>
-
-  <!-- СТАБИЛЬНАЯ библиотека QR (constructor only) -->
-  <script src="../vendor/qrcode.min.js"></script>
+<script src="../vendor/qrcode.min.js"></script>
 </head>
 
 <body>
-  <div class="ticket">
-    <div class="header">
-      <div>Театр ім. Т. Г. Шевченка</div>
-      <div id="order">—</div>
-    </div>
+<div class="ticket">
+  <h1>Квиток</h1>
+  <div class="row"><b>Канал:</b> Каса</div>
+  <div class="row" id="rowSeat"></div>
+  <div class="row" id="rowPrice"></div>
 
-    <div class="title">Квиток</div>
+  <div class="qr-wrap" id="qr"></div>
 
-    <div class="row">Канал: <b>Каса</b></div>
-    <div class="row" id="seat">—</div>
-    <div class="row" id="price">—</div>
-
-    <div class="qr-wrap" id="qr"></div>
-
-    <div class="muted">
-      Покажіть цей квиток контролеру на вході
-    </div>
+  <div class="footer">
+    Покажіть цей квиток контролеру на вході
   </div>
+</div>
 
 <script>
 (function(){
-  function qp(){
-    var o = {};
-    var s = location.search.slice(1);
-    if(!s) return o;
-    s.split("&").forEach(function(p){
-      var a = p.split("=");
-      if(a[0]) o[decodeURIComponent(a[0])] = decodeURIComponent(a[1] || "");
-    });
-    return o;
+  const p = new URLSearchParams(location.search);
+
+  const order = p.get("order") || "";
+  const seat  = p.get("seat") || "";
+  const price = p.get("price") || "";
+  const payload = p.get("payload") || "";
+
+  if(seat) document.getElementById("rowSeat").textContent = "Місце: " + seat;
+  if(price) document.getElementById("rowPrice").textContent = "Ціна: " + price + " грн";
+
+  if(!payload){
+    document.getElementById("qr").textContent = "QR недоступний";
+    return;
   }
 
-  var p = qp();
+  const box = document.getElementById("qr");
+  box.innerHTML = "<div></div>";
 
-  var order = p.order || ("CASH-" + Date.now());
-  var seat  = p.seat  || "";
-  var price = p.price || "";
-  var payload = p.payload || ("order:" + order + "|seat:" + seat);
-
-  document.getElementById("order").textContent = order;
-  if(seat)  document.getElementById("seat").textContent  = "Місце: " + seat;
-  if(price) document.getElementById("price").textContent = "Ціна: " + price + " грн";
-
-  var qrBox = document.getElementById("qr");
-qrBox.innerHTML = "<div></div>"; // ← КРИТИЧНО
-
-new QRCode(qrBox, {
-  text: payload,
-  width: 110,
-  height: 110,
-  correctLevel: QRCode.CorrectLevel.M
-});
-  } else {
-    qrBox.textContent = "QR недоступний";
-  }
-
-  if(p.autoPrint === "1"){
-    setTimeout(function(){ window.print(); }, 400);
-  }
+  new QRCode(box,{
+    text: payload,
+    width:110,
+    height:110,
+    correctLevel: QRCode.CorrectLevel.M
+  });
 })();
 </script>
-
 </body>
 </html>
