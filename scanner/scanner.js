@@ -119,13 +119,27 @@ async function sendToServer(qr_payload) {
     return;
   }
 
-  // 404
-  if (r.status === 404) {
+  // 404 — билет не найден в Supabase
+if (r.status === 404) {
+
+  // ⛔ если это НЕ касса — ошибка
+  if (!qr_payload.startsWith("order:CASH-")) {
     setStatus("bad", "Недійсний квиток", "Ticket not found (404).", qr_payload);
     soundBad();
     vibrateBad();
     return;
   }
+
+  // ✅ кассовый офлайн-билет
+  setStatus(
+    "ok",
+    "Пропустити (каса)",
+    "Офлайн-квиток • не синхронізований",
+    qr_payload
+  );
+  soundOk();
+  return;
+}
 
   // 409 (already_used / race)
   if (r.status === 409) {
