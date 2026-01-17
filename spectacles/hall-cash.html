@@ -730,8 +730,13 @@ async function openPrintWindowOffline(tickets, meta){
   const qrMap = {};
   for (const t of tickets){
     const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
-    qrMap[t.seat_label] = await qrToDataUrl(payload);
-  }
+    try {
+  qrMap[t.seat_label] = await qrToDataUrl(payload);
+} catch (e) {
+  console.error("QR generate error:", e);
+  qrMap[t.seat_label] = ""; // НЕ ЛОМАЕМ ПРОДАЖУ
+}
+  
 
   // 2. Формируем HTML билетов
   const cardsHtml = tickets.map(t => `
