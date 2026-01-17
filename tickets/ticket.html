@@ -120,4 +120,27 @@
 
   document.getElementById("order").textContent = order;
   if(seat)  document.getElementById("seat").textContent  = "Місце: " + seat;
-  if(price) document.getElementById("price").t
+  if(price) document.getElementById("price").textContent = "Ціна: " + price + " грн";
+
+  var qrBox = document.getElementById("qr");
+  qrBox.innerHTML = "";
+
+  if (window.QRCode && qrBox) {
+    new QRCode(qrBox, {
+      text: payload,
+      width: 110,
+      height: 110,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    qrBox.textContent = "QR недоступний";
+  }
+
+  if(p.autoPrint === "1"){
+    setTimeout(function(){ window.print(); }, 400);
+  }
+})();
+</script>
+
+</body>
+</html>
