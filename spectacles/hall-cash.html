@@ -695,6 +695,25 @@
       return `CASH-${base}-${op_id}`;
     }
 
+    // ===================== QR helper (FIX) =====================
+    // CDN qrcode@1.5.4 обычно отдаёт callback-версию, а не Promise.
+    // Поэтому await QRCode.toDataURL(...) может НЕ работать => "QR не згенеровано".
+    function qrToDataUrl(text, opts){
+      const options = opts || { width: 240, margin: 1 };
+      return new Promise((resolve, reject) => {
+        const lib = window.QRCode || window.qrcode;
+        if (!lib || typeof lib.toDataURL !== "function") {
+          reject(new Error("QRCode library missing"));
+          return;
+        }
+        lib.toDataURL(String(text || ""), options, (err, url) => {
+          if (err) reject(err);
+          else resolve(url);
+        });
+      });
+    }
+    // ===========================================================
+
     // ---- печать билетов (с QR) ----
     async function openPrintWindowOffline(tickets, meta){
       const theatre = "Театр ім. Т. Г. Шевченка";
@@ -708,9 +727,10 @@
 
         let qrDataUrl = "";
         try{
-          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
-
-        }catch(e){ qrDataUrl = ""; }
+          qrDataUrl = await qrToDataUrl(payload, { width: 240, margin: 1 });
+        }catch(e){
+          qrDataUrl = "";
+        }
 
         cardsHtml.push(`
           <div class="t">
@@ -892,9 +912,10 @@
     // ---- reprint last sale ----
     async function reprintLastSale(){
       const arr = loadCashLog();
-      const last = arr.find(x=>x && x.type==="SALE" && Array.isArray(x.tickets) && x.tickets.length) || null;
-      if (!last){ alert("Немає збереженої останньої продажі для друку."); return; }
-      await openPrintWindowOffline(last.tickets, SHOW_META);
+      const last = arr.find(x=>x && x.type==="SALE" && Array.isArray(last?.tickets) && last.tickets.length) || null;
+      const last2 = arr.find(x=>x && x.type==="SALE" && Array.isArray(x.tickets) && x.tickets.length) || null;
+      if (!last2){ alert("Немає збереженої останньої продажі для друку."); return; }
+      await openPrintWindowOffline(last2.tickets, SHOW_META);
     }
 
     // ---- render blocks ----
@@ -1103,8 +1124,6 @@
 
     // -------------------- Backoffice iframe control via postMessage --------------------
     function isTrustedMessage(ev){
-      // GitHub Pages: origin будет https://monks-commits.github.io
-      // Но на всякий: разрешаем тот же origin, что и у страницы
       return !!ev && ev.origin === window.location.origin;
     }
 
@@ -1112,12 +1131,9 @@
       const keys = Array.isArray(seats) ? seats : [];
       if(!keys.length) return;
 
-      // снимаем текущий выбор
       clearSelection();
 
-      // локально применяем как будто кассир нажал кнопку
       if(status === "reserved"){
-        // резерв (локально)
         for(const k of keys){
           if (takenSeatsOnline.has(k)) continue;
           CASH_PATCH[k] = { status: "reserved", ts: Date.now() };
@@ -1134,7 +1150,6 @@
       }
 
       if(status === "sold"){
-        // продажа = то же, что sellAndPrintOffline(), но без кликов и с ценами из DOM
         if(!SEANCE_ID){
           alert("Немає seance_id (потрібні date/time в afisha.json).");
           return;
@@ -1188,7 +1203,6 @@
         reapplyAllStatuses();
         openPrintWindowOffline(tickets, SHOW_META).catch(()=>{});
 
-        // если онлайн — пробуем синкнуть
         setTimeout(async ()=>{
           try{
             if (navigator.onLine) {
@@ -1201,7 +1215,6 @@
         return;
       }
 
-      // прочие статусы: просто применим локально
       for(const k of keys){
         if (takenSeatsOnline.has(k)) continue;
         CASH_PATCH[k] = { status: String(status||"free"), ts: Date.now() };
