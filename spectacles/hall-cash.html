@@ -695,49 +695,72 @@
       return `CASH-${base}-${op_id}`;
     }
 
-    // ---- печать билетов (с QR) ----
-    async function openPrintWindowOffline(tickets, meta){
-      const theatre = "Театр ім. Т. Г. Шевченка";
-      const title = meta?.title || showSlug || "Квиток";
-      const dt = (meta?.date && meta?.time) ? `${meta.date} ${meta.time}` : "";
-      const seance = SEANCE_ID || "";
+    // ===================== QR helper (FIX) =====================
+// ГАРАНТИРОВАННЫЙ QR для CDN qrcode@1.5.4 (callback-based)
+function qrToDataUrl(text, opts){
+  const options = Object.assign({
+    width: 260,
+    margin: 2,
+    errorCorrectionLevel: "H"
+  }, opts || {});
 
-      const cardsHtml = [];
-      for (const t of tickets){
-        const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
+  return new Promise((resolve, reject) => {
+    const lib = window.QRCode || window.qrcode;
+    if (!lib || typeof lib.toDataURL !== "function") {
+      reject(new Error("QRCode library missing"));
+      return;
+    }
+    lib.toDataURL(String(text || ""), options, (err, url) => {
+      if (err) reject(err);
+      else resolve(url);
+    });
+  });
+}
+// ===========================================================
 
-        let qrDataUrl = "";
-        try{
-          qrDataUrl = await window.QRCode.toDataURL(payload, { width: 320, margin: 2, errorCorrectionLevel: "M" });
 
-        }catch(e){ qrDataUrl = ""; }
+// ---- печать билетов (с QR, КАССА, ОФЛАЙН) ----
+async function openPrintWindowOffline(tickets, meta){
+  const theatre = "Театр ім. Т. Г. Шевченка";
+  const title = meta?.title || showSlug || "Квиток";
+  const dt = (meta?.date && meta?.time) ? `${meta.date} ${meta.time}` : "";
+  const seance = SEANCE_ID || "";
 
-        cardsHtml.push(`
-          <div class="t">
-            <div class="h">
-              <div class="theatre">${theatre}</div>
-              <div class="ord">Канал: Каса<br/>OP: ${t.op_id}</div>
-            </div>
-            <div class="show">${title}</div>
-            <div class="meta">
-              ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
-              <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
-              ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
-              <div class="muted">Order: ${t.order_id}</div>
-            </div>
-            <div class="price">Ціна: ${t.price} грн</div>
+  // 1. Генерируем ВСЕ QR заранее (чтобы печать не стартовала раньше)
+  const qrMap = {};
+  for (const t of tickets){
+    const payload = `order:${t.order_id}|show:${t.show_slug}|seat:${t.seat_label}`;
+    qrMap[t.seat_label] = await qrToDataUrl(payload);
+  }
 
-            ${qrDataUrl ? `<img class="qr" src="${qrDataUrl}" alt="QR"/>` : `<div class="qr-miss">QR не згенеровано</div>`}
+  // 2. Формируем HTML билетов
+  const cardsHtml = tickets.map(t => `
+    <div class="t">
+      <div class="h">
+        <div class="theatre">${theatre}</div>
+        <div class="ord">Канал: Каса<br/>OP: ${t.op_id}</div>
+      </div>
 
-            <div class="note">
-              Квиток дійсний на одну особу. Зберігайте до кінця вистави.<br/>
-              Для гарантованого сканування натисніть SYNC (коли є інтернет).
-            </div>
-          </div>
-        `);
-      }
+      <div class="show">${title}</div>
 
-      const html = `<!doctype html>
+      <div class="meta">
+        ${dt ? `<div>Дата/час: ${dt}</div>` : ``}
+        <div><b>${seatKeyToHuman(t.seat_label)}</b></div>
+        ${seance ? `<div class="muted">Seance: ${seance}</div>` : ``}
+        <div class="muted">Order: ${t.order_id}</div>
+      </div>
+
+      <div class="price">Ціна: ${t.price} грн</div>
+
+      <img class="qr" src="${qrMap[t.seat_label]}" alt="QR"/>
+
+      <div class="note">
+        Квиток дійсний на одну особу. Зберігайте до кінця вистави.
+      </div>
+    </div>
+  `).join("");
+
+  const html = `<!doctype html>
 <html lang="uk">
 <head>
 <meta charset="utf-8"/>
@@ -754,76 +777,39 @@
   .meta{font-size:12px;color:#374151;line-height:1.35;}
   .muted{font-size:11px;color:#6b7280;margin-top:4px;}
   .price{margin-top:8px;font-size:14px;font-weight:800;}
-  .qr{display:block;margin:10px auto 6px;width:190px;height:190px;border:1px solid #e5e7eb;border-radius:10px;}
-  .qr-miss{margin:10px 0;padding:10px;border:1px dashed #e5e7eb;border-radius:10px;color:#6b7280;text-align:center;}
+  .qr{
+    display:block;
+    margin:10px auto 6px;
+    width:200px;
+    height:200px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+  }
   .note{font-size:10px;color:#6b7280;line-height:1.3;margin-top:8px;}
 </style>
 </head>
 <body>
-  <div class="wrap">${cardsHtml.join("")}</div>
+  <div class="wrap">${cardsHtml}</div>
 </body>
 </html>`;
 
-      const w = window.open("", "_blank");
-      if (!w){ alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку."); return; }
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
+  const w = window.open("", "_blank");
+  if (!w){
+    alert("Браузер заблокував pop-up для друку.");
+    return;
+  }
 
-      setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 250);
-    }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 
-    async function postCashSync(cashier_id, ops){
-      const secret = getCashierSecret().trim();
-      const headers = { "Content-Type": "application/json" };
-      if (secret) headers["x-cashier-secret"] = secret;
-
-      const res = await fetch(CASH_SYNC_V1, {
-        method:"POST",
-        headers,
-        body: JSON.stringify({ cashier_id, ops }),
-      });
-
-      const txt = await res.text();
-      let data = null;
-      try{ data = JSON.parse(txt); }catch(e){ data = { raw: txt }; }
-      return { ok: res.ok, status: res.status, data };
-    }
-
-    async function syncQueue(){
-      const queue = loadQueue();
-      if (!queue.length) { alert("Черга порожня."); return; }
-
-      const cashier_id = getCashierId();
-      setSyncPill("SYNC: відправка…", "warn");
-
-      const r = await postCashSync(cashier_id, queue);
-
-      if (!r.ok){
-        const msg = (r.data && (r.data.details || r.data.error)) ? (r.data.details || r.data.error) : "unknown";
-        setSyncPill("SYNC: помилка", "bad");
-        alert("SYNC помилка: " + msg);
-        return;
-      }
-
-      const resArr = Array.isArray(r.data?.results) ? r.data.results : [];
-      const okOps = new Set(resArr.filter(x => x && x.ok === true).map(x => x.op_id));
-
-      const left = queue.filter(op => !okOps.has(op.op_id));
-      saveQueue(left);
-
-      setLastSync(Date.now());
-      setSyncPill(`SYNC: ok=${okOps.size}, left=${left.length}`, okOps.size ? "ok" : "");
-
-      const bad = resArr.filter(x=>x && x.ok !== true);
-      if (bad.length){
-        const msg = bad.slice(0,6).map(x=>`${x.op_id}: ${(x.error||x.details||"error")}`).join("\n");
-        alert("SYNC частково з помилками:\n" + msg);
-      }
-
-      await loadTakenSeatsOnline();
-      reapplyAllStatuses();
-    }
+  // 3. Печать ТОЛЬКО после полной загрузки окна
+  w.onload = () => {
+    setTimeout(() => {
+      try { w.focus(); w.print(); } catch(e){}
+    }, 300);
+  };
+}
 
     // ---- ПРОДАЖА (офлайн) ----
     async function sellAndPrintOffline(){
