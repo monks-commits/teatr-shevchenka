@@ -5,8 +5,6 @@
   <title>Друк квитків — каса</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <script src="../vendor/qrcode.min.js"></script>
-
   <style>
     body{
       margin:0;
@@ -14,26 +12,112 @@
       background:#f3f4f6;
       color:#111827;
     }
-    .wrap{max-width:980px;margin:0 auto;padding:18px 14px 60px}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:14px}
-    .title{font-weight:900;font-size:18px;margin:0 0 8px}
-    .meta{color:#6b7280;font-size:13px}
-    .btnrow{display:flex;gap:10px;margin-top:12px}
-    .btn{border:0;border-radius:12px;padding:11px 14px;font-weight:800;cursor:pointer}
-    .btn-primary{background:#2563eb;color:#fff}
-    .btn-ghost{background:#fff;border:1px solid #e5e7eb}
+    .wrap{
+      max-width:980px;
+      margin:0 auto;
+      padding:18px 14px 60px;
+    }
+    .card{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:14px;
+    }
+    .btn{
+      border:0;
+      border-radius:12px;
+      padding:11px 14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .btn-primary{ background:#2563eb; color:#fff; }
 
-    @page{size:80mm 200mm;margin:5mm}
+    @page { size: 80mm 200mm; margin: 5mm; }
 
+    .print-area{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
     .ticket{
       width:260px;
-      border:1px solid #e5e7eb;
-      padding:12px;
-      margin-bottom:10px;
-      page-break-after:always;
+      padding:14px;
+      border-bottom:1px dashed #d1d5db;
     }
-    .t-title{font-weight:900;font-size:13px;text-transform:uppercase}
-    .t-row{font-size:11px;margin-top:6px}
-    .qr{margin-top:8px;display:flex;justify-content:center}
-    .qr canvas{width:110px;height:110px}
-    .warn{font-size
+    .title{ font-size:13px; font-weight:900; text-transform:uppercase; }
+    .row{ font-size:11px; margin-top:4px; }
+    .qr{ margin-top:10px; display:flex; justify-content:center; }
+    canvas{ width:110px; height:110px; }
+
+    @media print{
+      body{ background:#fff; }
+      .no-print{ display:none; }
+      .wrap{ padding:0; }
+    }
+  </style>
+
+  <script src="../vendor/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card no-print">
+      <button class="btn btn-primary" onclick="window.print()">Друкувати</button>
+    </div>
+
+    <div class="print-area" id="printArea"></div>
+  </div>
+
+  <script>
+    function b64DecodeUnicode(str){
+      try{ return decodeURIComponent(escape(atob(str))); }
+      catch(e){ return ''; }
+    }
+
+    function getData(){
+      const qs = new URLSearchParams(location.search);
+      const enc = qs.get('data');
+      if(!enc) return null;
+      try{
+        return JSON.parse(b64DecodeUnicode(enc));
+      }catch(e){ return null; }
+    }
+
+    function render(){
+      const payload = getData();
+      const area = document.getElementById('printArea');
+
+      if(!payload || !Array.isArray(payload.items)) return;
+
+      payload.items.forEach(it=>{
+        if(!it.qr_payload){
+          area.innerHTML += `<div class="ticket">
+            <div class="row">QR не згенеровано</div>
+          </div>`;
+          return;
+        }
+
+        const t = document.createElement('div');
+        t.className = 'ticket';
+
+        t.innerHTML = `
+          <div class="title">${payload.show?.title || ''}</div>
+          <div class="row">Місце: ${it.seat}</div>
+          <div class="row">Ціна: ${it.price} грн</div>
+          <div class="row">Канал: Каса</div>
+          <div class="qr"></div>
+        `;
+
+        area.appendChild(t);
+
+        const qrBox = t.querySelector('.qr');
+        QRCode.toCanvas(it.qr_payload, { width:110, margin:1 }, (e, c)=>{
+          if(!e) qrBox.appendChild(c);
+        });
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
