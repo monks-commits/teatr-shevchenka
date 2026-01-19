@@ -11,6 +11,22 @@
   let currency = "грн";
 
   let basket = []; // [{key,label,price}]
+  // === receive basket from hall-cash ===
+window.addEventListener("message", (event) => {
+  const msg = event.data;
+  if (!msg || msg.source !== "hall-cash") return;
+
+  if (msg.type === "basket" && Array.isArray(msg.payload)) {
+    basket = msg.payload.map(it => ({
+      key: it.key,
+      label: it.label || it.key,
+      price: Number(it.price || 0)
+    }));
+
+    syncUI(); // ОБЯЗАТЕЛЬНО
+  }
+});
+
   let ops = [];
   let zoom = 1;
 
