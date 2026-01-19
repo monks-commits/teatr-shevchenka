@@ -615,11 +615,7 @@
     qs("#btnZoomIn")?.addEventListener("click", () => setZoom(zoom + 0.05));
     qs("#btnZoomOut")?.addEventListener("click", () => setZoom(zoom - 0.05));
 
-    qs("#btnSell")?.addEventListener("click", sell);
-    qs("#btnReserve")?.addEventListener("click", reserve);
-    qs("#btnRealize")?.addEventListener("click", realize);
-    qs("#btnInvite")?.addEventListener("click", invite);
-    qs("#btnClearBasket")?.addEventListener("click", clearBasket);
+    
 
     qs("#btnExportStateJson")?.addEventListener("click", exportStateJson);
     qs("#btnExportSalesCsv")?.addEventListener("click", exportSalesCsv);
