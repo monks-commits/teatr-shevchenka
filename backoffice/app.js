@@ -215,7 +215,7 @@
     qs("#tabs")?.addEventListener("click", e => {
       const b = e.target.closest(".tabbtn");
       if (!b) return;
-      setTab(b.dataset.tab);
+      setTab(b.dataset.tab); 
     });
   }
 
