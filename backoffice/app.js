@@ -244,8 +244,6 @@ window.addEventListener("message", (ev) => {
   }
 });
 
-});
-
   
 })();
 
