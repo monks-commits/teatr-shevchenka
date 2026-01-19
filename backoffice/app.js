@@ -223,10 +223,7 @@
     syncUI();
   }
 
-  function sell() { applyToBasket("sold"); }
-  function reserve() { applyToBasket("reserved"); }
-  function realize() { applyToBasket("realization"); }
-  function invite() { applyToBasket("invite"); }
+  
 
   function exportStateJson() {
     if (!current) { alert("Оберіть сеанс."); return; }
