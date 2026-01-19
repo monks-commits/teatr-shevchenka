@@ -180,6 +180,8 @@ function exportBasketToParent(){
     }
     renderBasket();
     renderHall(); // чтобы покрасить места
+    exportBasketToParent();
+
   }
 
   function clearBasket(){
