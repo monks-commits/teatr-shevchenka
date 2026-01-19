@@ -194,35 +194,7 @@
   // -------------------- actions --------------------
   function clearBasket() { basket = []; syncUI(); }
 
-  function applyToBasket(status) {
-    if (!current) { alert("Оберіть сеанс."); return; }
-    if (!basket.length) return;
-
-    const seatKeys = basket.map(x => x.key);
-    const total = totalBasket();
-    const showLabel = `${current.title} — ${current.date} ${current.time}`;
-
-    ops.push({
-      ts: nowIso(),
-      tsHuman: fmtDT(Date.now()),
-      action: humanActionName(status),
-      status,
-      showId: current.id,
-      showLabel,
-      count: seatKeys.length,
-      total,
-      currency,
-      seats: seatKeys
-    });
-    saveOps();
-
-    // отправим действие в hall-cash (если он поддерживает)
-    postToCash("apply_status", { status, seats: seatKeys, show: current });
-
-    clearBasket();
-    syncUI();
-  }
-
+ 
   
 
   function exportStateJson() {
