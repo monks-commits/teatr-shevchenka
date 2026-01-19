@@ -685,7 +685,7 @@
       if(!b) return;
       setTab(b.dataset.tab);
       if(b.dataset.tab === "clients") renderClients();
-      if(b.dataset.tab === "orders") renderOrders();
+      if(b.dataset.tab === "orders") renderOrders(); 
     });
   }
 
