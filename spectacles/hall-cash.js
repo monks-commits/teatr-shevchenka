@@ -205,6 +205,8 @@ function exportBasketToParent(){
     basket = [];
     renderBasket();
     renderHall();
+    exportBasketToParent();
+
   }
 
   // ---------- render ----------
