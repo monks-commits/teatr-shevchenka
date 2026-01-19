@@ -193,6 +193,8 @@ function exportBasketToParent(){
     basket = [];
     renderBasket();
     renderHall();
+    exportBasketToParent();
+
   }
 
   function applyBasketStatus(toStatus){
