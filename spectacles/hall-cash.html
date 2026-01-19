@@ -1262,6 +1262,40 @@
       renderCashLog();
     })();
   </script>
+  <script>
+/* === BACKOFFICE SYNC === */
+(function () {
+  // хранилище выбранных мест (hall-cash уже его использует)
+  // если у тебя другое имя — скажи, подстрою
+  function collectBasket() {
+    if (!window.CASH || !Array.isArray(window.CASH.basket)) return [];
+    return window.CASH.basket.map(s => ({
+      key: s.key || s.seat || s.id,
+      label: s.label || s.title || s.key,
+      price: Number(s.price || 0)
+    }));
+  }
+
+  function sendBasketToParent() {
+    if (window.parent === window) return;
+
+    const basket = collectBasket();
+
+    window.parent.postMessage({
+      source: "hall-cash",
+      type: "basket",
+      payload: basket
+    }, "*");
+  }
+
+  // 👉 дергаем каждый раз, когда меняется выбор
+  document.addEventListener("click", () => {
+    sendBasketToParent();
+  });
+
+})();
+</script>
+
 </body>
 </html>
 
