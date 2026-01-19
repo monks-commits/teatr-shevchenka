@@ -517,6 +517,22 @@ ${pages}
 
   searchBox.addEventListener("change", applySearch);
   searchBox.addEventListener("keydown",(e)=>{ if(e.key==="Enter") applySearch(); });
+  function sendBasketToParent() {
+  if (window.parent === window) return;
+
+  const payload = basket.map(x => ({
+    key: x.key,
+    label: x.label,
+    price: x.price
+  }));
+
+  window.parent.postMessage({
+    source: "hall-cash",
+    type: "basket",
+    payload
+  }, "*");
+}
+
 
   // ---------- boot ----------
   (async function init(){
