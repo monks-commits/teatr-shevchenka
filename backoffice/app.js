@@ -123,6 +123,42 @@
 
   function sell(){ applyToBasket("sold"); }
   function reserve(){ applyToBasket("reserved"); }
+  function takeQuota(){
+  if(!current){
+    alert("Оберіть сеанс.");
+    return;
+  }
+  if(!basket.length){
+    alert("Кошик порожній.");
+    return;
+  }
+
+  ops.push({
+    ts: nowIso(),
+    tsHuman: fmtDT(Date.now()),
+    action: "КВОТА",
+    status: "quota",
+    showId: current.id,
+    showLabel: `${current.title} — ${current.date} ${current.time}`,
+    count: basket.length,
+    total: totalBasket(),
+    currency,
+    seats: basket.map(x => x.key),
+    payment: "cashless",
+    document: "invoice"
+  });
+
+  // сообщаем hall-cash
+  postToCash("apply_status", {
+    status: "quota",
+    seats: basket.map(x => x.key),
+    show: current
+  });
+
+  basket = [];
+  syncUI();
+}
+
 
   // -------------------- data loading --------------------
   async function loadSettings(){
