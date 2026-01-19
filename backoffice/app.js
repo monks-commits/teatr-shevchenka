@@ -233,4 +233,19 @@
   }
 
   document.addEventListener("DOMContentLoaded", init);
+// === RECEIVE BASKET FROM hall-cash (iframe) ===
+window.addEventListener("message", (ev) => {
+  const msg = ev.data || {};
+  if (msg.source !== "hall-cash") return;
+
+  if (msg.type === "basket") {
+    basket = Array.isArray(msg.payload) ? msg.payload : [];
+    syncUI();
+  }
+});
+
+});
+
+  
 })();
+
