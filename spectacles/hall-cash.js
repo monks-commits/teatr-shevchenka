@@ -24,6 +24,21 @@
   let SEANCE = null;
   let currentKey = "";      // show|date|time
   let basket = [];          // [{key,row,seat,label,price,zone}]
+  // === BACKOFFICE BRIDGE ===
+function exportBasketToParent(){
+  if (window.parent === window) return;
+
+  window.parent.postMessage({
+    source: "hall-cash",
+    type: "basket",
+    payload: basket.map(x => ({
+      key: x.key,
+      label: x.label,
+      price: Number(x.price || 0)
+    }))
+  }, "*");
+}
+
   let localPatch = {};      // { "1-1": {status:"reserved"} ... } only for this seance
 
   // ---------- helpers ----------
