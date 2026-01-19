@@ -173,6 +173,8 @@
     qs("#btnFit")?.addEventListener("click", fitIframeToWrap);
     qs("#btnZoomIn")?.addEventListener("click", ()=>setZoom(zoom+0.05));
     qs("#btnZoomOut")?.addEventListener("click", ()=>setZoom(zoom-0.05));
+    qs("#btnQuota")?.addEventListener("click", takeQuota);
+
   }
 
   // -------------------- init --------------------
