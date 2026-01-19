@@ -2,248 +2,188 @@
   const { qs, qsa, nowIso, fmtDT, downloadText, toCsv, fetchJson } = window.BO_UTILS;
   const { setText, renderBasket, renderOps } = window.BO_UI;
 
-  const LS_PREFIX = "bo_v3_";
+  const LS_PREFIX = "bo_v2_";
 
-  let SETTINGS = {};
+  let SETTINGS = { theatre: {}, pricing_defaults: {} };
   let AFISHA = [];
   let current = null;
   let seance = null;
   let currency = "грн";
 
-  // локальное состояние
   let basket = []; // [{key,label,price}]
   let ops = [];
   let zoom = 1;
 
-  /* -------------------- helpers -------------------- */
-
+  // -------------------- localStorage helpers --------------------
   function lsKey(name) {
     const showKey = current ? `${current.id}_${current.date}` : "no_show";
     return `${LS_PREFIX}${name}_${showKey}`;
   }
 
-  function totalBasket() {
-    return basket.reduce((s, i) => s + Number(i.price || 0), 0);
+  // -------------------- iframe helpers --------------------
+  function cashFrameEl(){ return qs("#cashFrame"); }
+  function cashHintEl(){ return qs("#cashHint"); }
+  function hallWrapEl(){ return qs("#hallWrap"); }
+
+  function setCashVisible(yes){
+    const fr = cashFrameEl();
+    const hint = cashHintEl();
+    if(fr) fr.style.display = yes ? "block" : "none";
+    if(hint) hint.style.display = yes ? "none" : "flex";
   }
 
-  function humanActionName(status) {
-    if (status === "quota") return "КВОТА";
-    return status;
-  }
-
-  /* -------------------- iframe / hall-cash -------------------- */
-
-  function cashFrame() { return qs("#cashFrame"); }
-  function cashHint() { return qs("#cashHint"); }
-
-  function setCashVisible(v) {
-    if (cashFrame()) cashFrame().style.display = v ? "block" : "none";
-    if (cashHint()) cashHint().style.display = v ? "none" : "flex";
-  }
-
-  function buildCashUrl(show) {
+  function buildCashUrl(show){
     const base = "../spectacles/hall-cash.html";
-    const url = new URL(base, location.href);
+    const url = new URL(base, window.location.href);
     url.searchParams.set("show", show.id);
-    url.searchParams.set("embed", "1"); // ❗ убираем кассовые кнопки
+    if (show.date) url.searchParams.set("date", show.date);
+    url.searchParams.set("embed", "1");
     return url.toString();
   }
 
-  function postToCash(type, payload) {
-    const fr = cashFrame();
-    if (!fr || !fr.contentWindow) return;
-    fr.contentWindow.postMessage(
-      { source: "backoffice", type, payload },
-      "*"
-    );
-  }
-
-  function openCash(show) {
-    const fr = cashFrame();
-    if (!fr) return;
+  function openCash(show){
+    const fr = cashFrameEl();
+    if(!fr || !show) return;
     fr.src = buildCashUrl(show);
     setCashVisible(true);
+    fr.onload = () => setTimeout(fitIframeToWrap, 80);
   }
 
-  /* -------------------- ops -------------------- */
-
-  function loadOps() {
-    try {
-      ops = JSON.parse(localStorage.getItem(lsKey("ops"))) || [];
-    } catch {
-      ops = [];
-    }
+  function fitIframeToWrap(){
+    const fr = cashFrameEl();
+    const wrap = hallWrapEl();
+    if(!fr || !wrap) return;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    const scale = Math.min(1, w / 1200, h / 800);
+    setZoom(scale);
   }
 
-  function saveOps() {
-    localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
+  function setZoom(v){
+    zoom = Math.max(0.55, Math.min(1, v));
+    const fr = cashFrameEl();
+    if(fr) fr.style.zoom = String(zoom);
   }
 
-  /* -------------------- UI sync -------------------- */
+  // -------------------- UI sync --------------------
+  function totalBasket(){
+    return basket.reduce((s,x)=>s+(Number(x.price)||0),0);
+  }
 
-  function syncUI() {
+  function syncUI(){
     setText("#basketTotal", totalBasket());
     renderBasket(qs("#basketList"), basket, currency);
+    setText("#basketMeta", basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.");
     renderOps(qs("#opsList"), ops);
   }
 
-  /* -------------------- ACTION: QUOTA -------------------- */
+  // -------------------- iframe → backoffice (КЛЮЧЕВОЕ) --------------------
+  function normalizeBasketItems(arr){
+    if(!Array.isArray(arr)) return [];
+    return arr.map(x => ({
+      key: String(x?.key ?? "").trim(),
+      label: String(x?.label ?? "").trim(),
+      price: Number(x?.price ?? 0) || 0
+    })).filter(x => x.key);
+  }
 
-  function applyQuota() {
-    if (!current) {
-      alert("Оберіть сеанс.");
-      return;
+  window.addEventListener("message", (ev) => {
+    const msg = ev?.data;
+    if(!msg || msg.source !== "hall-cash") return;
+
+    if(msg.type === "basket"){
+      basket = normalizeBasketItems(msg.payload);
+      syncUI();
     }
-    if (!basket.length) return;
+  });
 
-    const seats = basket.map(x => x.key);
+  // -------------------- actions --------------------
+  function clearBasket(){
+    basket = [];
+    syncUI();
+  }
+
+  function applyToBasket(status){
+    if(!current || !basket.length) return;
 
     ops.push({
       ts: nowIso(),
       tsHuman: fmtDT(Date.now()),
-      action: "КВОТА",
-      status: "quota",
+      action: status,
       showId: current.id,
-      showLabel: `${current.title} — ${current.date} ${current.time}`,
-      count: seats.length,
+      count: basket.length,
       total: totalBasket(),
       currency,
-      seats
-    });
-
-    saveOps();
-
-    // ❗ передаём ТОЛЬКО квоту
-    postToCash("apply_status", {
-      status: "quota",
-      seats
+      seats: basket.map(x=>x.key)
     });
 
     basket = [];
     syncUI();
   }
 
-  /* -------------------- data loading -------------------- */
+  function sell(){ applyToBasket("sold"); }
+  function reserve(){ applyToBasket("reserved"); }
 
-  async function loadSettings() {
-    SETTINGS = await fetchJson("../data/settings.json").catch(() => ({}));
+  // -------------------- data loading --------------------
+  async function loadSettings(){
+    SETTINGS = await fetchJson("../data/settings.json");
     currency = SETTINGS?.theatre?.currency || "грн";
-    setText(
-      "#boTitle",
-      SETTINGS?.theatre?.name
-        ? `Білетний відділ — ${SETTINGS.theatre.name}`
-        : "Білетний відділ"
-    );
+    setText("#boTitle", SETTINGS?.theatre?.name
+      ? `Білетний відділ — ${SETTINGS.theatre.name}`
+      : "Білетний відділ");
   }
 
-  async function loadAfisha() {
-    AFISHA = await fetchJson("../data/afisha.json").catch(() => []);
+  async function loadAfisha(){
+    AFISHA = await fetchJson("../data/afisha.json");
   }
 
-  function fillShowSelect() {
+  function fillShowSelect(){
     const sel = qs("#showSelect");
-    if (!sel) return;
-
-    sel.innerHTML = `<option value="">— обрати —</option>`;
-    AFISHA.forEach(s => {
+    sel.innerHTML = '<option value="">— обрати —</option>';
+    AFISHA.forEach(s=>{
       const o = document.createElement("option");
       o.value = `${s.id}__${s.date}`;
       o.textContent = `${s.title} — ${s.date} ${s.time}`;
       sel.appendChild(o);
     });
 
-    sel.addEventListener("change", () => {
-      if (!sel.value) {
+    sel.addEventListener("change", async ()=>{
+      const v = sel.value;
+      if(!v){
         current = null;
         setCashVisible(false);
-        basket = [];
-        ops = [];
+        basket=[];
         syncUI();
         return;
       }
-      const [id, date] = sel.value.split("__");
-      current = AFISHA.find(x => x.id === id && x.date === date);
-      loadOps();
-      basket = [];
+      const [id,date] = v.split("__");
+      current = AFISHA.find(x=>x.id===id && x.date===date);
+      setText("#seanceMeta", `${current.title} • ${current.date} ${current.time}`);
+      basket=[];
       syncUI();
       openCash(current);
     });
   }
 
-  /* -------------------- toolbar -------------------- */
-
-  function initToolbar() {
-    qs("#btnQuota")?.addEventListener("click", applyQuota);
-    qs("#btnClearBasket")?.addEventListener("click", () => {
-      basket = [];
-      syncUI();
-    });
-
-    qs("#seatSearch")?.addEventListener("keydown", e => {
-      if (e.key !== "Enter") return;
-      const key = e.target.value.trim();
-      if (!key) return;
-      postToCash("seat_search", { key });
-    });
+  // -------------------- toolbar --------------------
+  function initToolbar(){
+    qs("#btnSell")?.addEventListener("click", sell);
+    qs("#btnReserve")?.addEventListener("click", reserve);
+    qs("#btnClearBasket")?.addEventListener("click", clearBasket);
+    qs("#btnFit")?.addEventListener("click", fitIframeToWrap);
+    qs("#btnZoomIn")?.addEventListener("click", ()=>setZoom(zoom+0.05));
+    qs("#btnZoomOut")?.addEventListener("click", ()=>setZoom(zoom-0.05));
   }
 
-  /* -------------------- basket from iframe -------------------- */
-  // hall-cash сам отправляет выбранные места
-
-  window.addEventListener("message", ev => {
-    const msg = ev.data;
-    if (!msg || msg.source !== "hall-cash") return;
-
-    if (msg.type === "basket") {
-      basket = msg.payload || [];
-      syncUI();
-    }
-  });
-
-  /* -------------------- tabs -------------------- */
-
-  function setTab(name) {
-    qsa("#tabs .tabbtn").forEach(b =>
-      b.classList.toggle("active", b.dataset.tab === name)
-    );
-    qsa("[data-pane]").forEach(p =>
-      p.hidden = p.dataset.pane !== name
-    );
-  }
-
-  function initTabs() {
-    qs("#tabs")?.addEventListener("click", e => {
-      const b = e.target.closest(".tabbtn");
-      if (!b) return;
-      setTab(b.dataset.tab); 
-    });
-  }
-
-  /* -------------------- boot -------------------- */
-
-  async function init() {
-    initTabs();
+  // -------------------- init --------------------
+  async function init(){
     initToolbar();
     await loadSettings();
     await loadAfisha();
     fillShowSelect();
     setCashVisible(false);
     syncUI();
-    setTab("events");
   }
 
   document.addEventListener("DOMContentLoaded", init);
-// === RECEIVE BASKET FROM hall-cash (iframe) ===
-window.addEventListener("message", (ev) => {
-  const msg = ev.data || {};
-  if (msg.source !== "hall-cash") return;
-
-  if (msg.type === "basket") {
-    basket = Array.isArray(msg.payload) ? msg.payload : [];
-    syncUI();
-  }
-});
-
-  
 })();
-
