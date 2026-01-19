@@ -2,153 +2,234 @@
   const { qs, qsa, nowIso, fmtDT, downloadText, toCsv, fetchJson } = window.BO_UTILS;
   const { setText, renderBasket, renderOps } = window.BO_UI;
 
-  const LS_PREFIX = "bo_v2_";
+  const LS_PREFIX = "bo_v3_";
 
-  let SETTINGS = { theatre: {}, pricing_defaults: {} };
+  let SETTINGS = {};
   let AFISHA = [];
   let current = null;
   let seance = null;
   let currency = "грн";
 
-  let basket = [];   // приходит ТОЛЬКО из hall-cash
+  // локальное состояние
+  let basket = []; // [{key,label,price}]
   let ops = [];
   let zoom = 1;
 
-  let CLIENTS = [];
-  let ORDERS = [];
-
-  /* ---------------- storage ---------------- */
+  /* -------------------- helpers -------------------- */
 
   function lsKey(name) {
     const showKey = current ? `${current.id}_${current.date}` : "no_show";
     return `${LS_PREFIX}${name}_${showKey}`;
   }
-  function lsKeyGlobal(name){
-    return `${LS_PREFIX}${name}_global`;
+
+  function totalBasket() {
+    return basket.reduce((s, i) => s + Number(i.price || 0), 0);
   }
 
-  /* ---------------- iframe ---------------- */
-
-  function cashFrame(){ return qs("#cashFrame"); }
-  function cashHint(){ return qs("#cashHint"); }
-  function hallWrap(){ return qs("#hallWrap"); }
-
-  function setCashVisible(on){
-    if(cashFrame()) cashFrame().style.display = on ? "block" : "none";
-    if(cashHint()) cashHint().style.display = on ? "none" : "flex";
+  function humanActionName(status) {
+    if (status === "quota") return "КВОТА";
+    return status;
   }
 
-  function buildCashUrl(show){
-    const url = new URL("../spectacles/hall-cash.html", location.href);
+  /* -------------------- iframe / hall-cash -------------------- */
+
+  function cashFrame() { return qs("#cashFrame"); }
+  function cashHint() { return qs("#cashHint"); }
+
+  function setCashVisible(v) {
+    if (cashFrame()) cashFrame().style.display = v ? "block" : "none";
+    if (cashHint()) cashHint().style.display = v ? "none" : "flex";
+  }
+
+  function buildCashUrl(show) {
+    const base = "../spectacles/hall-cash.html";
+    const url = new URL(base, location.href);
     url.searchParams.set("show", show.id);
-    if(show.date) url.searchParams.set("date", show.date);
-    url.searchParams.set("embed", "1");
+    url.searchParams.set("embed", "1"); // ❗ убираем кассовые кнопки
     return url.toString();
   }
 
-  function openCash(show){
+  function postToCash(type, payload) {
     const fr = cashFrame();
-    if(!fr) return;
+    if (!fr || !fr.contentWindow) return;
+    fr.contentWindow.postMessage(
+      { source: "backoffice", type, payload },
+      "*"
+    );
+  }
+
+  function openCash(show) {
+    const fr = cashFrame();
+    if (!fr) return;
     fr.src = buildCashUrl(show);
     setCashVisible(true);
-    fr.onload = () => setTimeout(fitIframeToWrap, 80);
   }
 
-  function fitIframeToWrap(){
-    const fr = cashFrame(), wrap = hallWrap();
-    if(!fr || !wrap) return;
-    const w = wrap.clientWidth, h = wrap.clientHeight;
-    if(!w || !h) return;
-    const scale = Math.min(1, w / 1200, h / 900);
-    zoom = Math.max(0.55, scale);
-    fr.style.zoom = String(zoom);
+  /* -------------------- ops -------------------- */
+
+  function loadOps() {
+    try {
+      ops = JSON.parse(localStorage.getItem(lsKey("ops"))) || [];
+    } catch {
+      ops = [];
+    }
   }
 
-  /* ---------------- UI sync ---------------- */
+  function saveOps() {
+    localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
+  }
 
-  function syncUI(){
-    qs("#basketTotal").textContent = basket.reduce((s,i)=>s+Number(i.price||0),0);
+  /* -------------------- UI sync -------------------- */
+
+  function syncUI() {
+    setText("#basketTotal", totalBasket());
     renderBasket(qs("#basketList"), basket, currency);
-    qs("#basketMeta").textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
     renderOps(qs("#opsList"), ops);
   }
 
-  /* ---------------- messages from hall-cash ---------------- */
+  /* -------------------- ACTION: QUOTA -------------------- */
 
-  window.addEventListener("message", (e) => {
-    const msg = e.data;
-    if(!msg || msg.source !== "hall-cash") return;
-
-    if(msg.type === "basket:update"){
-      basket = Array.isArray(msg.payload?.items) ? msg.payload.items : [];
-      syncUI();
+  function applyQuota() {
+    if (!current) {
+      alert("Оберіть сеанс.");
+      return;
     }
+    if (!basket.length) return;
 
-    if(msg.type === "sale:done"){
-      ops.push({
-        ts: nowIso(),
-        tsHuman: fmtDT(Date.now()),
-        action: msg.payload.status,
-        status: msg.payload.status,
-        showId: current?.id,
-        showLabel: current ? `${current.title} — ${current.date} ${current.time}` : "",
-        count: (msg.payload.seats||[]).length,
-        total: msg.payload.total || 0,
-        currency,
-        seats: msg.payload.seats || []
-      });
-      localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
-      basket = [];
-      syncUI();
-    }
-  });
+    const seats = basket.map(x => x.key);
 
-  /* ---------------- data ---------------- */
+    ops.push({
+      ts: nowIso(),
+      tsHuman: fmtDT(Date.now()),
+      action: "КВОТА",
+      status: "quota",
+      showId: current.id,
+      showLabel: `${current.title} — ${current.date} ${current.time}`,
+      count: seats.length,
+      total: totalBasket(),
+      currency,
+      seats
+    });
 
-  async function loadSettings(){
-    SETTINGS = await fetchJson("../data/settings.json");
+    saveOps();
+
+    // ❗ передаём ТОЛЬКО квоту
+    postToCash("apply_status", {
+      status: "quota",
+      seats
+    });
+
+    basket = [];
+    syncUI();
+  }
+
+  /* -------------------- data loading -------------------- */
+
+  async function loadSettings() {
+    SETTINGS = await fetchJson("../data/settings.json").catch(() => ({}));
     currency = SETTINGS?.theatre?.currency || "грн";
-    setText("#boTitle", `Білетний відділ — ${SETTINGS?.theatre?.name || ""}`);
+    setText(
+      "#boTitle",
+      SETTINGS?.theatre?.name
+        ? `Білетний відділ — ${SETTINGS.theatre.name}`
+        : "Білетний відділ"
+    );
   }
 
-  async function loadAfisha(){
-    AFISHA = await fetchJson("../data/afisha.json");
+  async function loadAfisha() {
+    AFISHA = await fetchJson("../data/afisha.json").catch(() => []);
   }
 
-  function fillShowSelect(){
+  function fillShowSelect() {
     const sel = qs("#showSelect");
-    sel.innerHTML = '<option value="">— обрати —</option>';
-    AFISHA.forEach(s=>{
+    if (!sel) return;
+
+    sel.innerHTML = `<option value="">— обрати —</option>`;
+    AFISHA.forEach(s => {
       const o = document.createElement("option");
       o.value = `${s.id}__${s.date}`;
       o.textContent = `${s.title} — ${s.date} ${s.time}`;
       sel.appendChild(o);
     });
 
-    sel.onchange = async ()=>{
-      if(!sel.value){
+    sel.addEventListener("change", () => {
+      if (!sel.value) {
         current = null;
         setCashVisible(false);
-        basket=[]; ops=[];
+        basket = [];
+        ops = [];
         syncUI();
         return;
       }
-      const [id,date] = sel.value.split("__");
-      current = AFISHA.find(x=>x.id===id && x.date===date);
-      ops = JSON.parse(localStorage.getItem(lsKey("ops"))||"[]");
+      const [id, date] = sel.value.split("__");
+      current = AFISHA.find(x => x.id === id && x.date === date);
+      loadOps();
+      basket = [];
       syncUI();
       openCash(current);
-    };
+    });
   }
 
-  /* ---------------- init ---------------- */
+  /* -------------------- toolbar -------------------- */
 
-  async function init(){
+  function initToolbar() {
+    qs("#btnQuota")?.addEventListener("click", applyQuota);
+    qs("#btnClearBasket")?.addEventListener("click", () => {
+      basket = [];
+      syncUI();
+    });
+
+    qs("#seatSearch")?.addEventListener("keydown", e => {
+      if (e.key !== "Enter") return;
+      const key = e.target.value.trim();
+      if (!key) return;
+      postToCash("seat_search", { key });
+    });
+  }
+
+  /* -------------------- basket from iframe -------------------- */
+  // hall-cash сам отправляет выбранные места
+
+  window.addEventListener("message", ev => {
+    const msg = ev.data;
+    if (!msg || msg.source !== "hall-cash") return;
+
+    if (msg.type === "basket") {
+      basket = msg.payload || [];
+      syncUI();
+    }
+  });
+
+  /* -------------------- tabs -------------------- */
+
+  function setTab(name) {
+    qsa("#tabs .tabbtn").forEach(b =>
+      b.classList.toggle("active", b.dataset.tab === name)
+    );
+    qsa("[data-pane]").forEach(p =>
+      p.hidden = p.dataset.pane !== name
+    );
+  }
+
+  function initTabs() {
+    qs("#tabs")?.addEventListener("click", e => {
+      const b = e.target.closest(".tabbtn");
+      if (!b) return;
+      setTab(b.dataset.tab);
+    });
+  }
+
+  /* -------------------- boot -------------------- */
+
+  async function init() {
+    initTabs();
+    initToolbar();
     await loadSettings();
     await loadAfisha();
     fillShowSelect();
     setCashVisible(false);
     syncUI();
+    setTab("events");
   }
 
   document.addEventListener("DOMContentLoaded", init);
