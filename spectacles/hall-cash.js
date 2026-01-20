@@ -73,7 +73,7 @@
 
     renderBasket();
     renderHall();
-    notifyParentBasket();
+    sendBasketToParent(); // ← ВАЖНО
   }
 
   function clearBasket() {
