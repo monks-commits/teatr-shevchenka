@@ -12,7 +12,6 @@ async function loadSales() {
   const { data, error } = await supabase
     .from("orders")
     .select(`
-      id,
       order_id,
       created_at,
       show_slug,
@@ -33,24 +32,26 @@ async function loadSales() {
   const tbody = document.querySelector("#sales-table tbody");
   tbody.innerHTML = "";
 
-  for (const order of data) {
-    // считаем количество билетов по order_id
-    const { count } = await supabase
-      .from("tickets")
-      .select("*", { count: "exact", head: true })
-      .eq("order_id", order.order_id);
-
+  if (!data || data.length === 0) {
     const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td colspan="6" style="text-align:center;color:#666;">
+        Поки що немає продажів
+      </td>
+    `;
+    tbody.appendChild(tr);
+    return;
+  }
 
+  for (const order of data) {
     const isInvite = Number(order.amount) === 0;
 
+    const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${new Date(order.created_at).toLocaleString()}</td>
       <td>${order.seance_id || order.show_slug || "—"}</td>
-      <td>${count || 0}</td>
-      <td class="money ${isInvite ? "zero" : ""}">
-        ${order.amount} ₴
-      </td>
+      <td>—</td>
+      <td>${order.amount} ₴</td>
       <td>${isInvite ? "Запрошення" : "Продаж"}</td>
       <td>${order.status}</td>
     `;
