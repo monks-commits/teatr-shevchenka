@@ -6,87 +6,144 @@
 
   let SETTINGS = { theatre: {}, pricing_defaults: {} };
   let AFISHA = [];
-  let current = null;
-  let seance = null;
+  let current = null; // {id,title,date,time,...}
+  let seance = null;  // data/seances/*.json
   let currency = "грн";
 
-  // ===== STATE =====
+  // local state (корзина/журнал/клиенты/заказы локально)
   let basket = []; // [{key,label,price}]
   let ops = [];
   let zoom = 1;
 
-  // ===== localStorage helpers =====
+  // clients/orders local db
+  let CLIENTS = []; // [{id,name,email,phone,type,note,created_at}]
+  let ORDERS  = []; // [{id,status,client,amount,seats,created_at}]
+
+  // -------------------- localStorage keys --------------------
   function lsKey(name) {
     const showKey = current ? `${current.id}_${current.date}` : "no_show";
     return `${LS_PREFIX}${name}_${showKey}`;
   }
-
-  // ===== iframe helpers =====
-  const cashFrameEl = () => qs("#cashFrame");
-  const cashHintEl = () => qs("#cashHint");
-  const hallWrapEl = () => qs("#hallWrap");
-
-  function setCashVisible(v) {
-    if (cashFrameEl()) cashFrameEl().style.display = v ? "block" : "none";
-    if (cashHintEl()) cashHintEl().style.display = v ? "none" : "flex";
+  function lsKeyGlobal(name){
+    return `${LS_PREFIX}${name}_global`;
   }
 
-  function buildCashUrl(show) {
-    const base = "../spectacles/hall-cash.html";
-    const url = new URL(base, window.location.href);
-    url.searchParams.set("show", show.id);
-    if (show.date) url.searchParams.set("date", show.date);
-    url.searchParams.set("embed", "1");
-    return url.toString();
-  }
+  // -------------------- iframe helpers --------------------
+  function cashFrameEl(){ return qs("#cashFrame"); }
+  function cashHintEl(){ return qs("#cashHint"); }
+  function hallWrapEl(){ return qs("#hallWrap"); }
 
-  function openCash(show) {
+  function setCashVisible(yes){
     const fr = cashFrameEl();
-    if (!fr) return;
-    fr.src = buildCashUrl(show);
-    setCashVisible(true);
-    fr.onload = () => setTimeout(fitIframeToWrap, 100);
+    const hint = cashHintEl();
+    if(fr) fr.style.display = yes ? "block" : "none";
+    if(hint) hint.style.display = yes ? "none" : "flex";
   }
 
-  function fitIframeToWrap() {
+  function buildCashUrl(show){
+  const base = "../spectacles/hall-cash.html";
+  const url = new URL(base, window.location.href);
+  url.searchParams.set("show", show.id);
+  if (show.date) url.searchParams.set("date", show.date);
+
+  // ВАЖНО: режим "встроено в backoffice" — без дубля кнопок в hall-cash
+  url.searchParams.set("embed", "1");
+
+  return url.toString();
+}
+
+  function postToCash(type, payload){
+    const fr = cashFrameEl();
+    if(!fr || !fr.contentWindow) return;
+    fr.contentWindow.postMessage({ source: "backoffice", type, payload }, "*");
+  }
+
+  // Автоподгон масштаба: хотим, чтобы iframe влезал в hallWrap целиком
+  function fitIframeToWrap(){
     const fr = cashFrameEl();
     const wrap = hallWrapEl();
-    if (!fr || !wrap) return;
+    if(!fr || !wrap) return;
 
+    // размеры контейнера на странице
     const w = wrap.clientWidth;
     const h = wrap.clientHeight;
+    if(!w || !h) return;
 
-    let cw = 1200, ch = 800;
-    try {
-      const d = fr.contentWindow.document.documentElement;
-      cw = d.scrollWidth || cw;
-      ch = d.scrollHeight || ch;
-    } catch {}
+    // размеры контента iframe (same-origin, должен читаться)
+    let contentW = 1200;
+    let contentH = 800;
 
-    zoom = Math.min(1, w / cw, h / ch);
-    fr.style.zoom = zoom;
+    try{
+      const doc = fr.contentWindow && fr.contentWindow.document;
+      if(doc){
+        const de = doc.documentElement;
+        contentW = Math.max(800, de.scrollWidth || de.clientWidth || 1200);
+        contentH = Math.max(600, de.scrollHeight || de.clientHeight || 800);
+      }
+    }catch(e){
+      // если по какой-то причине не читается — остаёмся на дефолтах
+    }
+
+    // считаем масштаб, но НЕ увеличиваем выше 1.0 (чтобы не распухало)
+    const scale = Math.min(1, w / contentW, h / contentH);
+    setZoom(scale);
   }
 
-  // ===== RECEIVE BASKET FROM hall-cash =====
-  window.addEventListener("message", (e) => {
-  const msg = e.data;
-  if (!msg || msg.source !== "hall-cash") return;
-
-  if (msg.type === "basket") {
-    console.log("BASKET FROM HALL:", msg.payload);
-
-    basket = Array.isArray(msg.payload) ? msg.payload : [];
-    syncUI();
+  function applyIframeZoom(){
+    const fr = cashFrameEl();
+    if(!fr) return;
+    fr.style.zoom = String(zoom); // Chrome/Edge ок
   }
-});
 
+  function setZoom(value) {
+    zoom = Math.max(0.55, Math.min(1.0, value)); // для монитора: не увеличиваем больше 1
+    applyIframeZoom();
+  }
 
-  // ===== OPS =====
+  function openCash(show){
+    const fr = cashFrameEl();
+    if(!fr || !show || !show.id) return;
+
+    const url = buildCashUrl(show);
+    fr.src = url;
+    setCashVisible(true);
+
+    // после загрузки — вписать в экран
+    fr.onload = () => {
+      // небольшой таймаут, чтобы hall-cash успел отрисовать DOM
+      setTimeout(() => fitIframeToWrap(), 80);
+    };
+  }
+
+  // -------------------- clients/orders storage --------------------
+  function loadClients(){
+    try{
+      const raw = localStorage.getItem(lsKeyGlobal("clients"));
+      CLIENTS = raw ? (JSON.parse(raw) || []) : [];
+      if(!Array.isArray(CLIENTS)) CLIENTS = [];
+    }catch{ CLIENTS = []; }
+  }
+  function saveClients(){
+    localStorage.setItem(lsKeyGlobal("clients"), JSON.stringify(CLIENTS));
+  }
+
+  function loadOrders(){
+    try{
+      const raw = localStorage.getItem(lsKeyGlobal("orders"));
+      ORDERS = raw ? (JSON.parse(raw) || []) : [];
+      if(!Array.isArray(ORDERS)) ORDERS = [];
+    }catch{ ORDERS = []; }
+  }
+  function saveOrders(){
+    localStorage.setItem(lsKeyGlobal("orders"), JSON.stringify(ORDERS));
+  }
+
+  // -------------------- ops local state --------------------
   function loadOps() {
-    try {
-      ops = JSON.parse(localStorage.getItem(lsKey("ops"))) || [];
-    } catch {
-      ops = [];
+    ops = [];
+    const raw2 = localStorage.getItem(lsKey("ops"));
+    if (raw2) {
+      try { ops = JSON.parse(raw2) || []; } catch { ops = []; }
     }
   }
 
@@ -94,104 +151,581 @@
     localStorage.setItem(lsKey("ops"), JSON.stringify(ops));
   }
 
-  function totalBasket() {
-    return basket.reduce((s, x) => s + Number(x.price || 0), 0);
-  }
-
-  function syncUI() {
-    qs("#basketTotal").textContent = totalBasket();
-    renderBasket(qs("#basketList"), basket, currency);
-    qs("#basketMeta").textContent =
-      basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
-    renderOps(qs("#opsList"), ops);
-  }
-
-  // ===== ACTIONS =====
-  function applyAction(type) {
-    if (!current || !basket.length) return;
-
-    ops.push({
-      ts: nowIso(),
-      tsHuman: fmtDT(Date.now()),
-      action: type,
-      showId: current.id,
-      showLabel: `${current.title} — ${current.date} ${current.time}`,
-      count: basket.length,
-      total: totalBasket(),
-      currency,
-      seats: basket.map(x => x.key)
-    });
-
-    saveOps();
+  function resetLocal() {
+    if (!current) return;
+    localStorage.removeItem(lsKey("ops"));
+    loadOps();
     basket = [];
     syncUI();
   }
 
-  // ===== EXPORTS =====
+  // -------------------- pricing --------------------
+  function totalBasket() {
+    return basket.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  }
+
+  function humanActionName(status) {
+    switch (status) {
+      case "sold": return "ПРОДАЖ";
+      case "reserved": return "РЕЗЕРВ";
+      case "realization": return "РЕАЛІЗАЦІЯ";
+      case "invite": return "ЗАПРОШЕННЯ";
+      case "clear": return "ОЧИЩЕННЯ";
+      default: return status;
+    }
+  }
+
+  // -------------------- UI sync --------------------
+  function syncUI() {
+    const totalEl = qs("#basketTotal");
+    if (totalEl) totalEl.textContent = String(totalBasket());
+
+    renderBasket(qs("#basketList"), basket, currency);
+
+    const meta = qs("#basketMeta");
+    if (meta) meta.textContent = basket.length ? `Обрано: ${basket.length}` : "Поки що нічого не обрано.";
+
+    renderOps(qs("#opsList"), ops);
+
+    const curEl = qs("#currency");
+    if (curEl) curEl.textContent = currency;
+  }
+
+  // -------------------- actions --------------------
+  function clearBasket() { basket = []; syncUI(); }
+
+  function applyToBasket(status) {
+    if (!current) { alert("Оберіть сеанс."); return; }
+    if (!basket.length) return;
+
+    const seatKeys = basket.map(x => x.key);
+    const total = totalBasket();
+    const showLabel = `${current.title} — ${current.date} ${current.time}`;
+
+    ops.push({
+      ts: nowIso(),
+      tsHuman: fmtDT(Date.now()),
+      action: humanActionName(status),
+      status,
+      showId: current.id,
+      showLabel,
+      count: seatKeys.length,
+      total,
+      currency,
+      seats: seatKeys
+    });
+    saveOps();
+
+    // отправим действие в hall-cash (если он поддерживает)
+    postToCash("apply_status", { status, seats: seatKeys, show: current });
+
+    clearBasket();
+    syncUI();
+  }
+
+  function sell() { applyToBasket("sold"); }
+  function reserve() { applyToBasket("reserved"); }
+  function realize() { applyToBasket("realization"); }
+  function invite() { applyToBasket("invite"); }
+
   function exportStateJson() {
+    if (!current) { alert("Оберіть сеанс."); return; }
     downloadText(
-      `backoffice_state_${current.id}.json`,
-      JSON.stringify({ show: current, ops }, null, 2)
+      `backoffice_state_${current.id}_${current.date}.json`,
+      JSON.stringify({ show: current, seance, ops }, null, 2)
     );
   }
 
   function exportSalesCsv() {
-    const rows = [["seat", "price", "show"]];
-    ops.forEach(o =>
-      o.seats.forEach(s => rows.push([s, o.total, o.showId]))
-    );
-    downloadText(`sales_${current.id}.csv`, toCsv(rows));
+    if (!current) { alert("Оберіть сеанс."); return; }
+    const rows = [["ts", "action", "seat", "status", "total", "currency", "showId", "showDate"]];
+    for (const o of ops) {
+      if (o.action !== "ПРОДАЖ") continue;
+      for (const s of (o.seats || [])) rows.push([o.ts, o.action, s, o.status, o.total, o.currency, o.showId, current.date]);
+    }
+    downloadText(`backoffice_sales_${current.id}_${current.date}.csv`, toCsv(rows));
   }
 
-  // ===== DATA =====
+  function exportOpsCsv() {
+    if (!current) { alert("Оберіть сеанс."); return; }
+    const rows = [["ts", "action", "count", "total", "currency", "showId", "seats"]];
+    for (const o of ops) rows.push([o.ts, o.action, o.count, o.total, o.currency, o.showId, (o.seats || []).join(",")]);
+    downloadText(`backoffice_ops_${current.id}_${current.date}.csv`, toCsv(rows));
+  }
+
+  function exportOpsJson() {
+    if (!current) { alert("Оберіть сеанс."); return; }
+    downloadText(`backoffice_ops_${current.id}_${current.date}.json`, JSON.stringify(ops, null, 2));
+  }
+
+  function clearOps() {
+    if (!current) return;
+    ops = [];
+    saveOps();
+    syncUI();
+  }
+
+  // -------------------- data loading --------------------
   async function loadSettings() {
-    SETTINGS = await fetchJson("../data/settings.json");
-    currency = SETTINGS?.theatre?.currency || "грн";
-    setText("#boTitle", `Білетний відділ — ${SETTINGS?.theatre?.name || ""}`);
+    try {
+      SETTINGS = await fetchJson("../data/settings.json");
+      currency = SETTINGS?.theatre?.currency || "грн";
+      setText("#boTitle", SETTINGS?.theatre?.name ? `Білетний відділ — ${SETTINGS.theatre.name}` : "Білетний відділ");
+      return SETTINGS;
+    } catch (e) {
+      SETTINGS = { theatre: {}, pricing_defaults: {} };
+      currency = "грн";
+      return SETTINGS;
+    }
   }
 
   async function loadAfisha() {
     AFISHA = await fetchJson("../data/afisha.json");
+    if(!Array.isArray(AFISHA)) AFISHA = [];
+    return AFISHA;
   }
 
   function fillShowSelect() {
     const sel = qs("#showSelect");
-    sel.innerHTML = `<option value="">— обрати —</option>`;
-    AFISHA.forEach(s => {
-      const o = document.createElement("option");
-      o.value = `${s.id}__${s.date}`;
-      o.textContent = `${s.title} — ${s.date} ${s.time}`;
-      sel.appendChild(o);
-    });
+    if (!sel) return;
 
-    sel.onchange = () => {
-      if (!sel.value) return;
-      const [id, date] = sel.value.split("__");
-      current = AFISHA.find(x => x.id === id && x.date === date);
-      setText("#seanceMeta", `${current.title} • ${current.date} ${current.time}`);
-      loadOps();
-      basket = [];
-      syncUI();
-      openCash(current);
-    };
+    sel.innerHTML = '<option value="">— обрати —</option>';
+    for (const s of AFISHA) {
+      const opt = document.createElement("option");
+      opt.value = `${s.id}__${s.date}`;
+      opt.textContent = `${s.title} — ${s.date}, ${s.time}`;
+      sel.appendChild(opt);
+    }
+
+    sel.addEventListener("change", async () => {
+      const v = sel.value || "";
+      if (!v) {
+        current = null; seance = null;
+        setText("#seanceMeta", "Оберіть сеанс.");
+        setCashVisible(false);
+        basket = [];
+        ops = [];
+        syncUI();
+        return;
+      }
+      const [id, date] = v.split("__");
+      const found = AFISHA.find(x => x.id === id && x.date === date) || AFISHA.find(x => x.id === id) || null;
+      if (!found) return;
+      await loadSeance(found);
+    });
   }
 
-  // ===== INIT =====
-  async function init() {
-    await loadSettings();
-    await loadAfisha();
-    fillShowSelect();
+  async function loadSeance(show) {
+    current = show;
+
+    // грузим seance только для: hall_id/цены/мета в UI
+    const seanceUrl = `../data/seances/${show.id}-${show.date}.json`;
+    try {
+      seance = await fetchJson(seanceUrl);
+    } catch (e) {
+      // даже если seance не найден — iframe кассы всё равно откроем по show.id
+      seance = null;
+    }
+
+    const hallId = seance?.hall_id || seance?.hallId || "—";
+    setText("#seanceMeta", `${show.title} • ${show.date} ${show.time} • hall_id: ${hallId}`);
+
+    // pricing dump
+    const pd = qs("#pricingDump");
+    if(pd){
+      pd.textContent = JSON.stringify(
+        { seance_prices: seance?.prices || {}, defaults: SETTINGS?.pricing_defaults || {} },
+        null,
+        2
+      );
+    }
+
     loadOps();
+    basket = [];
     syncUI();
-    setCashVisible(false);
+
+    // открыть кассу в iframe и вписать в экран
+    openCash(show);
+  }
+
+  // -------------------- tabs --------------------
+  function setTab(name){
+    qsa("#tabs .tabbtn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    qsa("[data-pane]").forEach(p => p.hidden = (p.dataset.pane !== name));
+  }
+
+  function initTabs(){
+    qs("#tabs")?.addEventListener("click", (e)=>{
+      const b = e.target.closest(".tabbtn");
+      if(!b) return;
+      setTab(b.dataset.tab);
+      if(b.dataset.tab === "clients") renderClients();
+      if(b.dataset.tab === "orders") renderOrders();
+    });
+  }
+
+  // -------------------- clients UI --------------------
+  let editingClientId = null;
+
+  function uid(prefix){
+    const rnd = Math.random().toString(16).slice(2,8);
+    return `${prefix}-${Date.now()}-${rnd}`;
+  }
+
+  function renderClients(){
+    const tbody = qs("#clientsTbody");
+    if(!tbody) return;
+
+    const q = (qs("#clientSearch")?.value || "").trim().toLowerCase();
+    const list = CLIENTS.filter(c => {
+      const s = `${c.name||""} ${c.phone||""} ${c.email||""} ${c.note||""}`.toLowerCase();
+      return !q || s.includes(q);
+    });
+
+    tbody.innerHTML = list.map(c => `
+      <tr data-id="${c.id}">
+        <td><b>${c.id}</b></td>
+        <td>${c.name||""}</td>
+        <td>${c.email||""}</td>
+        <td>${c.phone||""}</td>
+        <td>${c.type||""}</td>
+        <td>${c.note||""}</td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("tr").forEach(tr=>{
+      tr.addEventListener("click", ()=>{
+        const id = tr.dataset.id;
+        openClientForm(id);
+      });
+    });
+  }
+
+  function openClientForm(id){
+    const form = qs("#clientForm");
+    if(!form) return;
+
+    editingClientId = id || null;
+    const c = CLIENTS.find(x => x.id === id) || { id: "", name:"", email:"", phone:"", type:"client", note:"" };
+
+    qs("#cName").value = c.name || "";
+    qs("#cEmail").value = c.email || "";
+    qs("#cPhone").value = c.phone || "";
+    qs("#cType").value = c.type || "client";
+    qs("#cNote").value = c.note || "";
+
+    form.hidden = false;
+  }
+
+  function closeClientForm(){
+    const form = qs("#clientForm");
+    if(form) form.hidden = true;
+    editingClientId = null;
+  }
+
+  function saveClient(){
+    const name = (qs("#cName").value || "").trim();
+    const email = (qs("#cEmail").value || "").trim();
+    const phone = (qs("#cPhone").value || "").trim();
+    const type = qs("#cType").value;
+    const note = (qs("#cNote").value || "").trim();
+
+    if(!name && !phone){
+      alert("Вкажіть хоча б П.І.Б. або телефон.");
+      return;
+    }
+
+    if(editingClientId){
+      const idx = CLIENTS.findIndex(x => x.id === editingClientId);
+      if(idx >= 0){
+        CLIENTS[idx] = { ...CLIENTS[idx], name, email, phone, type, note };
+      }
+    }else{
+      CLIENTS.push({
+        id: uid("CL"),
+        name, email, phone, type, note,
+        created_at: nowIso()
+      });
+    }
+
+    saveClients();
+    renderClients();
+    closeClientForm();
+  }
+
+  function deleteClient(){
+    if(!editingClientId) return;
+    if(!confirm("Видалити клієнта?")) return;
+    CLIENTS = CLIENTS.filter(x => x.id !== editingClientId);
+    saveClients();
+    renderClients();
+    closeClientForm();
+  }
+
+  // -------------------- orders UI --------------------
+  let editingOrderId = null;
+
+  function nextOrderId(){
+    const n = ORDERS.length + 1;
+    return `ORD-${String(n).padStart(5,"0")}`;
+  }
+
+  function renderOrders(){
+    const tbody = qs("#ordersTbody");
+    if(!tbody) return;
+
+    const q = (qs("#orderSearch")?.value || "").trim().toLowerCase();
+    const fs = (qs("#orderFilterStatus")?.value || "");
+
+    const list = ORDERS.filter(o => {
+      const s = `${o.id||""} ${o.client||""}`.toLowerCase();
+      if(q && !s.includes(q)) return false;
+      if(fs && o.status !== fs) return false;
+      return true;
+    });
+
+    tbody.innerHTML = list.slice().reverse().map(o => `
+      <tr data-id="${o.id}">
+        <td><b>${o.id}</b></td>
+        <td>${o.status}</td>
+        <td>${o.client||""}</td>
+        <td><b>${o.amount||0}</b> ${currency}</td>
+        <td>${(o.seats||[]).join(", ")}</td>
+        <td class="muted">${o.created_at ? o.created_at.slice(0,19).replace("T"," ") : ""}</td>
+      </tr>
+    `).join("");
+
+    tbody.querySelectorAll("tr").forEach(tr=>{
+      tr.addEventListener("click", ()=>{
+        openOrderForm(tr.dataset.id);
+      });
+    });
+  }
+
+  function openOrderForm(id){
+    const form = qs("#orderForm");
+    if(!form) return;
+
+    editingOrderId = id || null;
+    const o = ORDERS.find(x => x.id === id) || { id: nextOrderId(), status:"draft", client:"", amount:0, seats:[], created_at: nowIso() };
+
+    qs("#oId").value = o.id || "";
+    qs("#oStatus").value = o.status || "draft";
+    qs("#oClient").value = o.client || "";
+    qs("#oSeats").value = (o.seats||[]).join(", ");
+    qs("#oAmount").value = Number(o.amount || 0);
+
+    form.hidden = false;
+  }
+
+  function closeOrderForm(){
+    const form = qs("#orderForm");
+    if(form) form.hidden = true;
+    editingOrderId = null;
+  }
+
+  function saveOrder(){
+    const id = (qs("#oId").value || "").trim();
+    const status = qs("#oStatus").value;
+    const client = (qs("#oClient").value || "").trim();
+    const seats = (qs("#oSeats").value || "").split(",").map(s=>s.trim()).filter(Boolean);
+    const amount = Number(qs("#oAmount").value || 0);
+
+    if(!id){ alert("Немає номеру."); return; }
+
+    const existing = ORDERS.findIndex(x => x.id === id);
+    const payload = { id, status, client, seats, amount, created_at: (existing>=0 ? ORDERS[existing].created_at : nowIso()) };
+
+    if(existing>=0) ORDERS[existing] = payload;
+    else ORDERS.push(payload);
+
+    saveOrders();
+    renderOrders();
+    closeOrderForm();
+  }
+
+  function deleteOrder(){
+    const id = (qs("#oId").value || "").trim();
+    if(!id) return;
+    if(!confirm("Видалити замовлення?")) return;
+    ORDERS = ORDERS.filter(x => x.id !== id);
+    saveOrders();
+    renderOrders();
+    closeOrderForm();
+  }
+
+  function printOrder(){
+    const id = (qs("#oId").value || "").trim();
+    const o = ORDERS.find(x => x.id === id);
+    if(!o){ alert("Не знайдено замовлення."); return; }
+
+    const html = `<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"/>
+<title>${o.id}</title>
+<style>
+  body{font-family:Arial,sans-serif;margin:18px;color:#111827}
+  .card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;max-width:520px}
+  h1{margin:0 0 6px;font-size:18px}
+  .muted{color:#6b7280;font-size:12px}
+  .row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed #e5e7eb;padding:6px 0}
+  .row:last-child{border-bottom:0}
+</style></head>
+<body>
+  <div class="card">
+    <h1>Замовлення ${o.id}</h1>
+    <div class="muted">Статус: ${o.status} • Створено: ${o.created_at || ""}</div>
+    <div class="row"><div>Клієнт</div><div><b>${o.client||"—"}</b></div></div>
+    <div class="row"><div>Сума</div><div><b>${o.amount||0}</b> ${currency}</div></div>
+    <div class="row"><div>Місця</div><div><b>${(o.seats||[]).join(", ")}</b></div></div>
+    <div class="row"><div>Подія</div><div>${current ? `${current.title} • ${current.date} ${current.time}` : "—"}</div></div>
+  </div>
+<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if(!w){ alert("Браузер заблокував pop-up для друку."); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
+
+  function createOrderFromBasket(){
+    if(!basket.length){ alert("Кошик порожній."); return; }
+    const id = nextOrderId();
+    const seats = basket.map(x => x.key);
+    const amount = totalBasket();
+    ORDERS.push({ id, status:"draft", client:"", amount, seats, created_at: nowIso() });
+    saveOrders();
+    setTab("orders");
+    openOrderForm(id);
+    renderOrders();
+  }
+
+  // -------------------- reports --------------------
+  function exportClientsJson(){ downloadText("clients.json", JSON.stringify(CLIENTS, null, 2)); }
+  function exportClientsCsv(){
+    const rows = [["id","name","email","phone","type","note","created_at"]];
+    CLIENTS.forEach(c => rows.push([c.id,c.name,c.email,c.phone,c.type,c.note,c.created_at]));
+    downloadText("clients.csv", toCsv(rows));
+  }
+  function exportOrdersJson(){ downloadText("orders.json", JSON.stringify(ORDERS, null, 2)); }
+  function exportOrdersCsv(){
+    const rows = [["id","status","client","amount","seats","created_at"]];
+    ORDERS.forEach(o => rows.push([o.id,o.status,o.client,o.amount,(o.seats||[]).join(" "),o.created_at]));
+    downloadText("orders.csv", toCsv(rows));
+  }
+
+  // -------------------- toolbar / events --------------------
+  function initToolbar() {
+    qs("#btnFit")?.addEventListener("click", fitIframeToWrap);
+    qs("#btnZoomIn")?.addEventListener("click", () => setZoom(zoom + 0.05));
+    qs("#btnZoomOut")?.addEventListener("click", () => setZoom(zoom - 0.05));
+
+    qs("#btnSell")?.addEventListener("click", sell);
+    qs("#btnReserve")?.addEventListener("click", reserve);
+    qs("#btnRealize")?.addEventListener("click", realize);
+    qs("#btnInvite")?.addEventListener("click", invite);
+    qs("#btnClearBasket")?.addEventListener("click", clearBasket);
 
     qs("#btnExportStateJson")?.addEventListener("click", exportStateJson);
     qs("#btnExportSalesCsv")?.addEventListener("click", exportSalesCsv);
-    qs("#btnClearBasket")?.addEventListener("click", () => {
-      basket = [];
-      syncUI();
+
+    qs("#btnExportOpsCsv")?.addEventListener("click", exportOpsCsv);
+    qs("#btnExportOpsJson")?.addEventListener("click", exportOpsJson);
+    qs("#btnClearOps")?.addEventListener("click", clearOps);
+
+    qs("#btnResetLocal")?.addEventListener("click", resetLocal);
+
+    qs("#btnCreateOrder")?.addEventListener("click", createOrderFromBasket);
+
+    // seat search: отправляем в hall-cash (без алертов)
+    qs("#seatSearch")?.addEventListener("keydown", (e)=>{
+      if(e.key !== "Enter") return;
+      const key = (e.target.value||"").trim();
+      if(!key) return;
+
+      if(!current){
+        alert("Оберіть сеанс.");
+        return;
+      }
+      postToCash("seat_search", { key });
+    });
+
+    // при изменении размера окна — снова вписать
+    window.addEventListener("resize", () => {
+      if(current) fitIframeToWrap();
     });
   }
 
-  document.addEventListener("DOMContentLoaded", init);
+  // -------------------- init: clients/orders UI events --------------------
+  function initClientsUi(){
+    qs("#clientSearch")?.addEventListener("input", renderClients);
+    qs("#btnClientNew")?.addEventListener("click", ()=> openClientForm(null));
+    qs("#btnClientCancel")?.addEventListener("click", closeClientForm);
+    qs("#btnClientSave")?.addEventListener("click", saveClient);
+    qs("#btnClientDelete")?.addEventListener("click", deleteClient);
+  }
+
+  function initOrdersUi(){
+    qs("#orderSearch")?.addEventListener("input", renderOrders);
+    qs("#orderFilterStatus")?.addEventListener("change", renderOrders);
+    qs("#btnOrderNew")?.addEventListener("click", ()=> openOrderForm(null));
+    qs("#btnOrderCancel")?.addEventListener("click", closeOrderForm);
+    qs("#btnOrderSave")?.addEventListener("click", saveOrder);
+    qs("#btnOrderDelete")?.addEventListener("click", deleteOrder);
+    qs("#btnOrderPrint")?.addEventListener("click", printOrder);
+  }
+
+  function initReportsUi(){
+    qs("#btnExportClientsJson")?.addEventListener("click", exportClientsJson);
+    qs("#btnExportClientsCsv")?.addEventListener("click", exportClientsCsv);
+    qs("#btnExportOrdersJson")?.addEventListener("click", exportOrdersJson);
+    qs("#btnExportOrdersCsv")?.addEventListener("click", exportOrdersCsv);
+  }
+
+  // -------------------- boot --------------------
+  async function init() {
+    initTabs();
+    initToolbar();
+    initClientsUi();
+    initOrdersUi();
+    initReportsUi();
+
+    loadClients();
+    loadOrders();
+
+    await loadSettings();
+    await loadAfisha();
+    fillShowSelect();
+
+    setText("#seanceMeta", "Оберіть сеанс.");
+    setCashVisible(false);
+
+    loadOps();
+    basket = [];
+    syncUI();
+    setZoom(1);
+
+    setTab("events");
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    init().catch(e => {
+      console.error(e);
+      alert("Помилка ініціалізації Backoffice. Відкрий консоль (F12) і покажи помилку.");
+    });
+  });
+
+  // tabs handlers (оставил как было)
+  function initTabs(){
+    qs("#tabs")?.addEventListener("click", (e)=>{
+      const b = e.target.closest(".tabbtn");
+      if(!b) return;
+      setTab(b.dataset.tab);
+      if(b.dataset.tab === "clients") renderClients();
+      if(b.dataset.tab === "orders") renderOrders();
+    });
+  }
+
+  function setTab(name){
+    qsa("#tabs .tabbtn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+    qsa("[data-pane]").forEach(p => p.hidden = (p.dataset.pane !== name));
+  }
 })();
