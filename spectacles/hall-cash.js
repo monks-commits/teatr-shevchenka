@@ -165,6 +165,7 @@
     }
     renderBasket();
     renderHall(); // чтобы покрасить места
+    sendBasketToBackoffice();
   }
 
   function clearBasket(){
