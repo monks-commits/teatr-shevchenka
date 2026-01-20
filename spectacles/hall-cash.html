@@ -653,6 +653,21 @@
       if(amountEl) amountEl.textContent = "Сума: " + total + " грн";
       if(btnSell) btnSell.disabled = false;
       if(btnRes)  btnRes.disabled  = false;
+            // === SEND BASKET TO BACKOFFICE ===
+      if (window.parent && EMBED) {
+        window.parent.postMessage(
+          {
+            source: "hall-cash",
+            type: "basket:update",
+            payload: {
+              seats: Array.from(selected.keys()),
+              total
+            }
+          },
+          "*"
+        );
+      }
+
     }
 
     function applyStatusToSelectedLocal(status){
