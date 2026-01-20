@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Зведення за день</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#f6f7f9; margin:0; padding:16px; }
+    h1 { margin-bottom:12px; }
+    .cards { display:flex; gap:12px; flex-wrap:wrap; }
+    .card {
+      background:#fff; padding:16px; border-radius:8px; min-width:220px;
+      box-shadow:0 1px 2px rgba(0,0,0,.05);
+    }
+    .card h2 { margin:0 0 8px; font-size:14px; color:#555; }
+    .card .value { font-size:28px; font-weight:700; }
+  </style>
+</head>
+<body>
+
+<h1>Зведення за сьогодні</h1>
+
+<div class="cards">
+  <div class="card">
+    <h2>Продажі (грн)</h2>
+    <div class="value" id="sum-today">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Квитків продано</h2>
+    <div class="value" id="tickets-today">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Продажів</h2>
+    <div class="value" id="orders-today">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Запрошення</h2>
+    <div class="value" id="invites-today">—</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./summary.js"></script>
+</body>
+</html>
