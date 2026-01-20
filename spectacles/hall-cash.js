@@ -520,5 +520,22 @@ ${pages}
       showErr(`Помилка ініціалізації: перевір, що існує ${AFISHA_URL}`);
     }
   })();
+// === SEND BASKET TO BACKOFFICE ===
+function sendBasketToBackoffice() {
+  if (!window.parent || window.parent === window) return;
+
+  // ВАЖНО: используем ТУ ЖЕ корзину, что и касса
+  // если у тебя не basket, а другое имя — скажи, подстрою
+  const seats = (basket || []).map(s => ({
+    key: s.key || `${s.row}-${s.seat}`,
+    price: Number(s.price || 0)
+  }));
+
+  window.parent.postMessage({
+    source: "hall-cash",
+    type: "basket_update",
+    payload: { seats }
+  }, "*");
+}
 
 })();
