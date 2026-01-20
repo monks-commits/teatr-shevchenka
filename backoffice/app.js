@@ -68,20 +68,18 @@
   }
 
   // ===== RECEIVE BASKET FROM hall-cash =====
-  window.addEventListener("message", (event) => {
-    const msg = event.data;
-    if (!msg || msg.source !== "hall-cash") return;
+  window.addEventListener("message", (e) => {
+  const msg = e.data;
+  if (!msg || msg.source !== "hall-cash") return;
 
-    if (msg.type === "basket" && Array.isArray(msg.payload)) {
-      basket = msg.payload.map(it => ({
-        key: it.key,
-        label: it.label || it.key,
-        price: Number(it.price || 0)
-      }));
-      console.log("BASKET FROM HALL:", basket);
-      syncUI();
-    }
-  });
+  if (msg.type === "basket") {
+    console.log("BASKET FROM HALL:", msg.payload);
+
+    basket = Array.isArray(msg.payload) ? msg.payload : [];
+    syncUI();
+  }
+});
+
 
   // ===== OPS =====
   function loadOps() {
