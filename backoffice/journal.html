@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Журнал операцій</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f6f7f9;
+      margin: 0;
+      padding: 16px;
+    }
+    h1 {
+      margin-bottom: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #f0f2f5;
+      font-weight: 600;
+    }
+    tr:hover {
+      background: #fafafa;
+    }
+    .type-sale { color: green; }
+    .type-reserve { color: orange; }
+    .type-invite { color: blue; }
+    .type-consignment { color: purple; }
+  </style>
+</head>
+<body>
+
+<h1>Журнал операцій</h1>
+
+<table id="ops-table">
+  <thead>
+    <tr>
+      <th>Дата</th>
+      <th>Тип</th>
+      <th>Сеанс</th>
+      <th>Місця</th>
+      <th>Оператор</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./journal.js"></script>
+
+</body>
+</html>
