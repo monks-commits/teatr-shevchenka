@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const FN_URL = "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/invite-create";
 
-  btn.addEventListener("click", async () => {
+  btn.onclick = async () => {
     const seance = document.getElementById("invite-seance").value.trim();
     const seatsRaw = document.getElementById("invite-seats").value.trim();
     const comment = document.getElementById("invite-comment").value.trim();
@@ -14,31 +14,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const seats = seatsRaw
-      .split(",")
-      .map(s => s.trim())
-      .filter(Boolean);
+    const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
 
-    try {
-      const res = await fetch(FN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          seance_id: seance,
-          seats,
-          comment
-        })
-      });
+    const res = await fetch(FN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seance_id: seance, seats, comment }),
+    });
 
-      if (!res.ok) {
-        const t = await res.text();
-        alert("Помилка: " + t);
-        return;
-      }
-
-      alert("Запрошення оформлено");
-    } catch (e) {
-      alert("Fetch error: " + e.message);
+    if (!res.ok) {
+      alert("Помилка");
+      return;
     }
-  });
+
+    alert("Запрошення оформлено");
+  };
 });
