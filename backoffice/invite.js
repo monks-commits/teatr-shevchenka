@@ -1,6 +1,12 @@
+const btn = document.getElementById("invite-btn");
+if (!btn) {
+  // мы не на странице invite.html
+  return;
+}
+
 const FN_URL = "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/invite-create";
 
-document.getElementById("invite-btn").onclick = async () => {
+btn.onclick = async () => {
   const seance = document.getElementById("invite-seance").value.trim();
   const seatsRaw = document.getElementById("invite-seats").value.trim();
   const comment = document.getElementById("invite-comment").value.trim();
@@ -25,3 +31,4 @@ document.getElementById("invite-btn").onclick = async () => {
 
   alert("Запрошення оформлено");
 };
+
