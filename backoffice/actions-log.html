@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Журнал дій</title>
+  <style>
+    body { font-family: system-ui; background:#f6f7f9; padding:16px; }
+    h1 { margin-bottom:12px; }
+    table { width:100%; border-collapse:collapse; background:#fff; }
+    th, td { padding:8px; border-bottom:1px solid #ddd; text-align:left; }
+    th { background:#f0f0f0; }
+    .tag { padding:2px 6px; border-radius:4px; font-size:12px; }
+    .invite { background:#e3f2fd; }
+    .sale { background:#e8f5e9; }
+    .reserve { background:#fff3e0; }
+    .consignment { background:#fce4ec; }
+  </style>
+</head>
+<body>
+
+<h1>Журнал дій билетного адміністратора</h1>
+
+<table id="log-table">
+  <thead>
+    <tr>
+      <th>Дата</th>
+      <th>Тип</th>
+      <th>Сеанс</th>
+      <th>Місця</th>
+      <th>Коментар</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./actions-log.js"></script>
+</body>
+</html>
