@@ -6,10 +6,10 @@
   <style>
     body { font-family: system-ui; background:#f6f7f9; padding:16px; }
     h1 { margin-bottom:12px; }
-    .box { background:#fff; padding:16px; max-width:500px; }
+    .box { background:#fff; padding:16px; max-width:520px; }
     label { display:block; margin-top:10px; }
     input, textarea { width:100%; padding:6px; }
-    button { margin-top:12px; }
+    button { margin-top:12px; padding:8px 12px; }
   </style>
 </head>
 <body>
@@ -18,17 +18,17 @@
 
 <div class="box">
   <label>Сеанс</label>
-<input id="invite-seance">
+  <input id="invite-seance" placeholder="visim">
 
-<label>Місця</label>
-<input id="invite-seats">
+  <label>Місця</label>
+  <input id="invite-seats" placeholder="P1-M3, P1-M4">
 
-<label>Кому / причина</label>
-<textarea id="invite-comment"></textarea>
+  <label>Кому / причина</label>
+  <textarea id="invite-comment"></textarea>
 
-<button id="invite-btn">Оформити запрошення</button>
-
+  <button id="invite-btn">Оформити запрошення</button>
 </div>
 
+<script src="./invite.js"></script>
 </body>
 </html>
