@@ -1,32 +1,45 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("invite-btn");
-  if (!btn) return;
+const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
+const SUPABASE_KEY = "PASTE_PUBLIC_ANON_KEY_HERE";
 
-  const FN_URL = "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/invite-create";
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
-  btn.onclick = async () => {
-    const seance = document.getElementById("invite-seance").value.trim();
-    const seatsRaw = document.getElementById("invite-seats").value.trim();
-    const comment = document.getElementById("invite-comment").value.trim();
+const tbody = document.querySelector("#invites-table tbody");
+const details = document.getElementById("details");
 
-    if (!seance || !seatsRaw) {
-      alert("Заповніть сеанс і місця");
-      return;
-    }
+async function loadInvites() {
+  const { data, error } = await supabase
+    .from("cash_ops")
+    .select("*")
+    .eq("payload->>type", "invite")
+    .order("created_at", { ascending: false });
 
-    const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-    const res = await fetch(FN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seance_id: seance, seats, comment }),
-    });
+  tbody.innerHTML = "";
 
-    if (!res.ok) {
-      alert("Помилка");
-      return;
-    }
+  data.forEach(row => {
+    const p = row.payload || {};
 
-    alert("Запрошення оформлено");
-  };
-});
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${new Date(row.created_at).toLocaleString()}</td>
+      <td>${p.seance || "—"}</td>
+      <td>${(p.seats || []).join(", ")}</td>
+      <td>${p.comment || "—"}</td>
+    `;
+
+    tr.onclick = () => {
+      details.textContent = JSON.stringify(row, null, 2);
+    };
+
+    tbody.appendChild(tr);
+  });
+}
+
+loadInvites();
