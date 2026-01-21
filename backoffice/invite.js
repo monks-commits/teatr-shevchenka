@@ -1,4 +1,4 @@
-const FN_URL = "https://ТВОЙ_PROJECT_ID.supabase.co/functions/v1/invite-create";
+const FN_URL = "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/invite-create";
 
 document.getElementById("invite-btn").onclick = async () => {
   const seance = document.getElementById("invite-seance").value.trim();
