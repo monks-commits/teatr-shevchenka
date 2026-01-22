@@ -950,5 +950,40 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initAdminPage().catch(err=>{
     console.error('Помилка ініціалізації адмінки', err);
     alert('Помилка ініціалізації адмінки. Відкрий консоль (F12) і покажи помилку.');
+    function getAdminSeances() {
+  try {
+    return JSON.parse(localStorage.getItem("admin_seances")) || [];
+  } catch {
+    return [];
+  }
+}
+
+function renderSeancesList() {
+  const body = document.getElementById("seancesBody");
+  if (!body) return;
+
+  const seances = getAdminSeances();
+
+  if (!seances.length) {
+    body.innerHTML = `<tr><td colspan="5" class="muted">Поки що немає сеансів</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = seances.map(s => `
+    <tr>
+      <td><b>${s.show_slug}</b></td>
+      <td>${s.date}</td>
+      <td>${s.time}</td>
+      <td>${s.status || "draft"}</td>
+      <td>
+        <a class="btn btn-ghost"
+           href="../spectacles/hall-cash.html?seance=${s.seance_id}&mode=admin">
+           ✏️ Відкрити
+        </a>
+      </td>
+    </tr>
+  `).join("");
+}
+
   });
 });
