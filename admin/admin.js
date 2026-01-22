@@ -977,13 +977,9 @@ function renderSeancesList() {
       <td>${s.status || "draft"}</td>
       <td>
         <a class="btn btn-ghost"
-           href="../spectacles/hall-cash.html?seance=${s.seance_id}&mode=admin">
-           ✏️ Відкрити
-        </a>
-      </td>
-    </tr>
-  `).join("");
-}
+   href="../spectacles/hall-cash.html?seance=${s.seance_id}&mode=admin">
+   ✏️ Відкрити
+</a>
 
   });
 });
