@@ -977,7 +977,7 @@ function renderSeancesList() {
       <td>${s.status || "draft"}</td>
       <td>
         <a class="btn btn-ghost"
-   href="../spectacles/hall-cash.html?seance=${s.seance_id}&mode=admin">
+   href="https://monks-commits.github.io/teatr-shevchenka/spectacles/hall-cash.html?seance=${s.seance_id}&mode=admin">
    ✏️ Відкрити
 </a>
 
