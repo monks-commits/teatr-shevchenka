@@ -1,33 +1,40 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <title>Сеанси</title>
-  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="admin.css" />
 </head>
-
 <body>
-  <main class="container">
-    <h1>Сеанси</h1>
 
-    <table class="k-table" id="seancesTable">
-      <thead>
-        <tr>
-          <th>Спектакль</th>
-          <th>Дата</th>
-          <th>Час</th>
-          <th>Зал</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+<h1>🎭 Сеанси</h1>
 
-    <p id="emptyMsg" class="k-mini" style="display:none;">
-      Сеансів поки немає
-    </p>
-  </main>
+<div style="margin-bottom:16px;">
+  <a href="seance-create.html" class="btn">➕ Створити сеанс</a>
+</div>
 
-  <script src="./seances.js"></script>
+<table class="k-table">
+  <thead>
+    <tr>
+      <th>Вистава</th>
+      <th>Дата</th>
+      <th>Час</th>
+      <th>Статус</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="seancesBody">
+    <tr>
+      <td colspan="5" class="muted">Поки що немає сеансів</td>
+    </tr>
+  </tbody>
+</table>
+
+<script src="admin.js"></script>
+<script>
+  renderSeancesList();
+</script>
+
 </body>
 </html>
+
