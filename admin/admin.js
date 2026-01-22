@@ -981,5 +981,6 @@ function renderSeancesList() {
    ✏️ Відкрити
 </a>
 
+
   });
 });
