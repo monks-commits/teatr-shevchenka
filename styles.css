@@ -263,13 +263,4 @@ body {
   color:#6b7280;
   cursor:not-allowed;
 }
-/* === УБИРАЕМ ПУБЛИЧНУЮ ШАПКУ САЙТА В АДМИНКЕ === */
-.site-header,
-.site-footer {
-  display: none !important;
-}
 
-/* возвращаем нормальный отступ */
-.main {
-  padding-top: 12px !important;
-}
