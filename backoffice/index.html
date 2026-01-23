@@ -133,17 +133,15 @@
 
 </div>
 
-<div class="bo-tabs-row"> 
-  <a href="invite.html">Запрошення</a>
-  <a href="consignment.html">Реалізація</a>
-  <a href="reports.html">Звіти</a>
-  <a href="invite-log.html">Журнал запрошень</a>
-  <a href="actions-log.html">Журнал дій</a>
-  <a href="sales-log.html">Журнал продаж</a>
-  <a href="booking-log.html">Журнал бронювання</a>
-</div>
-
-    
+<div class="bo-tabs-row">      
+<a href="invite.html">Запрошення</a>
+<a href="consignment.html">Реалізація</a>
+<a href="reports.html">Звіти</a>
+<a href="invite-log.html">Журнал запрошень</a>
+<a href="actions-log.html">Журнал дій</a>   
+<a href="consignment.html">Реалізація</a>
+<a href="sales-log.html" class="tablink">Журнал продаж</a>
+<a href="booking-log.html">Журнал бронювання</a>        
       </div>
  
       <!-- EVENTS / HALL -->
@@ -194,7 +192,31 @@
             <div class="ops" id="opsList"></div>
           </div>
 
-          
+          <aside class="panel">
+            <h3 class="sideTitle">Кошик (актуальне замовлення)</h3>
+            <div id="basketMeta" class="small muted">Поки що нічого не обрано.</div>
+            <div class="hr"></div>
+            <div id="basketList" class="list"></div>
+            <div class="hr"></div>
+
+            <div class="row" style="justify-content:space-between">
+              <div class="small muted">Всього до сплати:</div>
+              <div style="font-weight:900"><span id="basketTotal">0</span> <span id="currency">грн</span></div>
+            </div>
+
+            <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+              <button class="btn2 red" id="btnSell">ПРОДАТИ</button>
+            
+              <button class="btn2 orange" id="btnReserve">ДО РЕЗЕРВУ</button>
+             
+              <button class="btn2 gray" id="btnClearBasket">ОЧИСТИТИ</button>
+            </div>
+
+            <div class="hr"></div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn2 gray" id="btnExportStateJson">Експорт стану (JSON)</button>
+              <button class="btn2 gray" id="btnExportSalesCsv">Експорт продажів (CSV)</button>
+              <button class="btn2 primary" id="btnCreateOrder">Створити замовлення</button>
             </div>
 
             <div class="small muted" style="margin-top:10px">
