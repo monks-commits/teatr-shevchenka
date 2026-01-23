@@ -377,6 +377,47 @@
       manualEl.addEventListener("keydown", (e) => {
         if(e.key === "Enter") btnOpenManual.click();
       });
+<script>
+(async function () {
+  const select = document.getElementById("seanceSelect");
+  const btn = document.getElementById("btnOpenSeance");
+  const info = document.getElementById("seanceInfo");
+  const frame = document.getElementById("cashFrame");
+  const hint = document.getElementById("hint");
+
+  // грузим афишу
+  const res = await fetch("/teatr-shevchenka/data/afisha.json");
+  const shows = await res.json();
+
+  shows.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s.id;
+    opt.textContent = `${s.title} — ${s.date} ${s.time}`;
+    opt.dataset.url =
+      `/teatr-shevchenka/spectacles/hall-cash.html` +
+      `?seance=${s.id}&mode=cash`;
+
+    select.appendChild(opt);
+  });
+
+  select.addEventListener("change", () => {
+    btn.disabled = !select.value;
+    const o = select.selectedOptions[0];
+    info.textContent = o
+      ? `${o.textContent}`
+      : "";
+  });
+
+  btn.addEventListener("click", () => {
+    const o = select.selectedOptions[0];
+    if (!o) return;
+
+    frame.src = o.dataset.url;
+    frame.style.display = "block";
+    hint.style.display = "none";
+  });
+})();
+</script>
 
       scaleEl.addEventListener("input", () => setScale(scaleEl.value));
 
