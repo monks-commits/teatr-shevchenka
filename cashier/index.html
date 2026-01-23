@@ -9,13 +9,23 @@
     html, body { height: 100%; }
     body { overflow: hidden; }
 
-    .c-wrap{
-      max-width: 1520px;
-      margin: 0 auto;
-      padding: 12px;
-      height: calc(100vh - 24px);
-    }
+    .c-wrap {
+  max-width: none;   /* 🔥 КЛЮЧЕВО */
+  width: 100%;
+}
+.right {
+  flex: 1;
+  min-height: 0;
+}
 
+.frameWrap {
+  flex: 1;
+  height: auto;
+}
+
+.frameStage {
+  height: 100%;
+}
     .top{
       display:flex; align-items:center; justify-content:space-between;
       gap:12px; margin-bottom:10px;
@@ -30,6 +40,15 @@
       height: calc(100vh - 120px);
       align-items: stretch;
     }
+/* === ВРЕМЕННО СКРЫВАЕМ ЛЕВУЮ ПАНЕЛЬ КАССИРА === */
+.left {
+  display: none !important;
+}
+
+/* === GRID → ОДНА КОЛОНКА === */
+.grid {
+  grid-template-columns: 1fr !important;
+}
 
     .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
     .left{display:flex;flex-direction:column;min-height:0}
