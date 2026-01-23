@@ -163,7 +163,22 @@
             <button class="btn2 gray" id="btnOpenNewTab" disabled>Відкрити в новій вкладці</button>
             <button class="btn2 gray" id="btnReload" disabled>Перезавантажити схему</button>
           </div>
+<!-- === SEANCE SELECT BAR === -->
+<div class="panel" style="margin-bottom:12px">
+  <div class="row" style="align-items:center;gap:12px;flex-wrap:nowrap">
+    <strong>Сеанс:</strong>
 
+    <select id="seanceSelect" style="min-width:420px">
+      <option value="">— оберіть сеанс —</option>
+    </select>
+
+    <button class="btn2 primary" id="btnOpenSeance" disabled>
+      Відкрити
+    </button>
+
+    <span class="muted" id="seanceInfo"></span>
+  </div>
+</div>
           <div class="scaleBox">
             <div style="display:grid;gap:4px">
               <label>Масштаб схеми (всередині панелі)</label>
