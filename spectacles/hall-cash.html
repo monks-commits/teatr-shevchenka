@@ -102,30 +102,6 @@
       font-size:12px;color:#6b7280;line-height:1.35;margin-top:10px;
       background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;
     }
-/* ============================= */
-/* QUOTA ZONES (editor only) */
-/* ============================= */
-
-.seat--quota-karabas {
-  background: repeating-linear-gradient(
-    45deg,
-    #e5e7eb,
-    #e5e7eb 6px,
-    #f3f4f6 6px,
-    #f3f4f6 12px
-  ) !important;
-  color:#6b7280;
-}
-
-.seat--quota-online {
-  background:#bfdbfe !important;
-  color:#0f172a;
-}
-
-.seat--quota-cash {
-  background:#bbf7d0 !important;
-  color:#0f172a;
-}
 
     .smallline{font-size:12px;color:#6b7280;margin-top:8px;line-height:1.35;}
     .k-sep{height:1px;background:#e5e7eb;margin:12px 0;}
@@ -211,31 +187,6 @@ body.mode-editor .hall-inner {
         <span class="pill" id="onlineBlockPill">tickets: —</span>
         <button id="btnSettings" class="btn btn-ghost" style="padding:8px 10px;border-radius:999px;">⚙ Налаштування</button>
       </div>
-<!-- =============================== -->
-<!-- QUOTA CONTROLS (CREATE MODE) -->
-<!-- =============================== -->
-<div id="quotaControls"
-     style="display:none; margin:12px 0; gap:8px; flex-wrap:wrap; align-items:center;">
-
-  <b style="margin-right:6px;">Квотування:</b>
-
-  <select id="quotaZone">
-    <option value="Партер">Партер</option>
-    <option value="Амфітеатр">Амфітеатр</option>
-    <option value="Балкон">Балкон</option>
-  </select>
-
-  <input id="quotaRowFrom" type="number" placeholder="Ряд з" style="width:70px">
-  <input id="quotaRowTo" type="number" placeholder="по" style="width:70px">
-
-  <select id="quotaOwner">
-    <option value="theatre_cash">Театр (каса)</option>
-    <option value="theatre_online">Театр (онлайн)</option>
-    <option value="karabas">Карабас</option>
-  </select>
-
-  <button id="applyQuota" class="btn btn-ghost">Застосувати</button>
-</div>
 
       <div class="hall-layout">
         <div class="hall-left">
@@ -380,10 +331,6 @@ const MODE = params.get("mode") || "cash";
 
 // добавляем класс на body
 document.body.classList.add(`mode-${MODE}`);
-if (MODE === "create") {
-  const qc = document.getElementById("quotaControls");
-  if (qc) qc.style.display = "flex";
-}
 
 console.log("hall-cash mode:", MODE);
 
@@ -669,47 +616,6 @@ console.log("hall-cash mode:", MODE);
     let CASH_PATCH = {};
     const selected = new Map(); // key -> {price}
     const seatButtons = new Map(); // key -> button
-// ===============================
-// QUOTA PATCH (create mode)
-// ===============================
-let QUOTA_PATCH = {};
-
-function quotaKey() {
-  return `quota_patch_${SEANCE_ID || showSlug || "draft"}`;
-}
-
-function loadQuotaPatch(){
-  try{
-    const raw = localStorage.getItem(quotaKey());
-    return raw ? JSON.parse(raw) : {};
-  }catch(e){ return {}; }
-}
-
-function saveQuotaPatch(){
-  localStorage.setItem(quotaKey(), JSON.stringify(QUOTA_PATCH));
-}
-// ===============================
-// MASS QUOTA APPLY (CREATE MODE)
-// ===============================
-function applyQuotaToRows({ zone, fromRow, toRow, quota }) {
-  for (const [key, btn] of seatButtons.entries()) {
-    const human = seatKeyToHuman(key);
-
-    // фильтр по зоне
-    if (!human.includes(zone)) continue;
-
-    const m = human.match(/Ряд (\d+)/);
-    if (!m) continue;
-
-    const row = Number(m[1]);
-    if (row < fromRow || row > toRow) continue;
-
-    QUOTA_PATCH[key] = { zone: quota };
-    applyQuotaClass(btn, quota);
-  }
-
-  saveQuotaPatch();
-}
 
     function getEffectiveStatus(key){
       if (takenSeatsOnline.has(key)) return "blocked";
@@ -723,17 +629,6 @@ function applyQuotaToRows({ zone, fromRow, toRow, quota }) {
       if (status === "reserved"){ btn.classList.add("seat--reserved"); }
       if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
     }
-function applyQuotaClass(btn, zone){
-  btn.classList.remove(
-    "seat--quota-karabas",
-    "seat--quota-online",
-    "seat--quota-cash"
-  );
-
-  if (zone === "karabas") btn.classList.add("seat--quota-karabas");
-  if (zone === "theatre_online") btn.classList.add("seat--quota-online");
-  if (zone === "theatre_cash") btn.classList.add("seat--quota-cash");
-}
 
     function makeSeatElement(key,label,extraClass,price){
       const btn = document.createElement("button");
@@ -744,30 +639,8 @@ function applyQuotaClass(btn, zone){
       btn.dataset.price = String(price);
 
       applyStatusClass(btn, getEffectiveStatus(key));
-// ===== APPLY QUOTA FROM STORAGE (create mode) =====
-if (MODE === "create") {
-  const q = QUOTA_PATCH[key];
-  if (q?.zone) {
-    applyQuotaClass(btn, q.zone);
-  }
-}
 
       btn.addEventListener("click", ()=>{
-
-  // ===== CREATE MODE: QUOTAS =====
-  if (MODE === "create") {
-    const current = QUOTA_PATCH[key]?.zone || "theatre_cash"; 
-
-    const order = ["theatre_cash","theatre_online","karabas"];
-    const next = order[(order.indexOf(current)+1)%order.length];
-
-    QUOTA_PATCH[key] = { zone: next };
-    saveQuotaPatch();
-    applyQuotaClass(btn, next);
-    return;
-  }
-
-  // ===== CASH MODE (как было) =====
   const st = getEffectiveStatus(key);
   if (st === "sold" || st === "blocked") return;
 
@@ -1241,21 +1114,6 @@ if (MODE === "create") {
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
 
-document.getElementById("applyQuota")?.addEventListener("click", () => {
-  const zone = document.getElementById("quotaZone").value;
-  const fromRow = Number(document.getElementById("quotaRowFrom").value);
-  const toRow = Number(document.getElementById("quotaRowTo").value);
-  const quota = document.getElementById("quotaOwner").value;
-
-  if (!fromRow || !toRow || fromRow > toRow) {
-    alert("Невірний діапазон рядів");
-    return;
-  }
-
-  applyQuotaToRows({ zone, fromRow, toRow, quota });
-});
-
-    
     document.getElementById("btn-reset")?.addEventListener("click", ()=>{
       if (!confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?")) return;
       CASH_PATCH = {};
@@ -1462,20 +1320,15 @@ document.getElementById("applyQuota")?.addEventListener("click", () => {
       refreshQueueCount();
 
       await loadShowMeta();
-CASH_PATCH = loadCashPatch();
+      CASH_PATCH = loadCashPatch();
 
-if (MODE === "create") {
-  QUOTA_PATCH = loadQuotaPatch();
-}
-
-await loadTakenSeatsOnline().catch(()=>{});
-renderParter();
-renderLodges();
-renderAmphi();
-renderBalcony();
-updateSummary();
-renderCashLog();
-
+      await loadTakenSeatsOnline().catch(()=>{});
+      renderParter();
+      renderLodges();
+      renderAmphi();
+      renderBalcony();
+      updateSummary();
+      renderCashLog();
     })();
   </script>
 </body>
