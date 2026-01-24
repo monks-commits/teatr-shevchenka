@@ -640,6 +640,25 @@ console.log("hall-cash mode:", MODE);
     let CASH_PATCH = {};
     const selected = new Map(); // key -> {price}
     const seatButtons = new Map(); // key -> button
+// ===============================
+// QUOTA PATCH (create mode)
+// ===============================
+let QUOTA_PATCH = {};
+
+function quotaKey() {
+  return `quota_patch_${SEANCE_ID || showSlug || "draft"}`;
+}
+
+function loadQuotaPatch(){
+  try{
+    const raw = localStorage.getItem(quotaKey());
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+
+function saveQuotaPatch(){
+  localStorage.setItem(quotaKey(), JSON.stringify(QUOTA_PATCH));
+}
 
     function getEffectiveStatus(key){
       if (takenSeatsOnline.has(key)) return "blocked";
