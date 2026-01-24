@@ -1241,6 +1241,21 @@ if (MODE === "create") {
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
 
+document.getElementById("applyQuota")?.addEventListener("click", () => {
+  const zone = document.getElementById("quotaZone").value;
+  const fromRow = Number(document.getElementById("quotaRowFrom").value);
+  const toRow = Number(document.getElementById("quotaRowTo").value);
+  const quota = document.getElementById("quotaOwner").value;
+
+  if (!fromRow || !toRow || fromRow > toRow) {
+    alert("Невірний діапазон рядів");
+    return;
+  }
+
+  applyQuotaToRows({ zone, fromRow, toRow, quota });
+});
+
+    
     document.getElementById("btn-reset")?.addEventListener("click", ()=>{
       if (!confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?")) return;
       CASH_PATCH = {};
