@@ -1396,15 +1396,20 @@ if (MODE === "create") {
       refreshQueueCount();
 
       await loadShowMeta();
-      CASH_PATCH = loadCashPatch();
+CASH_PATCH = loadCashPatch();
 
-      await loadTakenSeatsOnline().catch(()=>{});
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-      renderCashLog();
+if (MODE === "create") {
+  QUOTA_PATCH = loadQuotaPatch();
+}
+
+await loadTakenSeatsOnline().catch(()=>{});
+renderParter();
+renderLodges();
+renderAmphi();
+renderBalcony();
+updateSummary();
+renderCashLog();
+
     })();
   </script>
 </body>
