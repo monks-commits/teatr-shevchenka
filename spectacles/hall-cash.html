@@ -380,6 +380,10 @@ const MODE = params.get("mode") || "cash";
 
 // добавляем класс на body
 document.body.classList.add(`mode-${MODE}`);
+if (MODE === "create") {
+  const qc = document.getElementById("quotaControls");
+  if (qc) qc.style.display = "flex";
+}
 
 console.log("hall-cash mode:", MODE);
 
