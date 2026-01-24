@@ -631,18 +631,32 @@ console.log("hall-cash mode:", MODE);
       applyStatusClass(btn, getEffectiveStatus(key));
 
       btn.addEventListener("click", ()=>{
-        const st = getEffectiveStatus(key);
-        if (st === "sold" || st === "blocked") return;
+  const st = getEffectiveStatus(key);
+  if (st === "sold" || st === "blocked") return;
 
-        if (btn.classList.contains("seat--selected")){
-          btn.classList.remove("seat--selected");
-          selected.delete(key);
-        } else {
-          btn.classList.add("seat--selected");
-          selected.set(key, { price });
-        }
-        updateSummary();
-      });
+  // =========================
+  // EDITOR MODE — только выбор
+  // =========================
+  if (MODE === "editor") {
+    btn.classList.toggle("seat--selected");
+    return;
+  }
+
+  // =========================
+  // CASH MODE — продажа
+  // =========================
+  if (btn.classList.contains("seat--selected")){
+    btn.classList.remove("seat--selected");
+    selected.delete(key);
+  } else {
+    btn.classList.add("seat--selected");
+    selected.set(key, { price });
+  }
+
+  updateSummary();
+});
+
+
 
       seatButtons.set(key, btn);
       return btn;
