@@ -126,6 +126,29 @@
       .hall-layout{flex-direction:column;}
       .hall-sidebar{width:auto;}
     }
+/* ============================= */
+/* EDITOR MODE — подготовка сцены */
+/* ============================= */
+
+body.mode-editor .cash-panel,
+body.mode-editor .right-panel,
+body.mode-editor .actions-panel,
+body.mode-editor .queue-panel,
+body.mode-editor .journal-panel,
+body.mode-editor .btn-sell,
+body.mode-editor .btn-print,
+body.mode-editor .btn-sync,
+body.mode-editor .btn-reserve {
+  display: none !important;
+}
+
+/* схема — на всю ширину */
+body.mode-editor .hall-wrapper,
+body.mode-editor .hall-scroll,
+body.mode-editor .hall-inner {
+  width: 100% !important;
+  max-width: none !important;
+}
 
     /* -------------------- EMBED MODE (backoffice) -------------------- */
     html.embed .hall-sidebar { display: none !important; }
