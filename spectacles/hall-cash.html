@@ -672,6 +672,17 @@ function saveQuotaPatch(){
       if (status === "reserved"){ btn.classList.add("seat--reserved"); }
       if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
     }
+function applyQuotaClass(btn, zone){
+  btn.classList.remove(
+    "seat--quota-karabas",
+    "seat--quota-online",
+    "seat--quota-cash"
+  );
+
+  if (zone === "karabas") btn.classList.add("seat--quota-karabas");
+  if (zone === "theatre_online") btn.classList.add("seat--quota-online");
+  if (zone === "theatre_cash") btn.classList.add("seat--quota-cash");
+}
 
     function makeSeatElement(key,label,extraClass,price){
       const btn = document.createElement("button");
