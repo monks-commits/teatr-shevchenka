@@ -211,6 +211,31 @@ body.mode-editor .hall-inner {
         <span class="pill" id="onlineBlockPill">tickets: —</span>
         <button id="btnSettings" class="btn btn-ghost" style="padding:8px 10px;border-radius:999px;">⚙ Налаштування</button>
       </div>
+<!-- =============================== -->
+<!-- QUOTA CONTROLS (CREATE MODE) -->
+<!-- =============================== -->
+<div id="quotaControls"
+     style="display:none; margin:12px 0; gap:8px; flex-wrap:wrap; align-items:center;">
+
+  <b style="margin-right:6px;">Квотування:</b>
+
+  <select id="quotaZone">
+    <option value="Партер">Партер</option>
+    <option value="Амфітеатр">Амфітеатр</option>
+    <option value="Балкон">Балкон</option>
+  </select>
+
+  <input id="quotaRowFrom" type="number" placeholder="Ряд з" style="width:70px">
+  <input id="quotaRowTo" type="number" placeholder="по" style="width:70px">
+
+  <select id="quotaOwner">
+    <option value="theatre_cash">Театр (каса)</option>
+    <option value="theatre_online">Театр (онлайн)</option>
+    <option value="karabas">Карабас</option>
+  </select>
+
+  <button id="applyQuota" class="btn btn-ghost">Застосувати</button>
+</div>
 
       <div class="hall-layout">
         <div class="hall-left">
