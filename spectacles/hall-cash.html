@@ -684,6 +684,21 @@ function saveQuotaPatch(){
       applyStatusClass(btn, getEffectiveStatus(key));
 
       btn.addEventListener("click", ()=>{
+
+  // ===== CREATE MODE: QUOTAS =====
+  if (MODE === "create") {
+    const current = QUOTA_PATCH[key]?.zone || "theatre_cash";
+
+    const order = ["theatre_cash","theatre_online","karabas"];
+    const next = order[(order.indexOf(current)+1)%order.length];
+
+    QUOTA_PATCH[key] = { zone: next };
+    saveQuotaPatch();
+    applyQuotaClass(btn, next);
+    return;
+  }
+
+  // ===== CASH MODE (как было) =====
   const st = getEffectiveStatus(key);
   if (st === "sold" || st === "blocked") return;
 
