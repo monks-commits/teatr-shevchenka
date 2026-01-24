@@ -581,6 +581,10 @@ console.log("hall-cash mode:", MODE);
     function cashPatchKey(){
       return `cash_patch_${SEANCE_ID || showSlug || "unknown"}`;
     }
+    function sceneKey() {
+  return `scene_${showSlug || "draft"}`;
+}
+
     function loadCashPatch(){
       try{
         const raw = localStorage.getItem(cashPatchKey());
