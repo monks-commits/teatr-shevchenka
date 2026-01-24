@@ -290,6 +290,17 @@
   </div>
 
   <script>
+    // ===============================
+// MODE: cash | editor
+// ===============================
+const params = new URLSearchParams(window.location.search);
+const MODE = params.get("mode") || "cash";
+
+// добавляем класс на body
+document.body.classList.add(`mode-${MODE}`);
+
+console.log("hall-cash mode:", MODE);
+
     const qs = new URLSearchParams(location.search);
     const showSlug = (qs.get("show") || "").trim();
 
