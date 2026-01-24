@@ -688,6 +688,28 @@ function loadQuotaPatch(){
 function saveQuotaPatch(){
   localStorage.setItem(quotaKey(), JSON.stringify(QUOTA_PATCH));
 }
+// ===============================
+// MASS QUOTA APPLY (CREATE MODE)
+// ===============================
+function applyQuotaToRows({ zone, fromRow, toRow, quota }) {
+  for (const [key, btn] of seatButtons.entries()) {
+    const human = seatKeyToHuman(key);
+
+    // фильтр по зоне
+    if (!human.includes(zone)) continue;
+
+    const m = human.match(/Ряд (\d+)/);
+    if (!m) continue;
+
+    const row = Number(m[1]);
+    if (row < fromRow || row > toRow) continue;
+
+    QUOTA_PATCH[key] = { zone: quota };
+    applyQuotaClass(btn, quota);
+  }
+
+  saveQuotaPatch();
+}
 
     function getEffectiveStatus(key){
       if (takenSeatsOnline.has(key)) return "blocked";
