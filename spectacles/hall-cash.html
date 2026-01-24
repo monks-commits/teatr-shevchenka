@@ -693,6 +693,13 @@ function applyQuotaClass(btn, zone){
       btn.dataset.price = String(price);
 
       applyStatusClass(btn, getEffectiveStatus(key));
+// ===== APPLY QUOTA FROM STORAGE (create mode) =====
+if (MODE === "create") {
+  const q = QUOTA_PATCH[key];
+  if (q?.zone) {
+    applyQuotaClass(btn, q.zone);
+  }
+}
 
       btn.addEventListener("click", ()=>{
 
