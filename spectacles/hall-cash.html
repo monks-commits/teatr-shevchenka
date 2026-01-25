@@ -380,6 +380,36 @@ body.mode-editor .hall-inner {
 // ===============================
 const params = new URLSearchParams(window.location.search);
 const MODE = params.get("mode") || "cash";
+// ===============================
+// PRICE PROFILES
+// ===============================
+const PRICE_PROFILES = {
+  evening: {
+    label: "Вечірній",
+    prices: {
+      70:  "#ec4899",
+      100: "#7c2d12",
+      120: "#16a34a",
+      140: "#7c3aed",
+      160: "#facc15",
+      170: "#84cc16",
+      180: "#a3e635",
+      200: "#38bdf8"
+    }
+  },
+  kids: {
+    label: "Дитячий",
+    prices: {
+      70:  "#f97316",
+      80:  "#a16207",
+      90:  "#22c55e",
+      100: "#38bdf8"
+    }
+  }
+};
+
+let ACTIVE_PRICE_PROFILE = "evening";
+    
 const selectedRows = new Set();
 
 // добавляем класс на body
