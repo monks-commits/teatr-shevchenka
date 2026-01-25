@@ -215,14 +215,9 @@ body.mode-editor .hall-inner {
       <button id="btnSaveScene" class="btn btn-sync">
   Зберегти сеанс
 </button>
-<button id="btnBlockRows" class="btn btn-ghost">
-  Заблокувати вибрані ряди
-  <select id="priceProfile" class="btn btn-ghost">
-  <option value="evening">Вечірній показ</option>
-  <option value="kids">Дитячий (ранковий)</option>
-</select>
 
-</button>
+
+      
 <div style="display:flex;gap:8px;margin:10px 0;">
   <input
     id="rowPriceInput"
@@ -231,11 +226,30 @@ body.mode-editor .hall-inner {
     placeholder="Ціна для ряду"
     style="width:140px;padding:10px;border-radius:12px;border:1px solid #e5e7eb;"
   />
-  <button id="btnApplyRowPrice" class="btn btn-ghost">
-    <input id="rowPriceInput" type="number" placeholder="Ціна" class="btn btn-ghost">
-<button id="btnApplyPriceBlock" class="btn btn-ghost">
-  Застосувати ціну + блок
-</button>
+ 
+<div style="display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap;">
+
+  <button id="btnBlockRows" class="btn btn-ghost">
+    Заблокувати вибрані ряди
+  </button>
+
+  <select id="priceProfile" class="btn btn-ghost">
+    <option value="evening">Вечірній показ</option>
+    <option value="kids">Дитячий (ранковий)</option>
+  </select>
+
+  <input
+    id="rowPriceInput"
+    type="number"
+    placeholder="Ціна"
+    style="width:120px;padding:10px;border-radius:12px;border:1px solid #e5e7eb;"
+  />
+
+  <button id="btnApplyPriceBlock" class="btn btn-ghost">
+    Застосувати ціну + блок
+  </button>
+
+</div>
 
     Застосувати ціну + блок
   </button>
