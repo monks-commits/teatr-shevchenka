@@ -1198,6 +1198,28 @@ if (MODE === "create") {
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
+document.getElementById("btnBlockRows")?.addEventListener("click", () => {
+  if (MODE !== "create") return;
+  if (!selectedRows.size) {
+    alert("Не вибрано жодного ряду");
+    return;
+  }
+
+  for (const row of selectedRows) {
+    for (const [key, btn] of seatButtons.entries()) {
+      if (key.startsWith(`P${row}-`)) {
+        btn.classList.add("seat--blocked");
+      }
+    }
+  }
+
+  selectedRows.clear();
+
+  document.querySelectorAll(".row-label").forEach(lab => {
+    lab.style.background = "";
+    lab.style.color = "";
+  });
+});
 
     document.getElementById("btn-reset")?.addEventListener("click", ()=>{
       if (!confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?")) return;
