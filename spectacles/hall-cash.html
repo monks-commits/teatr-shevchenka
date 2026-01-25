@@ -48,8 +48,20 @@
 
     .seat--sold{background:#9ca3af !important;color:#fff;border-color:#9ca3af;cursor:not-allowed;}
     .seat--reserved{background:#f59e0b !important;color:#111827;border-color:#f59e0b;}
-    .seat--blocked{background:#111827 !important;color:#fff;border-color:#111827;cursor:not-allowed;
+    .seat--blocked{
+  background: repeating-linear-gradient(
+    45deg,
+    #e5e7eb,
+    #e5e7eb 6px,
+    #f3f4f6 6px,
+    #f3f4f6 12px
+  ) !important;
+  color:#6b7280;
+  border-color:#d1d5db;
+  cursor:not-allowed;
 }
+
+
 
 
     .seat--gap-right{margin-right:16px;}
