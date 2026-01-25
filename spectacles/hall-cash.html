@@ -48,7 +48,9 @@
 
     .seat--sold{background:#9ca3af !important;color:#fff;border-color:#9ca3af;cursor:not-allowed;}
     .seat--reserved{background:#f59e0b !important;color:#111827;border-color:#f59e0b;}
-    .seat--blocked{background:#111827 !important;color:#fff;border-color:#111827;cursor:not-allowed;}
+    .seat--blocked{background:#111827 !important;color:#fff;border-color:#111827;cursor:not-allowed;
+}
+
 
     .seat--gap-right{margin-right:16px;}
     .amphi-gap{width:24px;flex:0 0 24px;}
@@ -129,6 +131,17 @@
 /* ============================= */
 /* EDITOR MODE — подготовка сцены */
 /* ============================= */
+/* create mode — только схема */
+body.mode-create .cash-badge,
+body.mode-create .hall-sidebar,
+body.mode-create .row-price-list,
+body.mode-create .btn-sell,
+body.mode-create .btn-reserve,
+body.mode-create .btn-sync,
+body.mode-create .btn-reset,
+body.mode-create .btn-reprint {
+  display: none !important;
+}
 
 body.mode-editor .cash-panel,
 body.mode-editor .right-panel,
