@@ -1334,7 +1334,7 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
     document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
-  const priceInput = document.getElementById("rowPriceInput");
+  const priceInput = document.getElementById("rowPriceInput"); 
   const price = Number(priceInput?.value || 0);
 
   if (!selectedRows.size) {
