@@ -344,6 +344,7 @@ body.mode-editor .hall-inner {
 // ===============================
 const params = new URLSearchParams(window.location.search);
 const MODE = params.get("mode") || "cash";
+const selectedRows = new Set();
 
 // добавляем класс на body
 document.body.classList.add(`mode-${MODE}`);
