@@ -178,6 +178,9 @@ body.mode-editor .hall-inner {
   <main class="main">
     <div class="container">
       <h1>Схема залу — каса</h1>
+<button id="btnSaveScene" class="btn btn-sync">
+  Зберегти сеанс
+</button>
 
       <div class="cash-badge">
         <span class="pill dark">Режим: <b>каса</b></span>
@@ -430,6 +433,9 @@ console.log("hall-cash mode:", MODE);
       const el = document.getElementById("qPill");
       if(el) el.textContent = `Черга: ${n}`;
     }
+function sceneKey() {
+  return `scene_${showSlug || "draft"}`;
+}
 
     function setTicketsPill(text, kind){
       const el = document.getElementById("onlineBlockPill");
@@ -449,6 +455,35 @@ console.log("hall-cash mode:", MODE);
     function getCashierSecret(){
       return localStorage.getItem("cashier_sync_secret") || "";
     }
+function collectBlockedSeats() {
+  const blocked = [];
+  for (const [key, btn] of seatButtons.entries()) {
+    if (btn.classList.contains("seat--blocked")) {
+      blocked.push(key);
+    }
+  }
+  return blocked;
+}
+
+function collectPrices() {
+  const prices = {};
+  for (const [key, btn] of seatButtons.entries()) {
+    prices[key] = Number(btn.dataset.price || 0);
+  }
+  return prices;
+}
+
+function saveScene() {
+  const scene = {
+    hall: "Основний",
+    prices: collectPrices(),
+    blocked: collectBlockedSeats(),
+    ts: Date.now()
+  };
+  localStorage.setItem(sceneKey(), JSON.stringify(scene));
+}
+
+    
     function setCashierSecret(v){
       localStorage.setItem("cashier_sync_secret", v || "");
     }
@@ -841,6 +876,11 @@ console.log("hall-cash mode:", MODE);
       if (!w){ alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку."); return; }
       w.document.open();
       w.document.write(html);
+
+      document
+  .getElementById("btnSaveScene")
+  ?.addEventListener("click", saveScene);
+
       w.document.close();
 
       setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 250);
@@ -1074,6 +1114,16 @@ console.log("hall-cash mode:", MODE);
           const cls = r.className + (pos===14 ? " seat--gap-right" : "");
           seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
         }
+if (MODE === "create") {
+  const raw = localStorage.getItem(sceneKey());
+  if (raw) {
+    const scene = JSON.parse(raw);
+    Object.keys(scene.blocked || {}).forEach(k=>{
+      const b = seatButtons.get(k);
+      if (b) b.classList.add("seat--blocked");
+    });
+  }
+}
 
         rowLine.appendChild(seatsRow);
         block.appendChild(rowLine);
