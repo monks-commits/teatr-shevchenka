@@ -1287,6 +1287,47 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
       closeModal();
       alert("Збережено.");
     });
+
+    document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
+  if (MODE !== "create") return;
+
+  const priceInput = document.getElementById("rowPriceInput");
+  const price = Number(priceInput?.value || 0);
+
+  if (!selectedRows.size) {
+    alert("Не вибрано жодного ряду");
+    return;
+  }
+
+  if (price <= 0) {
+    alert("Введіть коректну ціну");
+    return;
+  }
+
+  for (const row of selectedRows) {
+    for (const [key, btn] of seatButtons.entries()) {
+      if (key.startsWith(`P${row}-`)) {
+        // цена
+        btn.dataset.price = String(price);
+
+        // визуально — блок
+        btn.classList.add("seat--blocked");
+
+        // если вдруг было выделение
+        btn.classList.remove("seat--selected");
+      }
+    }
+  }
+
+  selectedRows.clear();
+  priceInput.value = "";
+
+  document.querySelectorAll(".row-label").forEach(lab => {
+    lab.style.background = "";
+    lab.style.color = "";
+  });
+});
+
     modalBack?.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
 
     // -------------------- Backoffice iframe control via postMessage --------------------
