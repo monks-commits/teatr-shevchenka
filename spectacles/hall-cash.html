@@ -697,7 +697,8 @@ function saveScene() {
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
-     btn.addEventListener("click", ()=>{
+    btn.addEventListener("click", ()=>{
+  // CREATE MODE — подготовка сцены
   if (MODE === "create") {
     btn.classList.toggle("seat--blocked");
     return;
@@ -716,6 +717,7 @@ function saveScene() {
 
   updateSummary();
 });
+
 
 
 
