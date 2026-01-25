@@ -1225,6 +1225,12 @@ if (MODE === "create") {
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
+    document.getElementById("btnSaveScene")
+  ?.addEventListener("click", () => {
+    saveScene();
+    alert("Сцену збережено");
+  });
+
 document.getElementById("btnBlockRows")?.addEventListener("click", () => {
   if (MODE !== "create") return;
   if (!selectedRows.size) {
