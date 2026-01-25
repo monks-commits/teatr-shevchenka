@@ -504,14 +504,29 @@ function collectPrices() {
 }
 
 function saveScene() {
+  const prices = {};
+  const blocked = [];
+
+  for (const [key, btn] of seatButtons.entries()) {
+    const price = Number(btn.dataset.price || 0);
+    if (price > 0) prices[key] = price;
+
+    if (btn.classList.contains("seat--blocked")) {
+      blocked.push(key);
+    }
+  }
+
   const scene = {
-    hall: "Основний",
-    prices: collectPrices(),
-    blocked: collectBlockedSeats(),
+    show: showSlug || null,
+    prices,
+    blocked,
     ts: Date.now()
   };
+
   localStorage.setItem(sceneKey(), JSON.stringify(scene));
+  alert("Сцену збережено");
 }
+
 
     
     function setCashierSecret(v){
