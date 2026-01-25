@@ -1151,6 +1151,22 @@ btn.classList.add(`seat--p${price}`);
 });
 
     }
+function applyPriceToSeat(btn, price) {
+  const profile = PRICE_PROFILES[ACTIVE_PRICE_PROFILE];
+  const color = profile?.prices?.[price];
+
+  if (!color) {
+    alert("Ціна недоступна для цього показу");
+    return;
+  }
+
+  btn.dataset.price = String(price);
+  btn.dataset.profile = ACTIVE_PRICE_PROFILE;
+
+  btn.classList.remove("seat--blocked");
+  btn.style.background = color;
+  btn.style.color = "#fff";
+}
 
     function renderLodges(){
       const a = document.getElementById("lodge-a-seats");
