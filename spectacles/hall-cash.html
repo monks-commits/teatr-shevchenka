@@ -1329,9 +1329,7 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
     alert("Не вибрано жодного ряду");
     return;
   }
-document.getElementById("priceProfile")?.addEventListener("change", e => {
-  ACTIVE_PRICE_PROFILE = e.target.value;
-});
+
 
   for (const row of selectedRows) {
     for (const [key, btn] of seatButtons.entries()) {
