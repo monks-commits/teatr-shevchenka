@@ -1312,6 +1312,74 @@ if (MODE === "create") {
     }
 
     // ---- кнопки ----
+// ================================
+// CREATE MODE — блокировка рядов
+// ================================
+
+// выбор профиля цен
+document.getElementById("priceProfile")?.addEventListener("change", e => {
+  ACTIVE_PRICE_PROFILE = e.target.value;
+});
+
+// 1. Просто заблокировать выбранные ряды
+document.getElementById("btnBlockRows")?.addEventListener("click", () => {
+  if (MODE !== "create") return;
+
+  if (!selectedRows.size) {
+    alert("Не вибрано жодного ряду");
+    return;
+  }
+
+  for (const row of selectedRows) {
+    for (const [key, btn] of seatButtons.entries()) {
+      if (key.startsWith(`P${row}-`)) {
+        btn.classList.add("seat--blocked");
+      }
+    }
+  }
+
+  selectedRows.clear();
+  document.querySelectorAll(".row-label").forEach(lab => {
+    lab.style.background = "";
+    lab.style.color = "";
+  });
+});
+
+// 2. Цена + блокировка по рядам
+document.getElementById("btnApplyPriceBlock")?.addEventListener("click", () => {
+  if (MODE !== "create") return;
+
+  const price = Number(document.getElementById("rowPriceInput")?.value);
+
+  if (!price) {
+    alert("Вкажіть ціну");
+    return;
+  }
+
+  if (!selectedRows.size) {
+    alert("Не вибрано жодного ряду");
+    return;
+  }
+
+  for (const row of selectedRows) {
+    for (const [key, btn] of seatButtons.entries()) {
+      if (key.startsWith(`P${row}-`)) {
+        applyPriceToSeat(btn, price);
+        btn.classList.add("seat--blocked");
+      }
+    }
+  }
+
+  selectedRows.clear();
+  document.getElementById("rowPriceInput").value = "";
+
+  document.querySelectorAll(".row-label").forEach(lab => {
+    lab.style.background = "";
+    lab.style.color = "";
+  });
+});
+
+    
     document.getElementById("btn-clear")?.addEventListener("click", ()=> clearSelection());
     document.getElementById("btn-reserve")?.addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
