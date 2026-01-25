@@ -1324,6 +1324,32 @@ document.getElementById("priceProfile")?.addEventListener("change", e => {
 
   selectedRows.clear();
 
+document.getElementById("btnApplyPriceBlock")?.addEventListener("click", () => {
+  if (MODE !== "create") return;
+
+  const price = Number(document.getElementById("rowPriceInput")?.value);
+  if (!price) {
+    alert("Вкажіть ціну");
+    return;
+  }
+
+  for (const row of selectedRows) {
+    for (const [key, btn] of seatButtons.entries()) {
+      if (key.startsWith(`P${row}-`)) {
+        applyPriceToSeat(btn, price);
+        btn.classList.add("seat--blocked");
+      }
+    }
+  }
+
+  selectedRows.clear();
+  document.querySelectorAll(".row-label").forEach(l => {
+    l.style.background = "";
+    l.style.color = "";
+  });
+});
+
+  
   document.querySelectorAll(".row-label").forEach(lab => {
     lab.style.background = "";
     lab.style.color = "";
