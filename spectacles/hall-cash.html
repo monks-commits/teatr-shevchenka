@@ -679,21 +679,15 @@ function saveScene() {
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
-      btn.addEventListener("click", ()=>{
-  const st = getEffectiveStatus(key);
-  if (st === "sold" || st === "blocked") return;
-
-  // =========================
-  // EDITOR MODE — только выбор
-  // =========================
-  if (MODE === "editor") {
-    btn.classList.toggle("seat--selected");
+     btn.addEventListener("click", ()=>{
+  if (MODE === "create") {
+    btn.classList.toggle("seat--blocked");
     return;
   }
 
-  // =========================
-  // CASH MODE — продажа
-  // =========================
+  const st = getEffectiveStatus(key);
+  if (st === "sold" || st === "blocked") return;
+
   if (btn.classList.contains("seat--selected")){
     btn.classList.remove("seat--selected");
     selected.delete(key);
