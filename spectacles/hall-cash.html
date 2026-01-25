@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" /> 
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Схема залу </title>
 
@@ -215,9 +215,9 @@ body.mode-editor .hall-inner {
       <button id="btnSaveScene" class="btn btn-sync">
   Зберегти сеанс
 </button>
-
-
-      
+<button id="btnBlockRows" class="btn btn-ghost">
+  Заблокувати вибрані ряди
+</button>
 <div style="display:flex;gap:8px;margin:10px 0;">
   <input
     id="rowPriceInput"
@@ -226,31 +226,7 @@ body.mode-editor .hall-inner {
     placeholder="Ціна для ряду"
     style="width:140px;padding:10px;border-radius:12px;border:1px solid #e5e7eb;"
   />
- 
-<div style="display:flex;gap:8px;align-items:center;margin:12px 0;flex-wrap:wrap;">
-
-  <button id="btnBlockRows" class="btn btn-ghost">
-    Заблокувати вибрані ряди
-  </button>
-
-  <select id="priceProfile" class="btn btn-ghost">
-    <option value="evening">Вечірній показ</option>
-    <option value="kids">Дитячий (ранковий)</option>
-  </select>
-
-  <input
-    id="rowPriceInput"
-    type="number"
-    placeholder="Ціна"
-    style="width:120px;padding:10px;border-radius:12px;border:1px solid #e5e7eb;"
-  />
-
-  <button id="btnApplyPriceBlock" class="btn btn-ghost">
-    Застосувати ціну + блок
-  </button>
-
-</div>
-
+  <button id="btnApplyRowPrice" class="btn btn-ghost">
     Застосувати ціну + блок
   </button>
 </div>
@@ -404,36 +380,6 @@ body.mode-editor .hall-inner {
 // ===============================
 const params = new URLSearchParams(window.location.search);
 const MODE = params.get("mode") || "cash";
-// ===============================
-// PRICE PROFILES
-// ===============================
-const PRICE_PROFILES = {
-  evening: {
-    label: "Вечірній",
-    prices: {
-      70:  "#ec4899",
-      100: "#7c2d12",
-      120: "#16a34a",
-      140: "#7c3aed",
-      160: "#facc15",
-      170: "#84cc16",
-      180: "#a3e635",
-      200: "#38bdf8"
-    }
-  },
-  kids: {
-    label: "Дитячий",
-    prices: {
-      70:  "#f97316",
-      80:  "#a16207",
-      90:  "#22c55e",
-      100: "#38bdf8"
-    }
-  }
-};
-
-let ACTIVE_PRICE_PROFILE = "evening";
-    
 const selectedRows = new Set();
 
 // добавляем класс на body
@@ -795,8 +741,6 @@ function saveScene() {
       btn.className = "seat" + (extraClass ? " " + extraClass : "");
       btn.dataset.key = key;
       btn.dataset.price = String(price);
-// === PRICE → COLOR ===
-btn.classList.add(`seat--p${price}`);
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
@@ -1170,22 +1114,6 @@ btn.classList.add(`seat--p${price}`);
 });
 
     }
-function applyPriceToSeat(btn, price) {
-  const profile = PRICE_PROFILES[ACTIVE_PRICE_PROFILE];
-  const color = profile?.prices?.[price];
-
-  if (!color) {
-    alert("Ціна недоступна для цього показу");
-    return;
-  }
-
-  btn.dataset.price = String(price);
-  btn.dataset.profile = ACTIVE_PRICE_PROFILE;
-
-  btn.classList.remove("seat--blocked");
-  btn.style.background = color;
-  btn.style.color = "#fff";
-}
 
     function renderLodges(){
       const a = document.getElementById("lodge-a-seats");
@@ -1312,74 +1240,6 @@ if (MODE === "create") {
     }
 
     // ---- кнопки ----
-// ================================
-// CREATE MODE — блокировка рядов
-// ================================
-
-// выбор профиля цен
-document.getElementById("priceProfile")?.addEventListener("change", e => {
-  ACTIVE_PRICE_PROFILE = e.target.value;
-});
-
-// 1. Просто заблокировать выбранные ряды
-document.getElementById("btnBlockRows")?.addEventListener("click", () => {
-  if (MODE !== "create") return;
-
-  if (!selectedRows.size) {
-    alert("Не вибрано жодного ряду");
-    return;
-  }
-
-  for (const row of selectedRows) {
-    for (const [key, btn] of seatButtons.entries()) {
-      if (key.startsWith(`P${row}-`)) {
-        btn.classList.add("seat--blocked");
-      }
-    }
-  }
-
-  selectedRows.clear();
-  document.querySelectorAll(".row-label").forEach(lab => {
-    lab.style.background = "";
-    lab.style.color = "";
-  });
-});
-
-// 2. Цена + блокировка по рядам
-document.getElementById("btnApplyPriceBlock")?.addEventListener("click", () => {
-  if (MODE !== "create") return;
-
-  const price = Number(document.getElementById("rowPriceInput")?.value);
-
-  if (!price) {
-    alert("Вкажіть ціну");
-    return;
-  }
-
-  if (!selectedRows.size) {
-    alert("Не вибрано жодного ряду");
-    return;
-  }
-
-  for (const row of selectedRows) {
-    for (const [key, btn] of seatButtons.entries()) {
-      if (key.startsWith(`P${row}-`)) {
-        applyPriceToSeat(btn, price);
-        btn.classList.add("seat--blocked");
-      }
-    }
-  }
-
-  selectedRows.clear();
-  document.getElementById("rowPriceInput").value = "";
-
-  document.querySelectorAll(".row-label").forEach(lab => {
-    lab.style.background = "";
-    lab.style.color = "";
-  });
-});
-
-    
     document.getElementById("btn-clear")?.addEventListener("click", ()=> clearSelection());
     document.getElementById("btn-reserve")?.addEventListener("click", ()=> applyStatusToSelectedLocal("reserved"));
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
@@ -1398,7 +1258,6 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
     return;
   }
 
-
   for (const row of selectedRows) {
     for (const [key, btn] of seatButtons.entries()) {
       if (key.startsWith(`P${row}-`)) {
@@ -1409,32 +1268,6 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
 
   selectedRows.clear();
 
-document.getElementById("btnApplyPriceBlock")?.addEventListener("click", () => {
-  if (MODE !== "create") return;
-
-  const price = Number(document.getElementById("rowPriceInput")?.value);
-  if (!price) {
-    alert("Вкажіть ціну");
-    return;
-  }
-
-  for (const row of selectedRows) {
-    for (const [key, btn] of seatButtons.entries()) {
-      if (key.startsWith(`P${row}-`)) {
-        applyPriceToSeat(btn, price);
-        btn.classList.add("seat--blocked");
-      }
-    }
-  }
-
-  selectedRows.clear();
-  document.querySelectorAll(".row-label").forEach(l => {
-    l.style.background = "";
-    l.style.color = "";
-  });
-});
-
-  
   document.querySelectorAll(".row-label").forEach(lab => {
     lab.style.background = "";
     lab.style.color = "";
@@ -1499,7 +1332,7 @@ document.getElementById("btnApplyPriceBlock")?.addEventListener("click", () => {
     document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
-  const priceInput = document.getElementById("rowPriceInput"); 
+  const priceInput = document.getElementById("rowPriceInput");
   const price = Number(priceInput?.value || 0);
 
   if (!selectedRows.size) {
