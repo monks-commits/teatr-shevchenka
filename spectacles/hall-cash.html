@@ -1035,13 +1035,18 @@ function saveScene() {
 
   // 👇 ВАЖНО: обработчик СЮДА
   lab.addEventListener("click", ()=>{
-    if (MODE !== "create") return;
+  if (MODE !== "create") return;
 
-    const seats = seatsRow.querySelectorAll(".seat");
-    seats.forEach(btn=>{
-      btn.classList.toggle("seat--blocked");
-    });
-  });
+  if (selectedRows.has(r.row)) {
+    selectedRows.delete(r.row);
+    lab.style.background = "";
+    lab.style.color = "";
+  } else {
+    selectedRows.add(r.row);
+    lab.style.background = "#2563eb";
+    lab.style.color = "#fff";
+  }
+});
 
   rowLine.appendChild(lab);
 
