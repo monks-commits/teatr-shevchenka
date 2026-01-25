@@ -741,6 +741,8 @@ function saveScene() {
       btn.className = "seat" + (extraClass ? " " + extraClass : "");
       btn.dataset.key = key;
       btn.dataset.price = String(price);
+// === PRICE → COLOR ===
+btn.classList.add(`seat--p${price}`);
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
