@@ -1027,7 +1027,15 @@ function saveScene() {
 
         const lab = document.createElement("div");
         lab.className = "row-label";
-        lab.textContent = r.row;
+        lab.textContent = r.row;lab.addEventListener("click", ()=>{
+  if (MODE !== "create") return;
+
+  const seats = seatsRow.querySelectorAll(".seat");
+  seats.forEach(btn=>{
+    btn.classList.toggle("seat--blocked");
+  });
+});
+
         rowLine.appendChild(lab);
 
         const seatsRow = document.createElement("div");
