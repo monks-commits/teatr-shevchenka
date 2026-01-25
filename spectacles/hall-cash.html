@@ -1026,34 +1026,22 @@ function saveScene() {
         rowLine.className = "row-line";
 
         const lab = document.createElement("div");
-lab.className = "row-label";
-lab.textContent = r.row;
-lab.style.cursor = "pointer";
+        lab.className = "row-label";
+        lab.textContent = r.row;
+        rowLine.appendChild(lab);
 
-lab.addEventListener("click", () => {
-  if (MODE !== "create") return;
+        const seatsRow = document.createElement("div");
+        seatsRow.className = "seats-row";
 
-  const seats = rowLine.querySelectorAll(".seat");
-  const allBlocked = Array.from(seats).every(b => b.classList.contains("seat--blocked"));
+        for (let s=1; s<=r.seats; s++){
+          const key = seatKey({zone:"Партер", row:r.row, seat:s});
+          const cls = r.className + (s===10 ? " seat--gap-right" : "");
+          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
+        }
 
-  seats.forEach(b => {
-    const key = b.dataset.key;
-    if (!key) return;
-
-    if (allBlocked) {
-      b.classList.remove("seat--blocked");
-      delete CASH_PATCH[key];
-    } else {
-      b.classList.add("seat--blocked");
-      CASH_PATCH[key] = { status: "blocked", ts: Date.now() };
-    }
-  });
-
-  saveCashPatch(CASH_PATCH);
-});
-
-rowLine.appendChild(lab);
-
+        rowLine.appendChild(seatsRow);
+        block.appendChild(rowLine);
+      });
     }
 
     function renderLodges(){
