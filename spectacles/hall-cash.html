@@ -522,21 +522,21 @@ function collectPrices() {
 
 function saveScene() {
   const prices = {};
-  const blocked = [];
+  const inactive = [];
 
   for (const [key, btn] of seatButtons.entries()) {
     const price = Number(btn.dataset.price || 0);
-    if (price > 0) prices[key] = price;
 
-    if (btn.classList.contains("seat--blocked")) {
-      blocked.push(key);
+    if (price > 0) {
+      prices[key] = price;
+    } else {
+      inactive.push(key);
     }
   }
 
   const scene = {
-    show: showSlug || null,
     prices,
-    blocked,
+    inactive,
     ts: Date.now()
   };
 
