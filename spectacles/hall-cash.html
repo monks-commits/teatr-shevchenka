@@ -1379,7 +1379,7 @@ function applyPriceClass(btn, price) {
 }
 
     
-    document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
+document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
   const priceInput = document.getElementById("rowPriceInput");
@@ -1398,14 +1398,19 @@ function applyPriceClass(btn, price) {
   for (const row of selectedRows) {
     for (const [key, btn] of seatButtons.entries()) {
       if (key.startsWith(`P${row}-`)) {
-        // цена
-        btn.dataset.price = String(price);
-applyPriceClass(btn, price);
-        // визуально — блок
-        btn.classList.remove("seat--blocked");
-btn.classList.add("seat--active");
 
-        // если вдруг было выделение
+        // 1️⃣ цена
+        btn.dataset.price = String(price);
+        applyPriceClass(btn, price);
+
+        // 2️⃣ АКТИВИРУЕМ место
+        btn.classList.add("seat--active");
+        btn.classList.remove("seat--inactive");
+
+        // 3️⃣ в редакторе НЕ блокируем (чтобы в кассе продавалось)
+        btn.classList.remove("seat--blocked");
+
+        // 4️⃣ на всякий случай снимаем выделение
         btn.classList.remove("seat--selected");
       }
     }
