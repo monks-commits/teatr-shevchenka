@@ -1189,16 +1189,7 @@ btn.dataset.price = "0";
           const cls = r.className + (pos===14 ? " seat--gap-right" : "");
           seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
         }
-if (MODE === "create") {
-  const raw = localStorage.getItem(sceneKey());
-  if (raw) {
-    const scene = JSON.parse(raw);
-    Object.keys(scene.blocked || {}).forEach(k=>{
-      const b = seatButtons.get(k);
-      if (b) b.classList.add("seat--blocked");
-    });
-  }
-}
+
 
         rowLine.appendChild(seatsRow);
         block.appendChild(rowLine);
