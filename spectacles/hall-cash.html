@@ -564,15 +564,17 @@ function loadScene() {
 
   for (const [key, btn] of seatButtons.entries()) {
     btn.dataset.price = "0";
-    btn.classList.remove(
-      "seat--p200",
-      "seat--p160",
-      "seat--p140",
-      "seat--p120",
-      "seat--p100",
-      "seat--p80",
-      "seat--blocked"
-    );
+   btn.classList.remove(
+  "seat--p200",
+  "seat--p160",
+  "seat--p140",
+  "seat--p120",
+  "seat--p100",
+  "seat--p80",
+  "seat--blocked",
+  "seat--inactive" // 🔥 ВОТ ЭТОГО НЕ ХВАТАЛО
+);
+
 
     if (prices[key]) {
       const price = Number(prices[key]);
