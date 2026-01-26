@@ -1329,6 +1329,27 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
       alert("Збережено.");
     });
 
+function applyPriceClass(btn, price) {
+  // убираем старые классы цен
+  btn.classList.remove(
+    "seat--p200",
+    "seat--p160",
+    "seat--p140",
+    "seat--p120",
+    "seat--p100",
+    "seat--p80"
+  );
+
+  // добавляем нужный
+  if (price === 200) btn.classList.add("seat--p200");
+  else if (price === 160) btn.classList.add("seat--p160");
+  else if (price === 140) btn.classList.add("seat--p140");
+  else if (price === 120) btn.classList.add("seat--p120");
+  else if (price === 100) btn.classList.add("seat--p100");
+  else if (price === 80)  btn.classList.add("seat--p80");
+}
+
+    
     document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
