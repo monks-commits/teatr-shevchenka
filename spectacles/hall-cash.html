@@ -1457,18 +1457,16 @@ document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
     for (const [key, btn] of seatButtons.entries()) {
       if (key.startsWith(`P${row}-`)) {
 
-        // 1️⃣ цена
+        // цена
         btn.dataset.price = String(price);
         applyPriceClass(btn, price);
 
-        // 2️⃣ АКТИВИРУЕМ место
-        btn.classList.add("seat--active");
+        // АКТИВАЦИЯ МЕСТА
         btn.classList.remove("seat--inactive");
-
-        // 3️⃣ в редакторе НЕ блокируем (чтобы в кассе продавалось)
         btn.classList.remove("seat--blocked");
+        btn.classList.add("seat--active");
 
-        // 4️⃣ на всякий случай снимаем выделение
+        // снять выделение
         btn.classList.remove("seat--selected");
       }
     }
@@ -1482,6 +1480,7 @@ document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
     lab.style.color = "";
   });
 });
+
 
     modalBack?.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
 
