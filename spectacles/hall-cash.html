@@ -1328,6 +1328,10 @@ btn.dataset.price = "0";
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
+    document
+  .getElementById("btnRegisterSeance")
+  ?.addEventListener("click", registerSeance);
+
     document.getElementById("btnSaveScene")
   ?.addEventListener("click", () => {
     saveScene();
@@ -1431,10 +1435,6 @@ function applyPriceClass(btn, price) {
   else if (price === 100) btn.classList.add("seat--p100");
   else if (price === 80)  btn.classList.add("seat--p80");
 }
-
-document
-  .getElementById("btnRegisterSeance")
-  ?.addEventListener("click", registerSeance);
 
     
 document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
