@@ -833,9 +833,7 @@ function registerSeance() {
   (extraClass ? " " + extraClass : "");
 
       btn.dataset.key = key;
-      btn.dataset.price = String(price);
-// по умолчанию место НЕАКТИВНО
-btn.dataset.price = "0";
+btn.dataset.price = String(price || 0);
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
