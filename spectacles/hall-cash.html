@@ -591,21 +591,6 @@ function loadScene() {
 // ===============================
 // AFISHA / REGISTER SEANCE
 // ===============================
-function afishaDraftKey() {
-  return "afisha_draft";
-}
-
-function loadAfishaDraft() {
-  try {
-    return JSON.parse(localStorage.getItem(afishaDraftKey()) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveAfishaDraft(list) {
-  localStorage.setItem(afishaDraftKey(), JSON.stringify(list));
-}
 
 async function registerSeance() {
   if (!showSlug) {
