@@ -747,11 +747,8 @@ btn.dataset.price = "0";
       applyStatusClass(btn, getEffectiveStatus(key));
 
     btn.addEventListener("click", ()=>{
-  // CREATE MODE — подготовка сцены
-  if (MODE === "create") {
-    btn.classList.toggle("seat--blocked");
-    return;
-  }
+  if (MODE === "create") return; // в create клики только через кнопки
+
 
   const st = getEffectiveStatus(key);
   if (st === "sold" || st === "blocked") return;
