@@ -69,18 +69,6 @@
 .seat--p100 { background:#ec4899; color:#fff; }
 .seat--p80  { background:#fb7185; color:#fff; }
 
-
-/* === ЦЕНА → ЦВЕТ === */
-.seat--p200 { background:#55c3f1; color:#0f172a; }
-.seat--p160 { background:#facc15; color:#111827; }
-.seat--p140 { background:#a3e635; color:#0f172a; }
-.seat--p120 { background:#2dd4bf; color:#0f172a; }
-.seat--p100 { background:#ec4899; color:#fff; }
-.seat--p80  { background:#fb7185; color:#fff; }
-
-
-
-
     .seat--gap-right{margin-right:16px;}
     .amphi-gap{width:24px;flex:0 0 24px;}
 
@@ -747,9 +735,14 @@ function saveScene() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
+      btn.className =
+  "seat seat--inactive" +
+  (extraClass ? " " + extraClass : "");
+
       btn.dataset.key = key;
       btn.dataset.price = String(price);
+// по умолчанию место НЕАКТИВНО
+btn.dataset.price = "0";
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
