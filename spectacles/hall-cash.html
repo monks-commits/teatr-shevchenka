@@ -575,6 +575,58 @@ function loadScene() {
       "seat--blocked"
     );
 
+function afishaDraftKey() {
+  return "afisha_draft";
+}
+
+function loadAfishaDraft() {
+  try {
+    return JSON.parse(localStorage.getItem(afishaDraftKey()) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveAfishaDraft(list) {
+  localStorage.setItem(afishaDraftKey(), JSON.stringify(list));
+}
+
+function registerSeance() {
+  if (!showSlug) {
+    alert("Немає showSlug");
+    return;
+  }
+
+  const date = prompt("Дата сеансу (YYYY-MM-DD)");
+  const time = prompt("Час сеансу (HH:MM)");
+
+  if (!date || !time) return;
+
+  const scene_key = sceneKey();
+  const id = `${showSlug}-${date}-${time.replace(":", "-")}`;
+
+  const draft = loadAfishaDraft();
+
+  if (draft.some(s => s.id === id)) {
+    alert("Такий сеанс вже існує");
+    return;
+  }
+
+  draft.push({
+    id,
+    title: showSlug,
+    date,
+    time,
+    hall: "shevchenko",
+    scene_key,
+    status: "active"
+  });
+
+  saveAfishaDraft(draft);
+  alert("Сеанс зареєстровано");
+}
+
+    
     // apply price
     if (prices[key]) {
       const price = Number(prices[key]);
