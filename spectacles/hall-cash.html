@@ -1562,6 +1562,43 @@ function applyPriceClass(btn, price) {
       renderAmphi();
       renderBalcony();
       updateSummary();
+      // === LOAD SCENE ===
+if (MODE === "create") {
+  const raw = localStorage.getItem(sceneKey());
+  if (raw) {
+    const scene = JSON.parse(raw);
+
+    // inactive
+    (scene.inactive || []).forEach(key => {
+      const btn = seatButtons.get(key);
+      if (btn) {
+        btn.classList.add("seat--inactive");
+        btn.dataset.price = "0";
+      }
+    });
+
+    // prices
+    Object.entries(scene.prices || {}).forEach(([key, price]) => {
+      const btn = seatButtons.get(key);
+      if (!btn) return;
+
+      btn.classList.remove("seat--inactive");
+      btn.dataset.price = String(price);
+
+      btn.classList.remove(
+        "seat--p200",
+        "seat--p160",
+        "seat--p140",
+        "seat--p120",
+        "seat--p100",
+        "seat--p80"
+      );
+
+      btn.classList.add(`seat--p${price}`);
+    });
+  }
+}
+
       renderCashLog();
     })();
   </script>
