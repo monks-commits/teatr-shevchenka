@@ -607,27 +607,37 @@ function saveAfishaDraft(list) {
   localStorage.setItem(afishaDraftKey(), JSON.stringify(list));
 }
 
-function registerSeance() {
+async function registerSeance() {
   if (!showSlug) {
     alert("Немає showSlug");
     return;
   }
 
-  const date = prompt("Дата сеансу (YYYY-MM-DD)");
-  const time = prompt("Час сеансу (HH:MM)");
-  if (!date || !time) return;
+  const dateInput = document.querySelector('input[type="date"]');
+  const timeInput = document.querySelector('input[type="time"]');
 
-  const scene_key = sceneKey();
-  const id = `${showSlug}-${date}-${time.replace(":", "-")}`;
+  const date = dateInput?.value;
+  const time = timeInput?.value;
 
-  const draft = loadAfishaDraft();
-  if (draft.some(s => s.id === id)) {
-    alert("Такий сеанс вже існує");
+  if (!date || !time) {
+    alert("Вкажіть дату та час");
     return;
   }
 
-  draft.push({
+  const id = `${showSlug}-${date}-${time.replace(":", "-")}`;
+  const scene_key = sceneKey();
+
+  const afishaUrl = "../data/afisha.json";
+  const list = (await fetchJsonSafe(afishaUrl)) || [];
+
+  if (list.some(s => s.id === id)) {
+    alert("Такий сеанс вже існує в афіші");
+    return;
+  }
+
+  list.push({
     id,
+    show: showSlug,
     title: showSlug,
     date,
     time,
@@ -636,9 +646,15 @@ function registerSeance() {
     status: "active"
   });
 
-  saveAfishaDraft(draft);
-  alert("Сеанс зареєстровано");
+  // ⛔️ ВАЖНО: это GitHub Pages → пишем локально
+  localStorage.setItem("afisha_override", JSON.stringify(list));
+
+  alert("Сеанс зареєстровано\n(локально, для каси)");
+
+  // 👉 сразу переходим в кассу
+  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}`;
 }
+
 
     
     function setCashierSecret(v){
