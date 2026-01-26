@@ -730,8 +730,15 @@ async function registerSeance() {
     let SEANCE_ID = "";
     async function loadShowMeta(){
       if (!showSlug) return;
-      const list = await fetchJsonSafe("../data/afisha.json");
-      if (Array.isArray(list)) SHOW_META = list.find(x => x && x.id === showSlug) || null;
+      const override = localStorage.getItem("afisha_override");
+const list = override
+  ? JSON.parse(override)
+  : await fetchJsonSafe("../data/afisha.json");
+
+if (Array.isArray(list)) {
+  SHOW_META = list.find(x => x && x.id === showSlug) || null;
+}
+
 
       const title = SHOW_META?.title || showSlug || "—";
       const date = SHOW_META?.date || "";
