@@ -1436,6 +1436,10 @@ function applyPriceClass(btn, price) {
   else if (price === 80)  btn.classList.add("seat--p80");
 }
 
+document
+  .getElementById("btnRegisterSeance")
+  ?.addEventListener("click", registerSeance);
+
     
 document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
