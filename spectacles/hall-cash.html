@@ -1371,7 +1371,7 @@ function applyPriceClass(btn, price) {
       if (key.startsWith(`P${row}-`)) {
         // цена
         btn.dataset.price = String(price);
-
+applyPriceClass(btn, price);
         // визуально — блок
         btn.classList.add("seat--blocked");
 
