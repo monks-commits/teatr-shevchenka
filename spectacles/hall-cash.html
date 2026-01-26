@@ -542,6 +542,46 @@ function saveScene() {
   alert("Сцену збережено");
 }
 
+function loadScene() {
+  const raw = localStorage.getItem(sceneKey());
+  if (!raw) return;
+
+  let scene;
+  try {
+    scene = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  const { prices = {}, blocked = [] } = scene;
+
+  for (const [key, btn] of seatButtons.entries()) {
+    // reset
+    btn.dataset.price = "0";
+    btn.classList.remove(
+      "seat--p200",
+      "seat--p160",
+      "seat--p140",
+      "seat--p120",
+      "seat--p100",
+      "seat--p80",
+      "seat--blocked"
+    );
+
+    // apply price
+    if (prices[key]) {
+      const price = Number(prices[key]);
+      btn.dataset.price = String(price);
+      applyPriceClass(btn, price);
+      btn.classList.add("seat--active");
+    }
+
+    // apply block
+    if (blocked.includes(key)) {
+      btn.classList.add("seat--blocked");
+    }
+  }
+}
 
     
     function setCashierSecret(v){
