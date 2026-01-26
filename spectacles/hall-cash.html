@@ -1574,11 +1574,15 @@ applyPriceClass(btn, price);
 
       await loadTakenSeatsOnline().catch(()=>{});
       renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-      renderCashLog();
+renderLodges();
+renderAmphi();
+renderBalcony();
+
+loadScene();   // ← ВАЖНО
+
+updateSummary();
+renderCashLog();
+
     })();
   </script>
 </body>
