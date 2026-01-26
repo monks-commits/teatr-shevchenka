@@ -563,10 +563,9 @@ function loadScene() {
   const { prices = {}, blocked = [] } = scene;
 
   for (const [key, btn] of seatButtons.entries()) {
-    // reset
     btn.dataset.price = "0";
     btn.classList.remove(
-      "seat--p200", 
+      "seat--p200",
       "seat--p160",
       "seat--p140",
       "seat--p120",
@@ -575,6 +574,21 @@ function loadScene() {
       "seat--blocked"
     );
 
+    if (prices[key]) {
+      const price = Number(prices[key]);
+      btn.dataset.price = String(price);
+      applyPriceClass(btn, price);
+      btn.classList.add("seat--active");
+    }
+
+    if (blocked.includes(key)) {
+      btn.classList.add("seat--blocked");
+    }
+  }
+}
+// ===============================
+// AFISHA / REGISTER SEANCE
+// ===============================
 function afishaDraftKey() {
   return "afisha_draft";
 }
@@ -599,14 +613,12 @@ function registerSeance() {
 
   const date = prompt("Дата сеансу (YYYY-MM-DD)");
   const time = prompt("Час сеансу (HH:MM)");
-
   if (!date || !time) return;
 
   const scene_key = sceneKey();
   const id = `${showSlug}-${date}-${time.replace(":", "-")}`;
 
   const draft = loadAfishaDraft();
-
   if (draft.some(s => s.id === id)) {
     alert("Такий сеанс вже існує");
     return;
@@ -624,22 +636,6 @@ function registerSeance() {
 
   saveAfishaDraft(draft);
   alert("Сеанс зареєстровано");
-}
-
-    
-    // apply price
-    if (prices[key]) {
-      const price = Number(prices[key]);
-      btn.dataset.price = String(price);
-      applyPriceClass(btn, price);
-      btn.classList.add("seat--active");
-    }
-
-    // apply block
-    if (blocked.includes(key)) {
-      btn.classList.add("seat--blocked");
-    }
-  }
 }
 
     
