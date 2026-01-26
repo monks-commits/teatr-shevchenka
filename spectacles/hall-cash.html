@@ -1402,7 +1402,8 @@ function applyPriceClass(btn, price) {
         btn.dataset.price = String(price);
 applyPriceClass(btn, price);
         // визуально — блок
-        btn.classList.add("seat--blocked");
+        btn.classList.remove("seat--blocked");
+btn.classList.add("seat--active");
 
         // если вдруг было выделение
         btn.classList.remove("seat--selected");
