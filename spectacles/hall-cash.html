@@ -522,21 +522,21 @@ function collectPrices() {
 
 function saveScene() {
   const prices = {};
-  const inactive = [];
+  const blocked = [];
 
   for (const [key, btn] of seatButtons.entries()) {
     const price = Number(btn.dataset.price || 0);
+    if (price > 0) prices[key] = price;
 
-    if (price > 0) {
-      prices[key] = price;
-    } else {
-      inactive.push(key);
+    if (btn.classList.contains("seat--blocked")) {
+      blocked.push(key);
     }
   }
 
   const scene = {
+    show: showSlug || null,
     prices,
-    inactive,
+    blocked,
     ts: Date.now()
   };
 
@@ -1244,8 +1244,10 @@ if (MODE === "create") {
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
-    .getElementById("btnSaveScene")
-  ?.addEventListener("click", saveScene);
+    document.getElementById("btnSaveScene")
+  ?.addEventListener("click", () => {
+    saveScene();
+    alert("Сцену збережено");
   });
 
 document.getElementById("btnBlockRows")?.addEventListener("click", () => {
@@ -1346,12 +1348,12 @@ function applyPriceClass(btn, price) {
   else if (price === 80)  btn.classList.add("seat--p80");
 }
 
-  document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
+    
+    document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
-  const price = Number(
-    document.getElementById("rowPriceInput")?.value || 0
-  );
+  const priceInput = document.getElementById("rowPriceInput");
+  const price = Number(priceInput?.value || 0);
 
   if (!selectedRows.size) {
     alert("Не вибрано жодного ряду");
@@ -1363,44 +1365,29 @@ function applyPriceClass(btn, price) {
     return;
   }
 
-  // === применяем цену и АКТИВИРУЕМ ===
   for (const row of selectedRows) {
     for (const [key, btn] of seatButtons.entries()) {
       if (key.startsWith(`P${row}-`)) {
-
-        // 1. снимаем неактивность
-        btn.classList.remove("seat--inactive");
-
-        // 2. назначаем цену
+        // цена
         btn.dataset.price = String(price);
+applyPriceClass(btn, price);
+        // визуально — блок
+        btn.classList.add("seat--blocked");
 
-        // 3. чистим старые price-классы
-        btn.classList.remove(
-          "seat--p200",
-          "seat--p160",
-          "seat--p140",
-          "seat--p120",
-          "seat--p100",
-          "seat--p80"
-        );
-
-        // 4. вешаем цвет по цене
-        btn.classList.add(`seat--p${price}`);
+        // если вдруг было выделение
+        btn.classList.remove("seat--selected");
       }
     }
   }
 
-  // сброс UI
   selectedRows.clear();
-  document.getElementById("rowPriceInput").value = "";
+  priceInput.value = "";
 
   document.querySelectorAll(".row-label").forEach(lab => {
     lab.style.background = "";
     lab.style.color = "";
   });
 });
-  
-   
 
     modalBack?.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
 
