@@ -1332,13 +1332,7 @@ btn.dataset.price = String(price || 0);
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
     document
-  .getElementById("btnRegisterSeance")
-  ?.addEventListener("click", registerSeance);
-
-    document.getElementById("btnSaveScene")
-  ?.addEventListener("click", () => {
-    saveScene();
-    alert("Сцену збережено");
+  
   });
 
 document.getElementById("btnBlockRows")?.addEventListener("click", () => {
