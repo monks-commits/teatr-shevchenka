@@ -761,9 +761,10 @@ function loadScene() {
     function cashPatchKey(){
       return `cash_patch_${SEANCE_ID || showSlug || "unknown"}`;
     }
-    function sceneKey() {
-  return `scene_${showSlug || "draft"}`;
+   function sceneKey() {
+  return `scene_${SEANCE_ID}`;
 }
+
 
     function loadCashPatch(){
       try{
