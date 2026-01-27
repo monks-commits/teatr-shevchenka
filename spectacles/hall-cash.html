@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Схема залу </title>
+  <title>Схема залу — каса</title>
 
   <link rel="stylesheet" href="../styles.css" />
 
@@ -20,7 +20,7 @@
       background:#e5e7eb;border-radius:16px;padding:12px;
       overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;
     }
-    .hall-inner{width:max(980px,100%);} 
+    .hall-inner{width:max(980px,100%);}
 
     .hall-section{margin-bottom:18px;}
     .hall-section-title{
@@ -48,26 +48,7 @@
 
     .seat--sold{background:#9ca3af !important;color:#fff;border-color:#9ca3af;cursor:not-allowed;}
     .seat--reserved{background:#f59e0b !important;color:#111827;border-color:#f59e0b;}
-   /* === INACTIVE (по умолчанию) === */
-.seat--inactive {
-  background:#e5e7eb;
-  color:#9ca3af;
-  border-color:#d1d5db;
-  cursor:not-allowed;
-}
-
-/* === ACTIVE (цена = жизнь) === */
-.seat--active {
-  cursor:pointer;
-}
-
-/* === ЦЕНА → ЦВЕТ === */
-.seat--p200 { background:#55c3f1; color:#0f172a; }
-.seat--p160 { background:#facc15; color:#111827; }
-.seat--p140 { background:#a3e635; color:#0f172a; }
-.seat--p120 { background:#2dd4bf; color:#0f172a; }
-.seat--p100 { background:#ec4899; color:#fff; }
-.seat--p80  { background:#fb7185; color:#fff; }
+    .seat--blocked{background:#111827 !important;color:#fff;border-color:#111827;cursor:not-allowed;}
 
     .seat--gap-right{margin-right:16px;}
     .amphi-gap{width:24px;flex:0 0 24px;}
@@ -145,50 +126,6 @@
       .hall-layout{flex-direction:column;}
       .hall-sidebar{width:auto;}
     }
-/* ============================= */
-/* EDITOR MODE — подготовка сцены */
-/* ============================= */
-/* create mode — только схема */
-body.mode-create .cash-badge,
-body.mode-create .hall-sidebar,
-body.mode-create .row-price-list,
-body.mode-create .btn-sell,
-body.mode-create .btn-reserve,
-body.mode-create .btn-sync,
-body.mode-create .btn-reset,
-body.mode-create .btn-reprint {
-  display: none !important;
-}
-
-body.mode-editor .cash-panel,
-body.mode-editor .right-panel,
-body.mode-editor .actions-panel,
-body.mode-editor .queue-panel,
-body.mode-editor .journal-panel,
-body.mode-editor .btn-sell,
-body.mode-editor .btn-print,
-body.mode-editor .btn-sync,
-body.mode-editor .btn-reserve,
-body.mode-editor .btn-sell,
-body.mode-editor .btn-reserve,
-body.mode-editor .btn-sync,
-body.mode-create .btn-sell,
-body.mode-create .btn-reserve,
-body.mode-create .btn-sync,
-body.mode-editor .hall-sidebar,
-body.mode-create .hall-sidebar {
-  display: none !important;
-}
-
-
-
-/* схема — на всю ширину */
-body.mode-editor .hall-wrapper,
-body.mode-editor .hall-scroll,
-body.mode-editor .hall-inner {
-  width: 100% !important;
-  max-width: none !important;
-}
 
     /* -------------------- EMBED MODE (backoffice) -------------------- */
     html.embed .hall-sidebar { display: none !important; }
@@ -208,26 +145,6 @@ body.mode-editor .hall-inner {
   <main class="main">
     <div class="container">
       <h1>Схема залу — каса</h1>
-
-      <button id="btnSaveScene" class="btn btn-ghost">
-
-  Зберегти сеанс
-</button>
-<button id="btnBlockRows" class="btn btn-ghost">
-  Заблокувати вибрані ряди
-</button>
-<div style="display:flex;gap:8px;margin:10px 0;">
-  <input
-    id="rowPriceInput"
-    type="number"
-    min="0"
-    placeholder="Ціна для ряду"
-    style="width:140px;padding:10px;border-radius:12px;border:1px solid #e5e7eb;"
-  />
-  <button id="btnApplyRowPrice" class="btn btn-ghost">
-    Застосувати ціну + блок
-  </button>
-</div>
 
       <div class="cash-badge">
         <span class="pill dark">Режим: <b>каса</b></span>
@@ -277,9 +194,13 @@ body.mode-editor .hall-inner {
           </div>
 
           <div class="row-price-list">
-            <div class="row-price"><span></span><span class="dots"></span><b></b></div>
-            
-            <div class="row-price"><span></span><span class="dots"></span><b></b></div>
+            <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
+            <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
+            <div class="row-price"><span>Партер, ряди 13–18</span><span class="dots"></span><b>140 грн</b></div>
+            <div class="row-price"><span>Амфітеатр (усі ряди)</span><span class="dots"></span><b>120 грн</b></div>
+            <div class="row-price"><span>Балкон, ряди 1–5</span><span class="dots"></span><b>100 грн</b></div>
+            <div class="row-price"><span>Балкон, ряд 6</span><span class="dots"></span><b>80 грн</b></div>
+            <div class="row-price"><span>Ложі А і Б</span><span class="dots"></span><b>10 грн</b></div>
           </div>
         </div>
 
@@ -373,22 +294,8 @@ body.mode-editor .hall-inner {
   </div>
 
   <script>
-    // ===============================
-// MODE: cash | editor
-// ===============================
-const params = new URLSearchParams(window.location.search);
-const MODE = params.get("mode") || "cash";
-const selectedRows = new Set();
-
-// добавляем класс на body
-document.body.classList.add(`mode-${MODE}`);
-
-console.log("hall-cash mode:", MODE);
-
-   const qs = new URLSearchParams(location.search);
-const SEANCE_ID_FROM_URL = qs.get("seance") || "";
-if (SEANCE_ID_FROM_URL) SEANCE_ID = SEANCE_ID_FROM_URL;
-
+    const qs = new URLSearchParams(location.search);
+    const showSlug = (qs.get("show") || "").trim();
 
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
@@ -484,7 +391,6 @@ if (SEANCE_ID_FROM_URL) SEANCE_ID = SEANCE_ID_FROM_URL;
       if(el) el.textContent = `Черга: ${n}`;
     }
 
-
     function setTicketsPill(text, kind){
       const el = document.getElementById("onlineBlockPill");
       if(!el) return;
@@ -503,126 +409,6 @@ if (SEANCE_ID_FROM_URL) SEANCE_ID = SEANCE_ID_FROM_URL;
     function getCashierSecret(){
       return localStorage.getItem("cashier_sync_secret") || "";
     }
-function collectBlockedSeats() {
-  const blocked = [];
-  for (const [key, btn] of seatButtons.entries()) {
-    if (btn.classList.contains("seat--blocked")) {
-      blocked.push(key);
-    }
-  }
-  return blocked;
-}
-
-function collectPrices() {
-  const prices = {};
-  for (const [key, btn] of seatButtons.entries()) {
-    prices[key] = Number(btn.dataset.price || 0);
-  }
-  return prices;
-}
-
-function saveScene() {
-  const seance_id = buildSeanceId();
-  if (!seance_id) {
-    alert("Заповніть назву, дату та час");
-    return;
-  }
-
-  SEANCE_ID = seance_id;
-
-  // собираем цены
-  const prices = {};
-  for (const [key, btn] of seatButtons.entries()) {
-    const p = Number(btn.dataset.price || 0);
-    if (p > 0) prices[key] = p;
-  }
-
-  // сохраняем сцену
-  localStorage.setItem(
-    `scene_${SEANCE_ID}`,
-    JSON.stringify({
-      prices,
-      ts: Date.now()
-    })
-  );
-
-  // сохраняем список сеансов
-  const seances = getSeances();
-  if (!seances.some(s => s.id === SEANCE_ID)) {
-    seances.push({
-      id: SEANCE_ID,
-      title: document.querySelector('input[placeholder="Назва події"]').value,
-      date: document.querySelector('input[type="date"]').value,
-      time: document.querySelector('input[type="time"]').value,
-      hall: "shevchenko-big"
-    });
-    saveSeances(seances);
-  }
-
-  alert("Сеанс збережено");
-
-  // переход в кассу
-  location.href = `hall-cash.html?mode=cash&seance=${encodeURIComponent(SEANCE_ID)}`;
-}
-
-
-function getSeances() {
-  try {
-    return JSON.parse(localStorage.getItem("seances") || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveSeances(list) {
-  localStorage.setItem("seances", JSON.stringify(list));
-}
-
-
-function loadScene() {
-  const raw = localStorage.getItem(sceneKey());
-  if (!raw) return;
-
-  let scene;
-  try {
-    scene = JSON.parse(raw);
-  } catch {
-    return;
-  }
-
-  const { prices = {}, blocked = [] } = scene;
-
-  for (const [key, btn] of seatButtons.entries()) {
-    // reset
-    btn.dataset.price = "0";
-    btn.classList.remove(
-      "seat--p200",
-      "seat--p160",
-      "seat--p140",
-      "seat--p120",
-      "seat--p100",
-      "seat--p80",
-      "seat--blocked"
-    );
-
-    // apply price
-    if (prices[key]) {
-  const price = Number(prices[key]);
-  btn.dataset.price = String(price);
-  applyPriceClass(btn, price);
-
-  btn.classList.remove("seat--inactive");
-  btn.classList.add("seat--active");
-}
-
-    // apply block
-    if (blocked.includes(key)) {
-      btn.classList.add("seat--blocked");
-    }
-  }
-}
-
-    
     function setCashierSecret(v){
       localStorage.setItem("cashier_sync_secret", v || "");
     }
@@ -709,14 +495,6 @@ function loadScene() {
     // ---- show meta / seance_id ----
     let SHOW_META = null;
     let SEANCE_ID = "";
-    function buildSeanceId() {
-  const title = document.querySelector('input[placeholder="Назва події"]')?.value?.trim();
-  const date  = document.querySelector('input[type="date"]')?.value;
-  const time  = document.querySelector('input[type="time"]')?.value;
-  if (!title || !date || !time) return "";
-  return `${title}-${date}-${time.replace(":", "-")}`;
-}
-
     async function loadShowMeta(){
       if (!showSlug) return;
       const list = await fetchJsonSafe("../data/afisha.json");
@@ -763,11 +541,6 @@ function loadScene() {
     function cashPatchKey(){
       return `cash_patch_${SEANCE_ID || showSlug || "unknown"}`;
     }
-   function sceneKey() {
-  return `scene_${SEANCE_ID}`;
-}
-
-
     function loadCashPatch(){
       try{
         const raw = localStorage.getItem(cashPatchKey());
@@ -821,37 +594,25 @@ function loadScene() {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
-      btn.className =
-  "seat seat--inactive" +
-  (extraClass ? " " + extraClass : "");
-
+      btn.className = "seat" + (extraClass ? " " + extraClass : "");
       btn.dataset.key = key;
       btn.dataset.price = String(price);
-// по умолчанию место НЕАКТИВНО
-btn.dataset.price = "0";
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
-    btn.addEventListener("click", ()=>{
-  if (MODE === "create") return; // в create клики только через кнопки
+      btn.addEventListener("click", ()=>{
+        const st = getEffectiveStatus(key);
+        if (st === "sold" || st === "blocked") return;
 
-
-  const st = getEffectiveStatus(key);
-  if (st === "sold" || st === "blocked") return;
-
-  if (btn.classList.contains("seat--selected")){
-    btn.classList.remove("seat--selected");
-    selected.delete(key);
-  } else {
-    btn.classList.add("seat--selected");
-    selected.set(key, { price });
-  }
-
-  updateSummary();
-});
-
-
-
+        if (btn.classList.contains("seat--selected")){
+          btn.classList.remove("seat--selected");
+          selected.delete(key);
+        } else {
+          btn.classList.add("seat--selected");
+          selected.set(key, { price });
+        }
+        updateSummary();
+      });
 
       seatButtons.set(key, btn);
       return btn;
@@ -1022,11 +783,6 @@ btn.dataset.price = "0";
       if (!w){ alert("Браузер заблокував pop-up. Дозволь відкриття вікон для друку."); return; }
       w.document.open();
       w.document.write(html);
-
-      document
-  .getElementById("btnSaveScene")
-  ?.addEventListener("click", saveScene);
-
       w.document.close();
 
       setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 250);
@@ -1161,43 +917,26 @@ btn.dataset.price = "0";
       const block = document.getElementById("parter-block");
       block.innerHTML = "";
       parterRows.forEach(r=>{
-  const rowLine = document.createElement("div");
-  rowLine.className = "row-line";
+        const rowLine = document.createElement("div");
+        rowLine.className = "row-line";
 
-  const lab = document.createElement("div");
-  lab.className = "row-label";
-  lab.textContent = r.row;
+        const lab = document.createElement("div");
+        lab.className = "row-label";
+        lab.textContent = r.row;
+        rowLine.appendChild(lab);
 
-  const seatsRow = document.createElement("div");
-  seatsRow.className = "seats-row";
+        const seatsRow = document.createElement("div");
+        seatsRow.className = "seats-row";
 
-  // 👇 ВАЖНО: обработчик СЮДА
-  lab.addEventListener("click", ()=>{
-  if (MODE !== "create") return;
+        for (let s=1; s<=r.seats; s++){
+          const key = seatKey({zone:"Партер", row:r.row, seat:s});
+          const cls = r.className + (s===10 ? " seat--gap-right" : "");
+          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
+        }
 
-  if (selectedRows.has(r.row)) {
-    selectedRows.delete(r.row);
-    lab.style.background = "";
-    lab.style.color = "";
-  } else {
-    selectedRows.add(r.row);
-    lab.style.background = "#2563eb";
-    lab.style.color = "#fff";
-  }
-});
-
-  rowLine.appendChild(lab);
-
-  for (let s=1; s<=r.seats; s++){
-    const key = seatKey({zone:"Партер", row:r.row, seat:s});
-    const cls = r.className + (s===10 ? " seat--gap-right" : "");
-    seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
-  }
-
-  rowLine.appendChild(seatsRow);
-  block.appendChild(rowLine);
-});
-
+        rowLine.appendChild(seatsRow);
+        block.appendChild(rowLine);
+      });
     }
 
     function renderLodges(){
@@ -1278,7 +1017,6 @@ btn.dataset.price = "0";
           seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
         }
 
-
         rowLine.appendChild(seatsRow);
         block.appendChild(rowLine);
       });
@@ -1311,7 +1049,7 @@ btn.dataset.price = "0";
         }
       }
 
-      rowLine.appendChild(seatsRow); 
+      rowLine.appendChild(seatsRow);
       block.appendChild(rowLine);
     }
 
@@ -1321,34 +1059,6 @@ btn.dataset.price = "0";
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
-    document.getElementById("btnSaveScene")
-  ?.addEventListener("click", () => {
-    saveScene();
-    alert("Сцену збережено");
-  });
-
-document.getElementById("btnBlockRows")?.addEventListener("click", () => {
-  if (MODE !== "create") return;
-  if (!selectedRows.size) {
-    alert("Не вибрано жодного ряду");
-    return;
-  }
-
-  for (const row of selectedRows) {
-    for (const [key, btn] of seatButtons.entries()) {
-      if (key.startsWith(`P${row}-`)) {
-        btn.classList.add("seat--blocked");
-      }
-    }
-  }
-
-  selectedRows.clear();
-
-  document.querySelectorAll(".row-label").forEach(lab => {
-    lab.style.background = "";
-    lab.style.color = "";
-  });
-});
 
     document.getElementById("btn-reset")?.addEventListener("click", ()=>{
       if (!confirm("Скинути всі локальні касові стани для цього сеансу на цьому ПК?")) return;
@@ -1404,69 +1114,6 @@ document.getElementById("btnBlockRows")?.addEventListener("click", () => {
       closeModal();
       alert("Збережено.");
     });
-
-function applyPriceClass(btn, price) {
-  // убираем старые классы цен
-  btn.classList.remove(
-    "seat--p200",
-    "seat--p160",
-    "seat--p140",
-    "seat--p120",
-    "seat--p100",
-    "seat--p80"
-  );
-
-  // добавляем нужный
-  if (price === 200) btn.classList.add("seat--p200");
-  else if (price === 160) btn.classList.add("seat--p160");
-  else if (price === 140) btn.classList.add("seat--p140");
-  else if (price === 120) btn.classList.add("seat--p120");
-  else if (price === 100) btn.classList.add("seat--p100");
-  else if (price === 80)  btn.classList.add("seat--p80");
-}
-
-    
-    document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
-  if (MODE !== "create") return;
-
-  const priceInput = document.getElementById("rowPriceInput");
-  const price = Number(priceInput?.value || 0);
-
-  if (!selectedRows.size) {
-    alert("Не вибрано жодного ряду");
-    return;
-  }
-  if (price <= 0) {
-    alert("Введіть коректну ціну");
-    return;
-  }
-
-  for (const row of selectedRows) {
-    for (const [key, btn] of seatButtons.entries()) {
-      if (key.startsWith(`P${row}-`)) {
-        // цена
-        btn.dataset.price = String(price);
-        applyPriceClass(btn, price);
-
-        // ВАЖНО: АКТИВИРУЕМ
-        btn.classList.remove("seat--inactive");
-        btn.classList.add("seat--active");
-
-        // гарантируем, что не заблокировано
-        btn.classList.remove("seat--blocked");
-        btn.classList.remove("seat--selected");
-      }
-    }
-  }
-
-  selectedRows.clear();
-  priceInput.value = "";
-  document.querySelectorAll(".row-label").forEach(lab => {
-    lab.style.background = "";
-    lab.style.color = "";
-  });
-});
-
     modalBack?.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
 
     // -------------------- Backoffice iframe control via postMessage --------------------
@@ -1623,15 +1270,11 @@ function applyPriceClass(btn, price) {
 
       await loadTakenSeatsOnline().catch(()=>{});
       renderParter();
-renderLodges();
-renderAmphi();
-renderBalcony();
-
-loadScene();   // ← ВАЖНО
-
-updateSummary();
-renderCashLog();
-
+      renderLodges();
+      renderAmphi();
+      renderBalcony();
+      updateSummary();
+      renderCashLog();
     })();
   </script>
 </body>
