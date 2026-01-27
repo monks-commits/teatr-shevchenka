@@ -545,11 +545,6 @@ function saveScene() {
 }
 
 function createSeanceFull() {
-  if (!showSlug) {
-    alert("Немає назви події");
-    return;
-  }
-
   const dateInput = document.querySelector('input[type="date"]');
   const timeInput = document.querySelector('input[type="time"]');
 
@@ -561,30 +556,24 @@ function createSeanceFull() {
     return;
   }
 
-  const seanceId = `${showSlug}-${date}-${time.replace(":", "-")}`;
+  // проверяем, есть ли активные места
+  const activeSeats = Array.from(seatButtons.values()).filter(
+    btn => btn.classList.contains("seat--active") && Number(btn.dataset.price) > 0
+  );
 
-  // --- собрать схему ---
-  const prices = {};
-  const blocked = [];
-
-  for (const [key, btn] of seatButtons.entries()) {
-    const price = Number(btn.dataset.price || 0);
-    if (price > 0) prices[key] = price;
-    if (btn.classList.contains("seat--blocked")) blocked.push(key);
+  if (!activeSeats.length) {
+    alert("Немає активних місць з ціною");
+    return;
   }
 
-  const seance = {
-    id: seanceId,
-    show: showSlug,
-    title: showSlug,
-    date,
-    time,
-    hall: "shevchenko",
-    prices,
-    blocked,
-    status: "active",
-    created_at: Date.now()
-  };
+  const seanceId = `${showSlug}-${date}-${time.replace(":", "-")}`;
+
+  // минимальная фиксация (локально, для MVP)
+  localStorage.setItem("current_seance_id", seanceId);
+
+  // 👉 Переход в кассу
+  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}&seance=${seanceId}`;
+}
 
   // =========================
   // 1️⃣ АФИША (рабочая)
