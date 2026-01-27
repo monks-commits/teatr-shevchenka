@@ -594,7 +594,7 @@ function createSeanceFull() {
 
   archive.unshift({
     ...seance,
-    template_id: crypto.randomUUID()
+    template_id: crypto.randomUUID() 
   });
 
   localStorage.setItem(archiveKey, JSON.stringify(archive));
