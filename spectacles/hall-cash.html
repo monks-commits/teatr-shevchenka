@@ -385,8 +385,10 @@ document.body.classList.add(`mode-${MODE}`);
 
 console.log("hall-cash mode:", MODE);
 
-    const qs = new URLSearchParams(location.search);
-    const showSlug = (qs.get("show") || "").trim();
+   const qs = new URLSearchParams(location.search);
+const SEANCE_ID_FROM_URL = qs.get("seance") || "";
+if (SEANCE_ID_FROM_URL) SEANCE_ID = SEANCE_ID_FROM_URL;
+
 
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
