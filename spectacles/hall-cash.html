@@ -520,54 +520,49 @@ function collectPrices() {
 }
 
 function saveScene() {
-  const title = document.querySelector('input[placeholder="Назва події"]')?.value?.trim();
-  const date  = document.querySelector('input[type="date"]')?.value;
-  const time  = document.querySelector('input[type="time"]')?.value;
-  const hall  = "shevchenko-big";
-
-  if (!title || !date || !time) {
+  const seance_id = buildSeanceId();
+  if (!seance_id) {
     alert("Заповніть назву, дату та час");
     return;
   }
 
-  const seance_id = `${title}-${date}-${time.replace(":", "-")}`;
+  SEANCE_ID = seance_id;
 
-  // 1️⃣ собираем цены
+  // собираем цены
   const prices = {};
   for (const [key, btn] of seatButtons.entries()) {
     const p = Number(btn.dataset.price || 0);
     if (p > 0) prices[key] = p;
   }
 
-  // 2️⃣ сохраняем сцену
+  // сохраняем сцену
   localStorage.setItem(
-    `scene_${seance_id}`,
-    JSON.stringify({ prices, ts: Date.now() })
+    `scene_${SEANCE_ID}`,
+    JSON.stringify({
+      prices,
+      ts: Date.now()
+    })
   );
 
-  // 3️⃣ сохраняем сеанс
+  // сохраняем список сеансов
   const seances = getSeances();
-
-  if (seances.some(s => s.id === seance_id)) {
-    alert("Такий сеанс вже існує");
-    return;
+  if (!seances.some(s => s.id === SEANCE_ID)) {
+    seances.push({
+      id: SEANCE_ID,
+      title: document.querySelector('input[placeholder="Назва події"]').value,
+      date: document.querySelector('input[type="date"]').value,
+      time: document.querySelector('input[type="time"]').value,
+      hall: "shevchenko-big"
+    });
+    saveSeances(seances);
   }
 
-  seances.push({
-    id: seance_id,
-    title,
-    date,
-    time,
-    hall
-  });
+  alert("Сеанс збережено");
 
-  saveSeances(seances);
-
-  alert("Сеанс створено");
-
-  // 4️⃣ переход в кассу
-  location.href = `hall-cash.html?mode=cash&seance=${encodeURIComponent(seance_id)}`;
+  // переход в кассу
+  location.href = `hall-cash.html?mode=cash&seance=${encodeURIComponent(SEANCE_ID)}`;
 }
+
 
 function getSeances() {
   try {
