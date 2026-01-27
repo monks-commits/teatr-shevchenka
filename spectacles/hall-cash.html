@@ -1389,7 +1389,6 @@ function applyPriceClass(btn, price) {
     alert("Не вибрано жодного ряду");
     return;
   }
-
   if (price <= 0) {
     alert("Введіть коректну ціну");
     return;
@@ -1400,11 +1399,14 @@ function applyPriceClass(btn, price) {
       if (key.startsWith(`P${row}-`)) {
         // цена
         btn.dataset.price = String(price);
-applyPriceClass(btn, price);
-        // визуально — блок
-        btn.classList.add("seat--blocked");
+        applyPriceClass(btn, price);
 
-        // если вдруг было выделение
+        // ВАЖНО: АКТИВИРУЕМ
+        btn.classList.remove("seat--inactive");
+        btn.classList.add("seat--active");
+
+        // гарантируем, что не заблокировано
+        btn.classList.remove("seat--blocked");
         btn.classList.remove("seat--selected");
       }
     }
@@ -1412,7 +1414,6 @@ applyPriceClass(btn, price);
 
   selectedRows.clear();
   priceInput.value = "";
-
   document.querySelectorAll(".row-label").forEach(lab => {
     lab.style.background = "";
     lab.style.color = "";
