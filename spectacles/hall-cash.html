@@ -1,3 +1,5 @@
+26.01.26   03:10. для отката. Схема с крашенными рядами с функцией сохранения
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -209,11 +211,10 @@ body.mode-editor .hall-inner {
     <div class="container">
       <h1>Схема залу — каса</h1>
 
-     <button id="btnCreateSeance" class="btn btn-sync">
-  Створити сеанс
-</button>
+      <button id="btnSaveScene" class="btn btn-ghost">
 
-      
+  Зберегти сеанс
+</button>
 <button id="btnBlockRows" class="btn btn-ghost">
   Заблокувати вибрані ряди
 </button>
@@ -544,68 +545,6 @@ function saveScene() {
   alert("Сцену збережено");
 }
 
-function createSeanceFull() {
-  const dateInput = document.querySelector('input[type="date"]');
-  const timeInput = document.querySelector('input[type="time"]');
-
-  const date = dateInput?.value;
-  const time = timeInput?.value;
-
-  if (!date || !time) {
-    alert("Вкажіть дату та час");
-    return;
-  }
-
-  // проверяем, есть ли активные места
-  const activeSeats = Array.from(seatButtons.values()).filter(
-    btn => btn.classList.contains("seat--active") && Number(btn.dataset.price) > 0
-  );
-
-  if (!activeSeats.length) {
-    alert("Немає активних місць з ціною");
-    return;
-  }
-
-  const seanceId = `${showSlug}-${date}-${time.replace(":", "-")}`;
-
-  // минимальная фиксация (локально, для MVP)
-  localStorage.setItem("current_seance_id", seanceId);
-
-  // 👉 Переход в кассу
-  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}&seance=${seanceId}`;
-}
-
-  // =========================
-  // 1️⃣ АФИША (рабочая)
-  // =========================
-  const afishaKey = "afisha_local";
-  const afisha = JSON.parse(localStorage.getItem(afishaKey) || "[]");
-
-  if (!afisha.some(s => s.id === seanceId)) {
-    afisha.push(seance);
-    localStorage.setItem(afishaKey, JSON.stringify(afisha));
-  }
-
-  // =========================
-  // 2️⃣ АРХИВ / ШАБЛОНЫ
-  // =========================
-  const archiveKey = "seance_templates";
-  const archive = JSON.parse(localStorage.getItem(archiveKey) || "[]");
-
-  archive.unshift({
-    ...seance,
-    template_id: crypto.randomUUID() 
-  });
-
-  localStorage.setItem(archiveKey, JSON.stringify(archive));
-
-  // =========================
-  // 3️⃣ ПЕРЕХОД В КАССУ
-  // =========================
-  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}&seance=${seanceId}`;
-
-
-    
 function loadScene() {
   const raw = localStorage.getItem(sceneKey());
   if (!raw) return;
@@ -620,19 +559,19 @@ function loadScene() {
   const { prices = {}, blocked = [] } = scene;
 
   for (const [key, btn] of seatButtons.entries()) {
+    // reset
     btn.dataset.price = "0";
-   btn.classList.remove(
-  "seat--p200",
-  "seat--p160",
-  "seat--p140",
-  "seat--p120",
-  "seat--p100",
-  "seat--p80",
-  "seat--blocked",
-  "seat--inactive" // 🔥 ВОТ ЭТОГО НЕ ХВАТАЛО
-);
+    btn.classList.remove(
+      "seat--p200",
+      "seat--p160",
+      "seat--p140",
+      "seat--p120",
+      "seat--p100",
+      "seat--p80",
+      "seat--blocked"
+    );
 
-
+    // apply price
     if (prices[key]) {
       const price = Number(prices[key]);
       btn.dataset.price = String(price);
@@ -640,63 +579,12 @@ function loadScene() {
       btn.classList.add("seat--active");
     }
 
+    // apply block
     if (blocked.includes(key)) {
       btn.classList.add("seat--blocked");
     }
   }
 }
-// ===============================
-// AFISHA / REGISTER SEANCE
-// ===============================
-
-async function registerSeance() {
-  if (!showSlug) {
-    alert("Немає showSlug");
-    return;
-  }
-
-  const dateInput = document.querySelector('input[type="date"]');
-  const timeInput = document.querySelector('input[type="time"]');
-
-  const date = dateInput?.value;
-  const time = timeInput?.value;
-
-  if (!date || !time) {
-    alert("Вкажіть дату та час");
-    return;
-  }
-
-  const id = `${showSlug}-${date}-${time.replace(":", "-")}`;
-  const scene_key = sceneKey();
-
-  const afishaUrl = "../data/afisha.json";
-  const list = (await fetchJsonSafe(afishaUrl)) || [];
-
-  if (list.some(s => s.id === id)) {
-    alert("Такий сеанс вже існує в афіші");
-    return;
-  }
-
-  list.push({
-    id,
-    show: showSlug,
-    title: showSlug,
-    date,
-    time,
-    hall: "shevchenko",
-    scene_key,
-    status: "active"
-  });
-
-  // ⛔️ ВАЖНО: это GitHub Pages → пишем локально
-  localStorage.setItem("afisha_override", JSON.stringify(list));
-
-  alert("Сеанс зареєстровано\n(локально, для каси)");
-
-  // 👉 сразу переходим в кассу
-  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}`;
-}
-
 
     
     function setCashierSecret(v){
@@ -787,15 +675,8 @@ async function registerSeance() {
     let SEANCE_ID = "";
     async function loadShowMeta(){
       if (!showSlug) return;
-      const override = localStorage.getItem("afisha_override");
-const list = override
-  ? JSON.parse(override)
-  : await fetchJsonSafe("../data/afisha.json");
-
-if (Array.isArray(list)) {
-  SHOW_META = list.find(x => x && x.id === showSlug) || null;
-}
-
+      const list = await fetchJsonSafe("../data/afisha.json");
+      if (Array.isArray(list)) SHOW_META = list.find(x => x && x.id === showSlug) || null;
 
       const title = SHOW_META?.title || showSlug || "—";
       const date = SHOW_META?.date || "";
@@ -900,7 +781,9 @@ if (Array.isArray(list)) {
   (extraClass ? " " + extraClass : "");
 
       btn.dataset.key = key;
-btn.dataset.price = String(price || 0);
+      btn.dataset.price = String(price);
+// по умолчанию место НЕАКТИВНО
+btn.dataset.price = "0";
 
       applyStatusClass(btn, getEffectiveStatus(key));
 
@@ -1393,10 +1276,11 @@ btn.dataset.price = String(price || 0);
     document.getElementById("btn-sell")?.addEventListener("click", ()=> sellAndPrintOffline());
     document.getElementById("btn-sync")?.addEventListener("click", ()=> syncQueue());
     document.getElementById("btn-reprint")?.addEventListener("click", ()=> reprintLastSale());
-    document.getElementById("btnCreateSeance")
-  ?.addEventListener("click", createSeanceFull);
-
-  
+    document.getElementById("btnSaveScene")
+  ?.addEventListener("click", () => {
+    saveScene();
+    alert("Сцену збережено");
+  });
 
 document.getElementById("btnBlockRows")?.addEventListener("click", () => {
   if (MODE !== "create") return;
@@ -1497,7 +1381,7 @@ function applyPriceClass(btn, price) {
 }
 
     
-document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
+    document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   if (MODE !== "create") return;
 
   const priceInput = document.getElementById("rowPriceInput");
@@ -1516,17 +1400,13 @@ document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
   for (const row of selectedRows) {
     for (const [key, btn] of seatButtons.entries()) {
       if (key.startsWith(`P${row}-`)) {
-
         // цена
         btn.dataset.price = String(price);
-        applyPriceClass(btn, price);
+applyPriceClass(btn, price);
+        // визуально — блок
+        btn.classList.add("seat--blocked");
 
-        // АКТИВАЦИЯ МЕСТА
-        btn.classList.remove("seat--inactive");
-        btn.classList.remove("seat--blocked");
-        btn.classList.add("seat--active");
-
-        // снять выделение
+        // если вдруг было выделение
         btn.classList.remove("seat--selected");
       }
     }
@@ -1540,7 +1420,6 @@ document.getElementById("btnApplyRowPrice")?.addEventListener("click", () => {
     lab.style.color = "";
   });
 });
-
 
     modalBack?.addEventListener("click",(e)=>{ if(e.target===modalBack) closeModal(); });
 
