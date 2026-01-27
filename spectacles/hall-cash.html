@@ -544,6 +544,79 @@ function saveScene() {
   alert("Сцену збережено");
 }
 
+function createSeanceFull() {
+  if (!showSlug) {
+    alert("Немає назви події");
+    return;
+  }
+
+  const dateInput = document.querySelector('input[type="date"]');
+  const timeInput = document.querySelector('input[type="time"]');
+
+  const date = dateInput?.value;
+  const time = timeInput?.value;
+
+  if (!date || !time) {
+    alert("Вкажіть дату та час");
+    return;
+  }
+
+  const seanceId = `${showSlug}-${date}-${time.replace(":", "-")}`;
+
+  // --- собрать схему ---
+  const prices = {};
+  const blocked = [];
+
+  for (const [key, btn] of seatButtons.entries()) {
+    const price = Number(btn.dataset.price || 0);
+    if (price > 0) prices[key] = price;
+    if (btn.classList.contains("seat--blocked")) blocked.push(key);
+  }
+
+  const seance = {
+    id: seanceId,
+    show: showSlug,
+    title: showSlug,
+    date,
+    time,
+    hall: "shevchenko",
+    prices,
+    blocked,
+    status: "active",
+    created_at: Date.now()
+  };
+
+  // =========================
+  // 1️⃣ АФИША (рабочая)
+  // =========================
+  const afishaKey = "afisha_local";
+  const afisha = JSON.parse(localStorage.getItem(afishaKey) || "[]");
+
+  if (!afisha.some(s => s.id === seanceId)) {
+    afisha.push(seance);
+    localStorage.setItem(afishaKey, JSON.stringify(afisha));
+  }
+
+  // =========================
+  // 2️⃣ АРХИВ / ШАБЛОНЫ
+  // =========================
+  const archiveKey = "seance_templates";
+  const archive = JSON.parse(localStorage.getItem(archiveKey) || "[]");
+
+  archive.unshift({
+    ...seance,
+    template_id: crypto.randomUUID()
+  });
+
+  localStorage.setItem(archiveKey, JSON.stringify(archive));
+
+  // =========================
+  // 3️⃣ ПЕРЕХОД В КАССУ
+  // =========================
+  location.href = `?mode=cash&show=${encodeURIComponent(showSlug)}&seance=${seanceId}`;
+}
+
+    
 function loadScene() {
   const raw = localStorage.getItem(sceneKey());
   if (!raw) return;
