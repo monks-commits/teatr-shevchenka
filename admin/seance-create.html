@@ -49,5 +49,25 @@
 </div>
 
 <script src="seance-create.js"></script>
+  <script>
+  const showInput = document.getElementById("showSlug");
+  const editLink = document.getElementById("editHallLink");
+
+  function updateHallLink(){
+    const slug = showInput.value.trim();
+    if(slug){
+      editLink.href = `hall-editor.html?show=${slug}`;
+      editLink.style.opacity = "1";
+      editLink.style.pointerEvents = "auto";
+    } else {
+      editLink.href = "#";
+      editLink.style.opacity = ".4";
+      editLink.style.pointerEvents = "none";
+    }
+  }
+
+  showInput.addEventListener("input", updateHallLink);
+</script>
+
 </body>
 </html>
