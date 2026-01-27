@@ -530,37 +530,55 @@ function saveScene() {
     return;
   }
 
-  // 1️⃣ сохраняем сцену
+  const seance_id = `${title}-${date}-${time.replace(":", "-")}`;
+
+  // 1️⃣ собираем цены
   const prices = {};
   for (const [key, btn] of seatButtons.entries()) {
     const p = Number(btn.dataset.price || 0);
     if (p > 0) prices[key] = p;
   }
 
+  // 2️⃣ сохраняем сцену
   localStorage.setItem(
-    `scene_${title}`,
+    `scene_${seance_id}`,
     JSON.stringify({ prices, ts: Date.now() })
   );
 
-  // 2️⃣ сохраняем сеанс в афишу (локально, MVP)
-  const afisha = JSON.parse(localStorage.getItem("afisha_draft") || "[]");
+  // 3️⃣ сохраняем сеанс
+  const seances = getSeances();
 
-  const seanceId = `${title}-${date}-${time.replace(":", "-")}`;
+  if (seances.some(s => s.id === seance_id)) {
+    alert("Такий сеанс вже існує");
+    return;
+  }
 
-  afisha.push({
-    id: seanceId,
+  seances.push({
+    id: seance_id,
     title,
     date,
     time,
-    hall_id: hall,
-    show_slug: title
+    hall
   });
 
-  localStorage.setItem("afisha_draft", JSON.stringify(afisha));
+  saveSeances(seances);
 
-  // 3️⃣ ПЕРЕХОД В КАССУ
-  location.href = `hall-cash.html?mode=cash&show=${encodeURIComponent(title)}`;
+  alert("Сеанс створено");
 
+  // 4️⃣ переход в кассу
+  location.href = `hall-cash.html?mode=cash&seance=${encodeURIComponent(seance_id)}`;
+}
+
+function getSeances() {
+  try {
+    return JSON.parse(localStorage.getItem("seances") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveSeances(list) {
+  localStorage.setItem("seances", JSON.stringify(list));
 }
 
 
