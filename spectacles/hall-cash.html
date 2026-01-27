@@ -712,6 +712,14 @@ function loadScene() {
     // ---- show meta / seance_id ----
     let SHOW_META = null;
     let SEANCE_ID = "";
+    function buildSeanceId() {
+  const title = document.querySelector('input[placeholder="Назва події"]')?.value?.trim();
+  const date  = document.querySelector('input[type="date"]')?.value;
+  const time  = document.querySelector('input[type="time"]')?.value;
+  if (!title || !date || !time) return "";
+  return `${title}-${date}-${time.replace(":", "-")}`;
+}
+
     async function loadShowMeta(){
       if (!showSlug) return;
       const list = await fetchJsonSafe("../data/afisha.json");
