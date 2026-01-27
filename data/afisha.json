@@ -32,5 +32,16 @@
     "time": "12:00",
     "poster": "images/maugli.jpg",
     "description": "<p>Пластична поема за мотивами творів Редьярда Кіплінга. Яскраве сімейне шоу для дітей та дорослих.</p>"
+  },
+  {
+  "id": "tpl-big-clean",
+  "type": "template",
+  "title": "Шаблон — велика сцена (чистий)",
+  "hall": "shevchenko-big",
+  "scene": {
+    "prices": {},
+    "blocked": []
+  }        
+   "type": "seance"             
   }
 ]
