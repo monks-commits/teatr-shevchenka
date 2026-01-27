@@ -571,11 +571,13 @@ function loadScene() {
 
     // apply price
     if (prices[key]) {
-      const price = Number(prices[key]);
-      btn.dataset.price = String(price);
-      applyPriceClass(btn, price);
-      btn.classList.add("seat--active");
-    }
+  const price = Number(prices[key]);
+  btn.dataset.price = String(price);
+  applyPriceClass(btn, price);
+
+  btn.classList.remove("seat--inactive");
+  btn.classList.add("seat--active");
+}
 
     // apply block
     if (blocked.includes(key)) {
