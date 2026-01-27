@@ -520,28 +520,49 @@ function collectPrices() {
 }
 
 function saveScene() {
-  const prices = {};
-  const blocked = [];
+  const title = document.querySelector('input[placeholder="Назва події"]')?.value?.trim();
+  const date  = document.querySelector('input[type="date"]')?.value;
+  const time  = document.querySelector('input[type="time"]')?.value;
+  const hall  = "shevchenko-big";
 
-  for (const [key, btn] of seatButtons.entries()) {
-    const price = Number(btn.dataset.price || 0);
-    if (price > 0) prices[key] = price;
-
-    if (btn.classList.contains("seat--blocked")) {
-      blocked.push(key);
-    }
+  if (!title || !date || !time) {
+    alert("Заповніть назву, дату та час");
+    return;
   }
 
-  const scene = {
-    show: showSlug || null,
-    prices,
-    blocked,
-    ts: Date.now()
-  };
+  // 1️⃣ сохраняем сцену
+  const prices = {};
+  for (const [key, btn] of seatButtons.entries()) {
+    const p = Number(btn.dataset.price || 0);
+    if (p > 0) prices[key] = p;
+  }
 
-  localStorage.setItem(sceneKey(), JSON.stringify(scene));
-  alert("Сцену збережено");
+  localStorage.setItem(
+    `scene_${title}`,
+    JSON.stringify({ prices, ts: Date.now() })
+  );
+
+  // 2️⃣ сохраняем сеанс в афишу (локально, MVP)
+  const afisha = JSON.parse(localStorage.getItem("afisha_draft") || "[]");
+
+  const seanceId = `${title}-${date}-${time.replace(":", "-")}`;
+
+  afisha.push({
+    id: seanceId,
+    title,
+    date,
+    time,
+    hall_id: hall,
+    show_slug: title
+  });
+
+  localStorage.setItem("afisha_draft", JSON.stringify(afisha));
+
+  // 3️⃣ ПЕРЕХОД В КАССУ
+  location.href = `hall-cash.html?mode=cash&show=${encodeURIComponent(title)}`;
+
 }
+
 
 function loadScene() {
   const raw = localStorage.getItem(sceneKey());
