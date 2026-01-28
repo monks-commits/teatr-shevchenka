@@ -714,9 +714,10 @@ function fillCreateShowSelect() {
     loadClients();
     loadOrders();
 
-    await loadSettings();
     await loadAfisha();
-    fillShowSelect();
+fillShowSelect();
+fillCreateShowSelect();
+
 
     setText("#seanceMeta", "Оберіть сеанс.");
     setCashVisible(false);
