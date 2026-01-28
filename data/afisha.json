@@ -42,6 +42,66 @@
     "prices": {},
     "blocked": []
   },        
-   "type": "seance"             
+  {
+  "id": "tpl-morning-70-100",
+  "type": "template",
+  "title": "Шаблон — ранковий (70–100)",
+  "city": "Кривий Ріг",
+  "theatre": "Театр ім. Т. Г. Шевченка",
+  "stage": "Велика сцена",
+  "hall": "shevchenko-big",
+  "scene": {
+    "prices": {
+      "zone-1": 100,
+      "zone-2": 90,
+      "zone-3": 80,
+      "zone-4": 70
+    },
+    "colors": {
+      "100": "#38bdf8",
+      "90": "#f59e0b",
+      "80": "#eab308",
+      "70": "#0f766e"
+    },
+    "blocked": [
+      "balcony"
+    ]
   }
+}
+{
+  "id": "tpl-evening-70-200",
+  "type": "template",
+  "title": "Шаблон — вечірній (70–200)",
+  "city": "Кривий Ріг",
+  "theatre": "Театр ім. Т. Г. Шевченка",
+  "stage": "Велика сцена",
+  "hall": "shevchenko-big",
+  "scene": {
+    "prices": {
+      "zone-1": 200,
+      "zone-2": 180,
+      "zone-3": 160,
+      "zone-4": 140,
+      "zone-5": 120,
+      "zone-6": 100,
+      "zone-7": 90,
+      "zone-8": 80,
+      "zone-9": 70
+    },
+    "colors": {
+      "200": "#22d3ee",
+      "180": "#eab308",
+      "160": "#22c55e",
+      "140": "#111827",
+      "120": "#a855f7",
+      "100": "#38bdf8",
+      "90": "#f59e0b",
+      "80": "#facc15",
+      "70": "#0f766e"
+    },
+    "blocked": []
+  }
+}
+             
+  
 ]
