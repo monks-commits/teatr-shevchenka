@@ -2,230 +2,113 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <!-- Для монитора оставляем, но верстку НЕ адаптируем под телефон -->
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Білетний відділ</title>
   <link rel="stylesheet" href="../styles.css" />
 
   <style>
     html, body { height: 100%; }
-    body { overflow: hidden; } /* на мониторе не скроллим страницу, всё помещаем внутри блоков */
+    body { overflow: hidden; }
 
     .container{
-      max-width: 1480px;
-      margin: 0 auto;
-      padding: 12px;
-      height: calc(100vh - 24px);
+      max-width:1480px;
+      margin:0 auto;
+      padding:12px;
+      height:calc(100vh - 24px);
     }
 
-    /* top */
-    .bo-top{display:flex;gap:14px;flex-wrap:nowrap;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .bo-top{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:10px}
     .bo-title{font-size:20px;font-weight:800;margin:0}
-    .bo-tabs{display:flex;gap:10px;flex-wrap:nowrap}
-    .tabbtn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
+    .bo-tabs{display:flex;gap:10px}
+    .tabbtn{border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer}
     .tabbtn.active{background:#111827;color:#fff;border-color:#111827}
 
-    /* main grid: ТОЛЬКО монитор  */
-    .bo-grid{
-  display:grid;
-  grid-template-columns: 1fr; /* ❗ было 2 колонки */
-  gap: 12px;
-  align-items: stretch;
-  height: calc(100vh - 120px);
-}
-
-
     .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
-    .muted{color:#6b7280}
-    .row{display:flex;gap:10px;flex-wrap:nowrap;align-items:center}
-
+    .row{display:flex;gap:10px;align-items:center}
     .field{display:grid;gap:6px}
     .field label{font-size:12px;color:#6b7280}
-    .field input,.field select,.field textarea{
+    .field input,.field select{
       border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;
-      background:#fff;
     }
-    .field select{min-width:320px}
-    .btn2{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;white-space:nowrap}
+
+    .btn2{border-radius:12px;padding:10px 12px;font-weight:800;cursor:pointer;border:0}
     .btn2.primary{background:#2563eb;color:#fff}
-    .btn2.gray{background:#e5e7eb;color:#111827}
-    .btn2.red{background:#ef4444;color:#fff}
-    .btn2.green{background:#16a34a;color:#fff}
-    .btn2.orange{background:#f59e0b;color:#111827}
-    .btn2:disabled{opacity:.5;cursor:not-allowed}
+    .btn2.gray{background:#e5e7eb}
 
-    .hr{height:1px;background:#e5e7eb;margin:10px 0}
-
-    /* iframe area */
     .hallWrap{
       background:#f3f4f6;border-radius:16px;border:1px solid #e5e7eb;
-      height: calc(100vh - 260px); /* ключ: помещаемся в экран */
-      overflow: hidden;
-      position: relative;
+      height:calc(100vh - 260px);overflow:hidden;
     }
-    #cashFrame{
-      width: 100%;
-      height: 100%;
-      border: 0;
-      background: #fff;
-      display: none;
-    }
-    #cashHint{
-      position:absolute; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      color:#6b7280; font-weight:700;
-    }
-
-    /* sidebar */
-    .sideTitle{font-weight:900;margin:0 0 8px}
-    .list{display:grid;gap:8px}
-    .ops{max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
-    .ops .op{font-size:12px;color:#374151;border-bottom:1px dashed #e5e7eb;padding:6px 0}
-    .ops .op:last-child{border-bottom:0}
-    .small{font-size:12px;color:#6b7280}
-
-    .table{width:100%;border-collapse:collapse}
-    .table th,.table td{border-bottom:1px solid #e5e7eb;padding:8px 6px;font-size:13px;text-align:left}
-    .table th{color:#6b7280;font-weight:800;font-size:12px}
+    #cashFrame{width:100%;height:100%;border:0;display:none}
+    #cashHint{display:flex;align-items:center;justify-content:center;height:100%;color:#6b7280;font-weight:700}
   </style>
 </head>
 
 <body>
-  <main class="main">
-    <div class="container">
-      <div class="bo-top">
-        <div>
-          <h1 class="bo-title" id="boTitle">Білетний відділ</h1>
-       
-        </div>
+<main class="main">
+<div class="container">
 
-        <div class="bo-tabs" id="tabs">
-          <button class="tabbtn active" data-tab="events">Події</button>
-          <button class="tabbtn" data-tab="create">Створення</button>
-          <button class="tabbtn" data-tab="clients">Клієнти</button>
-          <button class="tabbtn" data-tab="orders">Замовлення</button>
-          
-         
-
-        </div>
-<a href="sales.html"
-   style="
-     display:inline-block;
-     margin-left:8px;
-     padding:8px 14px;
-     border:1px solid #ccc;
-     border-radius:20px;
-     text-decoration:none;
-     color:#000;
-     background:#fff;
-   ">
-  Продажі
-</a>
-<a href="bookings.html"
-   style="display:inline-block;margin-left:8px;padding:8px 14px;border:1px solid #ccc;border-radius:20px;text-decoration:none;color:#000;background:#fff;">
-  Бронювання
-</a>
-<a href="summary.html"
-   style="display:inline-block;margin-left:8px;padding:8px 14px;border:1px solid #ccc;border-radius:20px;text-decoration:none;color:#000;background:#fff;">
-  Зведення
-</a>  
-
-</div>
-
-<div class="bo-tabs-row">      
-<a href="invite.html">Запрошення</a>
-<a href="consignment.html">Реалізація</a>
-<a href="reports.html">Звіти</a>
-<a href="invite-log.html">Журнал запрошень</a>
-<a href="actions-log.html">Журнал дій</a>   
-<a href="consignment.html">Реалізація</a>
-<a href="sales-log.html" class="tablink">Журнал продаж</a>
-<a href="booking-log.html">Журнал бронювання</a>        
-      </div>
-
- 
-      <!-- EVENTS / HALL -->
-      <section class="panel" data-pane="events">
-        <div class="row" style="justify-content:space-between">
-          <div class="row">
-            <div class="field">
-              <label>Подія / сеанс</label>
-              <select id="showSelect"></select>
-            </div>
-            <div class="field" style="min-width:260px">
-              <label>Пошук місця (наприклад P2-M10)</label>
-              <input id="seatSearch" placeholder="P2-M10" />
-            </div>
-            <button class="btn2 gray" id="btnResetLocal">Скинути локальні</button>
-          </div>
-
-          <div class="row">
-            <button class="btn2 gray" id="btnFit">Вписати в екран</button>
-            <button class="btn2 gray" id="btnZoomOut">－</button>
-            <button class="btn2 gray" id="btnZoomIn">＋</button>
-          </div>
-        </div>
-
-        <div class="muted" id="seanceMeta" style="margin-top:8px">Оберіть сеанс.</div>
-
-        <div class="bo-grid" style="margin-top:10px">
-          <div class="panel" style="padding:12px">
-            <h2 class="sideTitle" style="margin-bottom:6px">Схема (реальна з Supabase через hall-cash)</h2>
-            <div class="small">Працюємо “оболонкою” поверх працюючої схеми. Масштабування — автоматом.</div>
-
-            <div class="hallWrap" id="hallWrap">
-              <div id="cashHint">Оберіть сеанс, щоб відкрити схему каси.</div>
-              <iframe id="cashFrame" src="about:blank"></iframe>
-            </div>
-
-            <div class="hr"></div>
-
-            <h3 class="sideTitle" style="font-size:14px;margin-bottom:6px">Журнал операцій (локально)</h3>
-            <div class="small">Експорт CSV/JSON. Онлайн-синхронізація — окремим етапом.</div>
-
-            <div class="row" style="margin:10px 0">
-              <button class="btn2 gray" id="btnExportOpsCsv">Експорт журналу (CSV)</button>
-              <button class="btn2 gray" id="btnExportOpsJson">Експорт журналу (JSON)</button>
-              <button class="btn2 red" id="btnClearOps">Очистити журнал</button>
-            </div>
-
-            <div class="ops" id="opsList"></div>
-          </div>
-
-          
-        </div>
-      </section>
-<section class="panel" data-pane="create" hidden>
-
-  <!-- A. ДАННЫЕ СЕАНСА -->
-  <div class="panel" style="margin-bottom:12px">
-    <h2 class="sideTitle">Новий сеанс</h2>
-
-<div class="row" style="margin-bottom:12px">
-  <div class="field">
-    <label>Шаблон / подія з афіші</label>
-    <select id="createTemplateSelect">
-      <option value="">— обрати —</option>
-    </select>
+  <div class="bo-top">
+    <h1 class="bo-title" id="boTitle">Білетний відділ</h1>
+    <div class="bo-tabs" id="tabs">
+      <button class="tabbtn active" data-tab="events">Події</button>
+      <button class="tabbtn" data-tab="create">Створення</button>
+      <button class="tabbtn" data-tab="clients">Клієнти</button>
+      <button class="tabbtn" data-tab="orders">Замовлення</button>
+    </div>
   </div>
-</div>
-    
+
+  <!-- EVENTS -->
+  <section class="panel" data-pane="events">
+    <div class="row">
+      <div class="field">
+        <label>Подія / сеанс</label>
+        <select id="showSelect"></select>
+      </div>
+      <div class="field">
+        <label>Пошук місця</label>
+        <input id="seatSearch" placeholder="P2-M10"/>
+      </div>
+    </div>
+
+    <div id="seanceMeta" style="margin-top:8px;color:#6b7280">Оберіть сеанс.</div>
+
+    <div class="hallWrap" id="hallWrap" style="margin-top:10px">
+      <div id="cashHint">Оберіть сеанс, щоб відкрити схему каси</div>
+      <iframe id="cashFrame"></iframe>
+    </div>
+  </section>
+
+  <!-- CREATE -->
+  <section class="panel" data-pane="create" hidden>
+
+    <h2 style="margin-bottom:10px">Новий сеанс</h2>
+
+    <div class="row" style="margin-bottom:12px">
+      <div class="field">
+        <label>Шаблон / подія з афіші</label>
+
+        <!-- ❗ КЛЮЧЕВОЙ ЭЛЕМЕНТ -->
+        <select id="createShowSelect">
+          <option value="">— обрати —</option>
+        </select>
+
+      </div>
+    </div>
+
     <div class="row">
       <div class="field">
         <label>Назва події</label>
-        <input id="c_title" placeholder="Мауглі" />
+        <input id="c_title" placeholder="Мауглі"/>
       </div>
-
       <div class="field">
         <label>Дата</label>
-        <input id="c_date" type="date" />
+        <input id="c_date" type="date"/>
       </div>
-
       <div class="field">
         <label>Час</label>
-        <input id="c_time" type="time" />
+        <input id="c_time" type="time"/>
       </div>
-
       <div class="field">
         <label>Зал</label>
         <select id="c_hall">
@@ -233,218 +116,23 @@
         </select>
       </div>
     </div>
-  </div>
 
-
-  <!-- B. СХЕМА + ИНСТРУМЕНТЫ -->
-  <div class="bo-grid">
-
-    <!-- СХЕМА -->
-    <div class="panel">
-      <h3 class="sideTitle">Схема залу (підготовка)</h3>
-
-      <div class="hallWrap">
-       <iframe
-  src="../spectacles/hall-cash.html?mode=editor&embed=1"
-  style="width:100%;height:100%;border:0">
-</iframe>
-
-      </div>
+    <div class="hallWrap" style="margin-top:12px">
+      <iframe src="../spectacles/hall-cash.html?mode=editor&embed=1"
+              style="width:100%;height:100%;border:0"></iframe>
     </div>
 
-    <!-- ИНСТРУМЕНТЫ -->
-    <aside class="panel">
-      <h3 class="sideTitle">Інструменти</h3>
+    <button class="btn2 primary" style="margin-top:12px;width:100%">
+      💾 Зберегти сеанс
+    </button>
 
-      <div class="row" style="flex-wrap:wrap">
-        <button class="btn2 gray">🎨 Ціна</button>
-        <button class="btn2 orange">🟨 Квота</button>
-        <button class="btn2 red">🚫 Неактивні</button>
-        <button class="btn2 gray">♻️ Очистити</button>
-      </div>
+  </section>
 
-      <div class="hr"></div>
+</div>
+</main>
 
-      <button class="btn2 primary" style="width:100%">
-        💾 Зберегти сеанс
-      </button>
-
-      <div class="small muted" style="margin-top:8px">
-        Сеанс стане доступним у «Подіях» та касі
-      </div>
-    </aside>
-
-  </div>
-</section>
-
-      <!-- PRICING -->
-      <section class="panel" data-pane="pricing" hidden>
-        <h2 class="sideTitle">Розцінки (довідник)</h2>
-        <div class="small muted">Поки що беремо ціни з seance.json → prices, або з data/settings.json.</div>
-        <div class="hr"></div>
-        <pre id="pricingDump" style="white-space:pre-wrap;margin:0"></pre>
-      </section>
-
-      <!-- CLIENTS -->
-      <section class="panel" data-pane="clients" hidden>
-        <div class="row" style="justify-content:space-between">
-          <h2 class="sideTitle">Клієнти / агенти</h2>
-          <button class="btn2 primary" id="btnClientNew">＋ Додати</button>
-        </div>
-        <div class="row" style="margin-top:10px">
-          <div class="field">
-            <label>Пошук (ПІБ/телефон)</label>
-            <input id="clientSearch" placeholder="Ірина або 068..." />
-          </div>
-        </div>
-
-        <div class="hr"></div>
-        <div class="panel" id="clientForm" hidden>
-          <h3 class="sideTitle" style="font-size:14px">Картка клієнта</h3>
-          <div class="row">
-            <div class="field"><label>П.І.Б.</label><input id="cName"></div>
-            <div class="field"><label>Email</label><input id="cEmail"></div>
-            <div class="field"><label>Телефон</label><input id="cPhone"></div>
-            <div class="field">
-              <label>Тип</label>
-              <select id="cType">
-                <option value="client">Клієнт</option>
-                <option value="agent">Агент</option>
-                <option value="org">Організація</option>
-              </select>
-            </div>
-          </div>
-          <div class="row" style="margin-top:10px">
-            <div class="field" style="flex:1">
-              <label>Примітка</label>
-              <textarea id="cNote" style="width:100%"></textarea>
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <button class="btn2 primary" id="btnClientSave">Зберегти</button>
-            <button class="btn2 gray" id="btnClientCancel">Скасувати</button>
-            <button class="btn2 red" id="btnClientDelete">Видалити</button>
-          </div>
-          <div class="small muted" style="margin-top:6px">Зберігається локально у цьому браузері.</div>
-        </div>
-
-        <table class="table" style="margin-top:10px">
-          <thead>
-            <tr>
-              <th>ID</th><th>П.І.Б.</th><th>Email</th><th>Телефон</th><th>Тип</th><th>Примітка</th>
-            </tr>
-          </thead>
-          <tbody id="clientsTbody"></tbody>
-        </table>
-      </section>
-
-      <!-- ORDERS -->
-      <section class="panel" data-pane="orders" hidden>
-        <div class="row" style="justify-content:space-between">
-          <h2 class="sideTitle">Замовлення (локально)</h2>
-          <button class="btn2 primary" id="btnOrderNew">＋ Нове</button>
-        </div>
-
-        <div class="row" style="margin-top:10px">
-          <div class="field">
-            <label>Пошук (номер / клієнт)</label>
-            <input id="orderSearch" placeholder="ORD-..." />
-          </div>
-          <div class="field">
-            <label>Фільтр статус</label>
-            <select id="orderFilterStatus">
-              <option value="">Усі</option>
-              <option value="draft">Чернетка</option>
-              <option value="paid">Оплачено</option>
-              <option value="closed">Закрито</option>
-              <option value="canceled">Скасовано</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="hr"></div>
-
-        <div class="panel" id="orderForm" hidden>
-          <h3 class="sideTitle" style="font-size:14px">Картка замовлення</h3>
-          <div class="row">
-            <div class="field"><label>Номер</label><input id="oId" disabled></div>
-            <div class="field"><label>Статус</label>
-              <select id="oStatus">
-                <option value="draft">Чернетка</option>
-                <option value="paid">Оплачено</option>
-                <option value="closed">Закрито</option>
-                <option value="canceled">Скасовано</option>
-              </select>
-            </div>
-            <div class="field" style="min-width:260px">
-              <label>Клієнт (ID або телефон)</label>
-              <input id="oClient" placeholder="client_id або 068..." />
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <div class="field" style="flex:1">
-              <label>Склад (місця)</label>
-              <textarea id="oSeats" placeholder="P1-M1, P1-M2"></textarea>
-            </div>
-            <div class="field">
-              <label>Сума</label>
-              <input id="oAmount" type="number" min="0" step="1" />
-            </div>
-          </div>
-
-          <div class="row" style="margin-top:10px">
-            <button class="btn2 primary" id="btnOrderSave">Зберегти</button>
-            <button class="btn2 gray" id="btnOrderCancel">Скасувати</button>
-            <button class="btn2 red" id="btnOrderDelete">Видалити</button>
-            <button class="btn2 gray" id="btnOrderPrint">Друк</button>
-          </div>
-          <div class="small muted" style="margin-top:6px">Замовлення з кошика створюється кнопкою “Створити замовлення”.</div>
-        </div>
-
-        <table class="table" style="margin-top:10px">
-          <thead>
-            <tr>
-              <th>Номер</th><th>Статус</th><th>Клієнт</th><th>Сума</th><th>Місця</th><th>Створено</th>
-            </tr>
-          </thead>
-          <tbody id="ordersTbody"></tbody>
-        </table>
-      </section>
-
-      <!-- REPORTS -->
-      <section class="panel" data-pane="reports" hidden>
-        <h2 class="sideTitle">Звіти (локально)</h2>
-        <div class="small muted">Поки базові: експорт замовлень та клієнтів.</div>
-        <div class="hr"></div>
-
-        <div class="row">
-          <button class="btn2 gray" id="btnExportClientsJson">Експорт клієнтів (JSON)</button>
-          <button class="btn2 gray" id="btnExportClientsCsv">Експорт клієнтів (CSV)</button>
-          <button class="btn2 gray" id="btnExportOrdersJson">Експорт замовлень (JSON)</button>
-          <button class="btn2 gray" id="btnExportOrdersCsv">Експорт замовлень (CSV)</button>
-        </div>
-      </section>
-
-      <!-- DOCS -->
-      <section class="panel" data-pane="docs" hidden>
-        <h2 class="sideTitle">Документи</h2>
-        <div class="muted">Наступний крок: шаблони (акт, накладна, реєстр), друк квитків з QR — окремо.</div>
-      </section>
-
-      <!-- CONTROL -->
-      <section class="panel" data-pane="control" hidden>
-        <h2 class="sideTitle">Контроль</h2>
-        <div class="muted">Тут потім: підключення онлайн, синхронізація, права, журнал змін.</div>
-      </section>
-
-    </div>
-  </main>
-
-  <script src="./utils.js"></script>
-  <script src="./ui.js"></script>
-  <script src="./app.js"></script>
-  
+<script src="./utils.js"></script>
+<script src="./ui.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>
