@@ -725,8 +725,8 @@ function fillCreateShowSelect() {
     loadOrders();
 
     await loadAfisha();
-fillShowSelect();
 fillCreateShowSelect();
+
 
 
     setText("#seanceMeta", "Оберіть сеанс.");
