@@ -136,21 +136,6 @@
     html.embed .hall-layout { gap: 0 !important; }
     html.embed .hall-scroll { padding: 8px !important; }
     html.embed .hall-inner { width: max(1200px, 100%) !important; }
-
-/* ===== EDITOR MODE ===== */
-html.editor .hall-sidebar,
-html.editor .cash-badge,
-html.editor .cash-actions,
-html.editor .row-price-list {
-  display: none !important;
-}
-
-html.editor .seat--sold,
-html.editor .seat--reserved {
-  pointer-events: none;
-}
-
-    
   </style>
 </head>
 
@@ -309,22 +294,12 @@ html.editor .seat--reserved {
   </div>
 
   <script>
-    <script>
-  const qs = new URLSearchParams(location.search);
-  const showSlug = (qs.get("show") || "").trim();
+    const qs = new URLSearchParams(location.search);
+    const showSlug = (qs.get("show") || "").trim();
 
-  // embed mode (backoffice): ?embed=1
-  const EMBED = qs.get("embed") === "1";
-  if (EMBED) document.documentElement.classList.add("embed");
-
-  // ===== EDITOR MODE =====
-  const MODE = qs.get("mode") || "cash"; // cash | editor
-  const TEMPLATE_ID = (qs.get("template") || "").trim();
-
-  if (MODE === "editor") {
-    document.documentElement.classList.add("editor");
-  }
-
+    // embed mode (backoffice): ?embed=1
+    const EMBED = qs.get("embed") === "1";
+    if (EMBED) document.documentElement.classList.add("embed");
 
     // Supabase project (читання проданих місць)
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
@@ -1290,27 +1265,7 @@ html.editor .seat--reserved {
       setSyncPill("SYNC: —", "");
       refreshQueueCount();
 
-      if (MODE === "cash") {
-  await loadShowMeta();
-}
-if (MODE === "editor" && TEMPLATE_ID) {
-  const list = await fetchJsonSafe("../data/afisha.json");
-  const tpl = Array.isArray(list)
-    ? list.find(x => x.id === TEMPLATE_ID && x.type === "template")
-    : null;
-
-  if (tpl?.scene) {
-    // применяем цены шаблона
-    for (const [key, price] of Object.entries(tpl.scene.prices || {})) {
-      const btn = seatButtons.get(key);
-      if (btn) {
-        btn.dataset.price = String(price);
-        btn.classList.add("seat--active");
-      }
-    }
-  }
-}
-
+      await loadShowMeta();
       CASH_PATCH = loadCashPatch();
 
       await loadTakenSeatsOnline().catch(()=>{});
