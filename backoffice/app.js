@@ -357,18 +357,33 @@ function fillCreateShowSelect() {
   }
 
   sel.addEventListener("change", () => {
-    const v = sel.value;
-    if (!v) return;
+  const v = sel.value;
+  if (!v) return;
 
-    const [id, date] = v.split("__");
-    const show =
-      AFISHA.find(x => x.id === id && x.date === date) ||
-      AFISHA.find(x => x.id === id);
+  const [id, date] = v.split("__");
+  const show =
+    AFISHA.find(x => x.id === id && x.date === date) ||
+    AFISHA.find(x => x.id === id);
 
-    if (!show) return;
+  if (!show) return;
 
-    console.log("[CREATE] выбран шаблон:", show);
-  });
+  console.log("[CREATE] выбран шаблон:", show);
+
+  // ✅ АВТОЗАПОЛНЕНИЕ ФОРМЫ СОЗДАНИЯ
+  const titleEl = qs("#c_title");
+  const dateEl  = qs("#c_date");
+  const timeEl  = qs("#c_time");
+  const hallEl  = qs("#c_hall");
+
+  if (titleEl && show.title) titleEl.value = show.title;
+  if (dateEl && show.date)  dateEl.value  = show.date;
+  if (timeEl && show.time)  timeEl.value  = show.time;
+
+  if (hallEl) {
+    hallEl.value = show.hall || show.stage || "main";
+  }
+});
+
 }
 
   // -------------------- tabs --------------------
