@@ -356,7 +356,7 @@ function fillCreateShowSelect() {
     sel.appendChild(opt);
   }
 
-  sel.addEventListener("change", () => {
+ sel.addEventListener("change", () => {
   const v = sel.value;
   if (!v) return;
 
@@ -369,20 +369,22 @@ function fillCreateShowSelect() {
 
   console.log("[CREATE] выбран шаблон:", show);
 
-  // ✅ АВТОЗАПОЛНЕНИЕ ФОРМЫ СОЗДАНИЯ
+  // Название
   const titleEl = qs("#c_title");
-  const dateEl  = qs("#c_date");
-  const timeEl  = qs("#c_time");
-  const hallEl  = qs("#c_hall");
-
-  if (titleEl && show.title) titleEl.value = show.title;
-  if (dateEl && show.date)  dateEl.value  = show.date;
-  if (timeEl && show.time)  timeEl.value  = show.time;
-
-  if (hallEl) {
-    hallEl.value = show.hall || show.stage || "main";
+  if (titleEl && show.title) {
+    titleEl.value = show.title.replace(/^Шаблон\s*—\s*/i, "");
   }
+
+  // Зал — ВАЖНО
+  const hallEl = qs("#c_hall");
+  if (hallEl && show.hall) {
+    hallEl.value = show.hall;
+  }
+
+  // ⚠️ ДАТУ И ВРЕМЯ НЕ ТРОГАЕМ
+  // это новый сеанс, их вводят вручную
 });
+
 
 }
 
