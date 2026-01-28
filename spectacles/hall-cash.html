@@ -294,12 +294,22 @@
   </div>
 
   <script>
-    const qs = new URLSearchParams(location.search);
-    const showSlug = (qs.get("show") || "").trim();
+    <script>
+  const qs = new URLSearchParams(location.search);
+  const showSlug = (qs.get("show") || "").trim();
 
-    // embed mode (backoffice): ?embed=1
-    const EMBED = qs.get("embed") === "1";
-    if (EMBED) document.documentElement.classList.add("embed");
+  // embed mode (backoffice): ?embed=1
+  const EMBED = qs.get("embed") === "1";
+  if (EMBED) document.documentElement.classList.add("embed");
+
+  // ===== EDITOR MODE =====
+  const MODE = qs.get("mode") || "cash"; // cash | editor
+  const TEMPLATE_ID = (qs.get("template") || "").trim();
+
+  if (MODE === "editor") {
+    document.documentElement.classList.add("editor");
+  }
+
 
     // Supabase project (читання проданих місць)
     const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
