@@ -136,6 +136,21 @@
     html.embed .hall-layout { gap: 0 !important; }
     html.embed .hall-scroll { padding: 8px !important; }
     html.embed .hall-inner { width: max(1200px, 100%) !important; }
+
+/* ===== EDITOR MODE ===== */
+html.editor .hall-sidebar,
+html.editor .cash-badge,
+html.editor .cash-actions,
+html.editor .row-price-list {
+  display: none !important;
+}
+
+html.editor .seat--sold,
+html.editor .seat--reserved {
+  pointer-events: none;
+}
+
+    
   </style>
 </head>
 
