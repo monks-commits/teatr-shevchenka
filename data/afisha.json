@@ -67,7 +67,7 @@
       "balcony"
     ]
   }
-}
+
 {
   "id": "tpl-evening-70-200",
   "type": "template",
@@ -100,7 +100,7 @@
       "70": "#0f766e"
     },
     "blocked": []
-  }
+  
 }
              
   
