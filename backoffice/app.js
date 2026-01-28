@@ -343,6 +343,33 @@
     // открыть кассу в iframe и вписать в экран
     openCash(show);
   }
+function fillCreateShowSelect() {
+  const sel = qs("#createShowSelect");
+  if (!sel) return;
+
+  sel.innerHTML = '<option value="">— обрати —</option>';
+
+  for (const s of AFISHA) {
+    const opt = document.createElement("option");
+    opt.value = `${s.id}__${s.date}`;
+    opt.textContent = `${s.title} — ${s.date}, ${s.time}`;
+    sel.appendChild(opt);
+  }
+
+  sel.addEventListener("change", () => {
+    const v = sel.value;
+    if (!v) return;
+
+    const [id, date] = v.split("__");
+    const show =
+      AFISHA.find(x => x.id === id && x.date === date) ||
+      AFISHA.find(x => x.id === id);
+
+    if (!show) return;
+
+    console.log("[CREATE] выбран шаблон:", show);
+  });
+}
 
   // -------------------- tabs --------------------
   function setTab(name){
