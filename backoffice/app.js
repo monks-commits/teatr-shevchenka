@@ -343,43 +343,6 @@
     // открыть кассу в iframe и вписать в экран
     openCash(show);
   }
-function fillCreateShowSelect() {
-  const sel = qs("#createTemplateSelect");
-  const frame = qs("#createHallFrame");
-  if (!sel || !frame) return;
-
-  sel.innerHTML = '<option value="">— обрати —</option>';
-
-  for (const s of AFISHA) {
-    const opt = document.createElement("option");
-    opt.value = s.id;
-    opt.textContent = s.title;
-    sel.appendChild(opt);
-  }
-
-  sel.addEventListener("change", () => {
-    const id = sel.value;
-    if (!id) {
-      frame.src = "about:blank";
-      return;
-    }
-
-    const show = AFISHA.find(x => x.id === id);
-    if (!show || !show.hall) return;
-
-    console.log("[CREATE] выбран шаблон:", show);
-
-    // 1. Заполняем поля
-    if (qs("#c_title")) qs("#c_title").value = show.title;
-    if (qs("#c_hall")) qs("#c_hall").value = show.hall;
-
-    // 2. ГРУЗИМ СХЕМУ (КЛЮЧ!)
-    frame.src =
-      `../spectacles/hall-cash.html?` +
-      `mode=editor&embed=1&hall=${encodeURIComponent(show.hall)}`;
-  });
-}
-
 
   // -------------------- tabs --------------------
   function setTab(name){
@@ -724,10 +687,9 @@ function fillCreateShowSelect() {
     loadClients();
     loadOrders();
 
+    await loadSettings();
     await loadAfisha();
-fillCreateShowSelect();
-
-
+    fillShowSelect();
 
     setText("#seanceMeta", "Оберіть сеанс.");
     setCashVisible(false);
