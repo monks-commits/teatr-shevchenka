@@ -1290,7 +1290,27 @@ html.editor .seat--reserved {
       setSyncPill("SYNC: —", "");
       refreshQueueCount();
 
-      await loadShowMeta();
+      if (MODE === "cash") {
+  await loadShowMeta();
+}
+if (MODE === "editor" && TEMPLATE_ID) {
+  const list = await fetchJsonSafe("../data/afisha.json");
+  const tpl = Array.isArray(list)
+    ? list.find(x => x.id === TEMPLATE_ID && x.type === "template")
+    : null;
+
+  if (tpl?.scene) {
+    // применяем цены шаблона
+    for (const [key, price] of Object.entries(tpl.scene.prices || {})) {
+      const btn = seatButtons.get(key);
+      if (btn) {
+        btn.dataset.price = String(price);
+        btn.classList.add("seat--active");
+      }
+    }
+  }
+}
+
       CASH_PATCH = loadCashPatch();
 
       await loadTakenSeatsOnline().catch(()=>{});
