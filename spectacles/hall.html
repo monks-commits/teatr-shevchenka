@@ -34,19 +34,26 @@
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;
     }
-   .seat--200 { background:#0ea5e9; color:#fff; }
-.seat--180 { background:#a3a300; color:#111; }
-.seat--170 { background:#155e75; color:#fff; }
-.seat--160 { background:#facc15; color:#111; }
-.seat--140 { background:#84cc16; color:#111; }
-.seat--120 { background:#38bdf8; color:#111; }
-.seat--100 { background:#c2410c; color:#fff; }
-.seat--70  { background:#0f766e; color:#fff; }
+ /* Партер — по ценам */
+.seat--200 { background:#0ea5e9; color:#fff; }   /* 200 */
+.seat--180 { background:#a3a300; color:#111; }  /* 180 */
+.seat--170 { background:#155e75; color:#fff; }  /* 170 */
+.seat--160 { background:#facc15; color:#111; }  /* 160 */
+.seat--140 { background:#84cc16; color:#111; }  /* 140 */
+.seat--120 { background:#38bdf8; color:#111; }  /* 120 */
+.seat--100 { background:#c2410c; color:#fff; }  /* 100 */
+.seat--70  { background:#0f766e; color:#fff; }  /* 70 */
 
+/* Ложи */
+.seat--lodge { background:#155e75; color:#fff; }
+
+/* НЕ продаются */
 .seat--no-sale {
   background:#e5e7eb !important;
   color:#9ca3af !important;
   cursor:not-allowed;
+
+
 
 }
 
@@ -178,28 +185,59 @@
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
     // Партер 1–18 по 20 місць, проход після 10-го
-    const parterRows = Array.from({length:18}, (_,i)=>( {
-      row: i+1,
-      seats: 20,
-      zone: "Партер",
-      price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
-      className: i+1 <= 6 ? "seat--parter-front"
-               : i+1 <= 12 ? "seat--parter-mid"
-                           : "seat--parter-back"
-    } ));
+    const parterRows = Array.from({ length: 18 }, (_, i) => {
+  const row = i + 1;
+
+  let price = 0;
+  let className = "";
+
+  if (row === 1)           { price = 170; className = "seat--170"; }
+  else if (row <= 3)       { price = 200; className = "seat--200"; }
+  else if (row <= 6)       { price = 180; className = "seat--180"; }
+  else if (row <= 8)       { price = 170; className = "seat--170"; }
+  else if (row <= 10)      { price = 160; className = "seat--160"; }
+  else if (row <= 12)      { price = 140; className = "seat--140"; }
+  else if (row <= 14)      { price = 120; className = "seat--120"; }
+  else if (row <= 16)      { price = 100; className = "seat--100"; }
+  else                     { price = 70;  className = "seat--70"; }
+
+  return {
+    row,
+    seats: 20,
+    zone: "Партер",
+    price,
+    className
+  };
+});
+
 
     const amphiLeftRows  = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:0, className:"seat--amphi"}));
 
     const amphiRightRows = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (права)", price:0, className:"seat--amphi"}));
 
-    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
-    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
+    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
+    const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
-    const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, zone:"Ложа", className:"seat--lodge" } ));
+    const lodgeSeats = Array.from({ length: 18 }, (_, i) => {
+  const row = i + 1;
+  let price = row <= 2 ? 170 :
+              row <= 4 ? 200 :
+              row <= 8 ? 180 :
+              row <= 12 ? 140 :
+              row <= 15 ? 120 : 100;
+
+  return {
+    index: row,
+    price,
+    zone: "Ложа",
+    className: `seat--${price}`
+  };
+});
+
 
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
 
