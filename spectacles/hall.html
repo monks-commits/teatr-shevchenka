@@ -540,13 +540,16 @@ if (!saleAllowed) {
     });
 
     (async ()=>{
-      await loadTakenSeats();
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-    })();
+  SEANCE_CONFIG = await loadSeanceConfig();
+  await loadTakenSeats();
+
+  renderParter();
+  renderLodges();
+  renderAmphi();
+  renderBalcony();
+  updateSummary();
+})();
+
   </script>
 </body>
 </html>
