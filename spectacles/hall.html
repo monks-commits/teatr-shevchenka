@@ -321,8 +321,9 @@ function applySeanceConfig(meta) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
+      btn.className = "seat" + (finalClass ? " " + finalClass : "");
+btn.dataset.price = finalPrice;
+
       btn.dataset.price = price;
       btn.dataset.zone = meta.zone;
 
