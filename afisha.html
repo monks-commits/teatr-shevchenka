@@ -102,9 +102,13 @@
             <div class="btn-row">
               <a class="btn secondary" href="show.html?show=${encodeURIComponent(id)}">
                 Детальніше
-              </a>
-              <a class="btn" href="spectacles/hall.html?show=${encodeURIComponent(id)}">
-                Вибрати місця
+              <a
+  class="btn"
+  href="spectacles/hall.html?show=${encodeURIComponent(id)}&seance=${encodeURIComponent(s.seance || '')}"
+>
+  Вибрати місця
+</a>
+
               </a>
             </div>
           </article>
