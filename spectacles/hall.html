@@ -332,6 +332,12 @@ btn.dataset.price = finalPrice;
         btn.disabled = true;
       }
 
+if (!saleAllowed) {
+  btn.classList.add("seat--no-sale");
+  btn.disabled = true;
+}
+
+      
       btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
       return btn;
     }
