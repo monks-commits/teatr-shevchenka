@@ -1,0 +1,26 @@
+{
+  "seance_id": "koncert-2026-02-10-19-00",
+
+  "pricing": {
+    "P1-6":   { "price": 200, "class": "seat--200", "sale": true },
+    "P7-12":  { "price": 160, "class": "seat--160", "sale": true },
+    "P13-18": { "price": 140, "class": "seat--140", "sale": true },
+
+    "A19-23": { "price": 120, "class": "seat--120", "sale": true },
+
+    "B1-5":   { "price": 100, "class": "seat--100", "sale": true },
+    "B6":     { "price": 80,  "class": "seat--80",  "sale": true }
+  },
+
+  "seat_overrides": {
+    "P3-M5":  { "sale": false },
+    "P3-M6":  { "sale": false },
+    "B2-M10": { "price": 150 }
+  },
+
+  "meta": {
+    "title": "Концерт",
+    "date": "2026-02-10",
+    "time": "19:00"
+  }
+}
