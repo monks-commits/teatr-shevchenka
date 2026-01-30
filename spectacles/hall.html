@@ -176,25 +176,12 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
     const parterRows = Array.from({ length: 18 }, (_, i) => {
   const row = i + 1;
 
-  let price = 0;
-  let className = "";
-
-  if (row === 1)           { price = 170; className = "seat--170"; }
-  else if (row <= 3)       { price = 200; className = "seat--200"; }
-  else if (row <= 6)       { price = 180; className = "seat--180"; }
-  else if (row <= 8)       { price = 170; className = "seat--170"; }
-  else if (row <= 10)      { price = 160; className = "seat--160"; }
-  else if (row <= 12)      { price = 140; className = "seat--140"; }
-  else if (row <= 14)      { price = 120; className = "seat--120"; }
-  else if (row <= 16)      { price = 100; className = "seat--100"; }
-  else                     { price = 70;  className = "seat--70"; }
-
   return {
     row,
     seats: 20,
     zone: "Партер",
-    price,
-    className 
+    price: 0,
+    className: ""
   };
 });
 
@@ -210,21 +197,12 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
     const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
     const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
-    const lodgeSeats = Array.from({ length: 18 }, (_, i) => {
-  const row = i + 1;
-  let price = row <= 2 ? 170 :
-              row <= 4 ? 200 :
-              row <= 8 ? 180 :
-              row <= 12 ? 140 :
-              row <= 15 ? 120 : 100;
-
-  return {
-    index: row,
-    price,
-    zone: "Ложа",
-    className: `seat--${price}`
-  };
-});
+    const lodgeSeats = Array.from({ length: 18 }, (_, i) => ({
+  index: i + 1,
+  price: 0,
+  zone: "Ложа",
+  className: ""
+}));
 
 
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
