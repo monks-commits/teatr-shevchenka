@@ -161,8 +161,11 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug  = (qs.get("show")  || "").trim();
-    const showTitle = (qs.get("title") || "").trim() || showSlug || "Вистава";
+
+const showSlug  = (qs.get("show")   || "").trim();
+const showTitle = (qs.get("title")  || "").trim() || showSlug || "Вистава";
+const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
+
 
     document.getElementById("summary-show").textContent = "Вистава: " + (showTitle || "—");
 
@@ -247,6 +250,23 @@
       rows.forEach(r => { if (r && r.seat_label) takenSeats.add(String(r.seat_label)); });
     }
 
+let SEANCE_CONFIG = null;
+
+async function loadSeanceConfig() {
+  if (!SEANCE_ID) return null;
+
+  try {
+    const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
+      cache: "no-store"
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+    
     function seatKey(meta){
       const row  = meta.row ?? meta.index ?? 0;
       const seat = meta.seat ?? meta.index ?? 0;
