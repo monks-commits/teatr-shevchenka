@@ -308,6 +308,16 @@ function applySeanceConfig(meta) {
 
     
     function makeSeatElement(key,label,extraClass,price,meta){
+        let finalPrice = price;
+  let finalClass = extraClass;
+  let saleAllowed = true;
+
+  const cfg = applySeanceConfig(meta);
+  if (cfg) {
+    if (cfg.price !== undefined) finalPrice = cfg.price;
+    if (cfg.class) finalClass = cfg.class;
+    if (cfg.sale === false) saleAllowed = false;
+  }
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
