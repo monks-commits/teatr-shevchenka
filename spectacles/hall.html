@@ -325,7 +325,7 @@ function applySeanceConfig(meta) {
 btn.dataset.price = finalPrice;
 
       btn.dataset.price = price;
-      btn.dataset.zone = meta.zone;
+      
 
       if (takenSeats.has(key)){
         btn.classList.add("seat--taken");
@@ -338,7 +338,7 @@ if (!saleAllowed) {
 }
 
       
-      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
+      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, finalPrice));
       return btn;
     }
 
