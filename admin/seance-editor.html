@@ -46,7 +46,7 @@ textarea{
 <div class="wrap">
 
 <h1>🎛️ Редактор seance.json</h1>
-<p class="badge">Генерує правильні ціни + класи для hall.html</p>
+<p class="badge">Генерує ціни + CSS-класи для hall.html</p>
 
 <div class="card">
   <div class="row">
@@ -56,7 +56,7 @@ textarea{
 </div>
 
 <div class="card">
-  <h3>➕ Додати правило</h3>
+  <h3>➕ Правило по рядах</h3>
 
   <div class="row">
     <label>Зона</label>
@@ -83,10 +83,10 @@ textarea{
 </div>
 
 <div class="card">
-  <h3>🎯 Індивідуальне місце</h3>
+  <h3>🎯 Окреме місце</h3>
   <div class="row">
     <input id="seatKey" placeholder="P3-M5">
-    <input id="seatPrice" type="number" placeholder="ціна (необовʼязково)">
+    <input id="seatPrice" type="number" placeholder="ціна">
     <label>
       <input type="checkbox" id="seatSale">
       Заборонити продаж
@@ -96,17 +96,22 @@ textarea{
 </div>
 
 <div class="card">
-  <h3>📄 Згенерований seance.json</h3>
+  <h3>📄 seance.json</h3>
   <textarea id="output"></textarea>
   <button onclick="copy()">📋 Скопіювати</button>
 </div>
 
+<button id="publish">🚀 Опублікувати</button>
+
 </div>
-<button id="publish">Опублікувати</button>
+
 <script>
+const SUPABASE_FUNCTION_URL =
+  "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/save-seance";
+
 const data = {
-  pricing:{},
-  seat_overrides:{}
+  pricing: {},
+  seat_overrides: {}
 };
 
 function seatClass(price){
@@ -117,22 +122,25 @@ function addRule(){
   const z = zone.value;
   const from = fromRow.value;
   const to = toRow.value;
-  const price = price.value;
-  const sale = sale.checked;
+  const p = price.value;
+  const saleAllowed = sale.checked;
 
-  if(!from || !to) return alert("Вкажи ряди");
+  if(!from || !to || !p){
+    alert("Заповни ряди і ціну");
+    return;
+  }
 
   const key = `${z}${from}-${to}`;
   data.pricing[key] = {
-    price: Number(price),
-    class: seatClass(price),
-    sale
+    price: Number(p),
+    class: seatClass(p),
+    sale: saleAllowed
   };
   render();
 }
 
 function addSeatOverride(){
-  const key = seatKey.value;
+  const key = seatKey.value.trim();
   if(!key) return;
 
   const obj = {};
@@ -143,13 +151,14 @@ function addSeatOverride(){
   if(seatSale.checked){
     obj.sale = false;
   }
+
   data.seat_overrides[key] = obj;
   render();
 }
 
 function render(){
   const out = {
-    seance_id: seanceId.value,
+    seance_id: seanceId.value.trim(),
     pricing: data.pricing,
     seat_overrides: data.seat_overrides
   };
@@ -162,32 +171,31 @@ function copy(){
   alert("Скопійовано");
 }
 
-<script>
-  const SUPABASE_FUNCTION_URL =
-    "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/save-seance";
+document.getElementById("publish").onclick = async () => {
+  const seance = seanceId.value.trim();
+  if(!seance){
+    alert("Вкажи Seance ID");
+    return;
+  }
 
-  document.getElementById("publish").onclick = async () => {
-    const payload = {
-      seance_id: SEANCE_ID,        // например: koncert-2026-02-10-19-00
-      pricing: pricing,            // объект с правилами
-      seat_overrides: seat_overrides
-    };
-
-    const res = await fetch(SUPABASE_FUNCTION_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (res.ok) {
-      alert("Зміни опубліковано");
-    } else {
-      alert("Помилка публікації");
-    }
+  const payload = {
+    seance_id: seance,
+    pricing: data.pricing,
+    seat_overrides: data.seat_overrides
   };
-</script>
 
-  
+  const res = await fetch(SUPABASE_FUNCTION_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if(res.ok){
+    alert("✅ Опубліковано");
+  } else {
+    alert("❌ Помилка публікації");
+  }
+};
 </script>
 
 </body>
