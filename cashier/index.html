@@ -83,7 +83,8 @@ iframe{border:0;width:100%;height:100%}
   }
 
   try{
-    const res = await fetch("../data/seances/index.json",{cache:"no-store"});
+    const res = await fetch("/teatr-shevchenka/data/seances/index.json", { cache: "no-store" });
+
     SEANCES = res.ok ? await res.json() : [];
     status.textContent = "Сеансів: " + SEANCES.length;
   }catch(e){
