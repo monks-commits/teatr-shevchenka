@@ -1,8 +1,45 @@
-/admin/
-  seance-editor.html
-  seance-editor.js
-  seance-schema.json (опционально)
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <title>Редактор сеансу</title>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
 
-/data/seances/
-  koncert-2026-02-10-19-00.json
-  koncert-2026-02-11-19-00.json
+<h1>Редактор сеансу</h1>
+
+<!-- 1. Выбор seance -->
+<section>
+  <label>
+    Seance ID:
+    <input id="seance-id" placeholder="koncert-2026-02-10-19-00">
+  </label>
+  <button id="load">Завантажити</button>
+</section>
+
+<hr>
+
+<!-- 2. Pricing -->
+<section>
+  <h2>Ціни по рядах</h2>
+  <div id="pricing-list"></div>
+  <button id="add-pricing">+ Додати правило</button>
+</section>
+
+<hr>
+
+<!-- 3. Seat overrides -->
+<section>
+  <h2>Індивідуальні місця</h2>
+  <div id="overrides-list"></div>
+  <button id="add-override">+ Додати місце</button>
+</section>
+
+<hr>
+
+<button id="save">Зберегти seance.json</button>
+
+<script src="seance-editor.js"></script>
+</body>
+</html>
