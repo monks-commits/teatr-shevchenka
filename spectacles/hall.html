@@ -233,39 +233,23 @@ let SEANCE_CONFIG = null;
 async function loadSeanceConfig() {
   if (!SEANCE_ID) return null;
 
-  // 1️⃣ пробуем Supabase
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances_pricing?seance_id=eq.${SEANCE_ID}&select=pricing,seat_overrides`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      }
-    );
-
-    if (res.ok) {
-      const rows = await res.json();
-      if (rows.length) {
-        return {
-          pricing: rows[0].pricing,
-          seat_overrides: rows[0].seat_overrides
-        };
-      }
-    }
-  } catch {}
-
-  // 2️⃣ fallback на JSON
   try {
     const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
       cache: "no-store"
     });
-    if (res.ok) return await res.json();
-  } catch {}
 
-  return null;
+    if (!res.ok) {
+      console.warn("seance.json not found:", SEANCE_ID);
+      return null;
+    }
+
+    return await res.json();
+  } catch (e) {
+    console.error("Failed to load seance.json", e);
+    return null;
+  }
 }
+
 
     
     function seatKey(meta){
