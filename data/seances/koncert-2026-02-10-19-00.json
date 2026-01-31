@@ -18,10 +18,12 @@
     },
     "P1": {
       "price": 170,
+      "class": "seat--170",
       "sale": true
     },
     "P2-3": {
       "price": 200,
+      "class": "seat--200",
       "sale": true
     },
     "P3-4": {
