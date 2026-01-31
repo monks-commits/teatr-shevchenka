@@ -1,50 +1,167 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <title>Редактор сеансу</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="../styles.css" />
-  <style>
-    body { padding:20px }
-    section { margin-bottom:20px }
-    input { margin-right:6px }
-    .row { display:flex; gap:6px; margin-bottom:6px; align-items:center }
-    button { cursor:pointer }
-  </style>
+<meta charset="UTF-8">
+<title>Редактор сеансу — ціни та зони</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  background:#f3f4f6;
+  margin:0;
+  padding:20px;
+}
+.wrap{max-width:900px;margin:auto;}
+h1{margin-bottom:10px}
+.card{
+  background:#fff;
+  border-radius:12px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+label{font-size:14px}
+input,select,button,textarea{
+  padding:8px 10px;
+  font-size:14px;
+}
+button{cursor:pointer}
+textarea{
+  width:100%;
+  height:260px;
+  font-family:monospace;
+}
+.badge{
+  font-size:12px;
+  padding:2px 6px;
+  border-radius:6px;
+  background:#e5e7eb;
+}
+</style>
 </head>
+
 <body>
+<div class="wrap">
 
-<h1>🎛 Редактор сеансу</h1>
+<h1>🎛️ Редактор seance.json</h1>
+<p class="badge">Генерує правильні ціни + класи для hall.html</p>
 
-<section>
-  <label>
-    Seance ID:
-    <input id="seance-id" placeholder="koncert-2026-02-10-19-00" style="width:260px">
-  </label>
-  <button id="load">Завантажити</button>
-</section>
+<div class="card">
+  <div class="row">
+    <label>Seance ID</label>
+    <input id="seanceId" placeholder="koncert-2026-02-10-19-00" style="flex:1">
+  </div>
+</div>
 
-<hr>
+<div class="card">
+  <h3>➕ Додати правило</h3>
 
-<section>
-  <h2>Ціни по рядах</h2>
-  <div id="pricing-list"></div>
-  <button id="add-pricing">+ Додати правило</button>
-</section>
+  <div class="row">
+    <label>Зона</label>
+    <select id="zone">
+      <option value="P">Партер</option>
+      <option value="A">Амфітеатр</option>
+      <option value="B">Балкон</option>
+    </select>
 
-<hr>
+    <label>Ряди</label>
+    <input id="fromRow" type="number" placeholder="від">
+    <input id="toRow" type="number" placeholder="до">
 
-<section>
-  <h2>Індивідуальні місця</h2>
-  <div id="overrides-list"></div>
-  <button id="add-override">+ Додати місце</button>
-</section>
+    <label>Ціна</label>
+    <input id="price" type="number" placeholder="200">
 
-<hr>
+    <label>
+      <input type="checkbox" id="sale" checked>
+      Продається
+    </label>
 
-<button id="save">⬇️ Завантажити seance.json</button>
+    <button onclick="addRule()">Додати</button>
+  </div>
+</div>
 
-<script src="seance-editor.js"></script>
+<div class="card">
+  <h3>🎯 Індивідуальне місце</h3>
+  <div class="row">
+    <input id="seatKey" placeholder="P3-M5">
+    <input id="seatPrice" type="number" placeholder="ціна (необовʼязково)">
+    <label>
+      <input type="checkbox" id="seatSale">
+      Заборонити продаж
+    </label>
+    <button onclick="addSeatOverride()">Додати</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>📄 Згенерований seance.json</h3>
+  <textarea id="output"></textarea>
+  <button onclick="copy()">📋 Скопіювати</button>
+</div>
+
+</div>
+
+<script>
+const data = {
+  pricing:{},
+  seat_overrides:{}
+};
+
+function seatClass(price){
+  return `seat--${price}`;
+}
+
+function addRule(){
+  const z = zone.value;
+  const from = fromRow.value;
+  const to = toRow.value;
+  const price = price.value;
+  const sale = sale.checked;
+
+  if(!from || !to) return alert("Вкажи ряди");
+
+  const key = `${z}${from}-${to}`;
+  data.pricing[key] = {
+    price: Number(price),
+    class: seatClass(price),
+    sale
+  };
+  render();
+}
+
+function addSeatOverride(){
+  const key = seatKey.value;
+  if(!key) return;
+
+  const obj = {};
+  if(seatPrice.value){
+    obj.price = Number(seatPrice.value);
+    obj.class = seatClass(seatPrice.value);
+  }
+  if(seatSale.checked){
+    obj.sale = false;
+  }
+  data.seat_overrides[key] = obj;
+  render();
+}
+
+function render(){
+  const out = {
+    seance_id: seanceId.value,
+    pricing: data.pricing,
+    seat_overrides: data.seat_overrides
+  };
+  output.value = JSON.stringify(out, null, 2);
+}
+
+function copy(){
+  output.select();
+  document.execCommand("copy");
+  alert("Скопійовано");
+}
+</script>
+
 </body>
 </html>
