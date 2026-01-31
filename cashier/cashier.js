@@ -3,34 +3,38 @@
   const btn = document.getElementById("open-hall");
   const hint = document.getElementById("hint");
 
+  function labelOf(item) {
+    const when = [item.date, item.time].filter(Boolean).join(" ");
+    return `${item.title || item.id} • ${when}`.trim();
+  }
+
   let items = [];
   try {
-    const res = await fetch("../data/seances/index.json", { cache: "no-store" });
+    const res = await fetch("../data/afisha.json", { cache: "no-store" });
     items = res.ok ? await res.json() : [];
-  } catch {
+  } catch (e) {
+    console.error(e);
     items = [];
   }
 
-  if (!items.length) {
-    hint.textContent = "Немає сеансів у data/seances/index.json";
-    return;
+  if (!Array.isArray(items) || !items.length) {
+    hint.textContent = "Немає сеансів у data/afisha.json";
+  } else {
+    items.forEach((it) => {
+      const opt = document.createElement("option");
+      opt.value = it.id;
+      opt.textContent = labelOf(it);
+      sel.appendChild(opt);
+    });
   }
 
-  items.forEach(it => {
-    const opt = document.createElement("option");
-    opt.value = it.id;
-    opt.textContent = `${it.title} • ${it.date} ${it.time}`;
-    opt.dataset.seance = it.seance;
-    sel.appendChild(opt);
+  btn.addEventListener("click", () => {
+    const id = sel.value;
+    if (!id) {
+      alert("Оберіть сеанс.");
+      return;
+    }
+    // Реальна схема (та сама, що і для покупця), але в режимі каси:
+    window.location.href = `../spectacles/hall.html?show=${encodeURIComponent(id)}&role=cashier`;
   });
-
-  btn.onclick = () => {
-    const opt = sel.selectedOptions[0];
-    if (!opt) return alert("Оберіть сеанс");
-
-    const url = new URL("../spectacles/hall-cash.html", location.href);
-    url.searchParams.set("show", opt.value);
-    url.searchParams.set("seance", opt.dataset.seance);
-    location.href = url.toString();
-  };
 })();
