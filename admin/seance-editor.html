@@ -102,7 +102,7 @@ textarea{
 </div>
 
 </div>
-
+<button id="publish">Опублікувати</button>
 <script>
 const data = {
   pricing:{},
@@ -161,6 +161,33 @@ function copy(){
   document.execCommand("copy");
   alert("Скопійовано");
 }
+
+<script>
+  const SUPABASE_FUNCTION_URL =
+    "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/save-seance";
+
+  document.getElementById("publish").onclick = async () => {
+    const payload = {
+      seance_id: SEANCE_ID,        // например: koncert-2026-02-10-19-00
+      pricing: pricing,            // объект с правилами
+      seat_overrides: seat_overrides
+    };
+
+    const res = await fetch(SUPABASE_FUNCTION_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      alert("Зміни опубліковано");
+    } else {
+      alert("Помилка публікації");
+    }
+  };
+</script>
+
+  
 </script>
 
 </body>
