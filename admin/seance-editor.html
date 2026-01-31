@@ -3,24 +3,30 @@
 <head>
   <meta charset="utf-8" />
   <title>Редактор сеансу</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../styles.css" />
+  <style>
+    body { padding:20px }
+    section { margin-bottom:20px }
+    input { margin-right:6px }
+    .row { display:flex; gap:6px; margin-bottom:6px; align-items:center }
+    button { cursor:pointer }
+  </style>
 </head>
 <body>
 
-<h1>Редактор сеансу</h1>
+<h1>🎛 Редактор сеансу</h1>
 
-<!-- 1. Выбор seance -->
 <section>
   <label>
     Seance ID:
-    <input id="seance-id" placeholder="koncert-2026-02-10-19-00">
+    <input id="seance-id" placeholder="koncert-2026-02-10-19-00" style="width:260px">
   </label>
   <button id="load">Завантажити</button>
 </section>
 
 <hr>
 
-<!-- 2. Pricing -->
 <section>
   <h2>Ціни по рядах</h2>
   <div id="pricing-list"></div>
@@ -29,7 +35,6 @@
 
 <hr>
 
-<!-- 3. Seat overrides -->
 <section>
   <h2>Індивідуальні місця</h2>
   <div id="overrides-list"></div>
@@ -38,7 +43,7 @@
 
 <hr>
 
-<button id="save">Зберегти seance.json</button>
+<button id="save">⬇️ Завантажити seance.json</button>
 
 <script src="seance-editor.js"></script>
 </body>
