@@ -1055,8 +1055,26 @@ seatsRow.appendChild(
       lodgeSeats.forEach(ls=>{
         const keyA = seatKey({zone:"Ложа А", row:0, seat:ls.index});
         const keyB = seatKey({zone:"Ложа Б", row:0, seat:ls.index});
-        a.appendChild(makeSeatElement(keyA, ls.index, ls.className, 10));
-        b.appendChild(makeSeatElement(keyB, ls.index, ls.className, 10));
+        a.appendChild(
+  makeSeatElement(
+    keyA,
+    ls.index,
+    ls.className,
+    10,
+    { zone: "Ложа А", row: 0, seat: ls.index }
+  )
+);
+
+b.appendChild(
+  makeSeatElement(
+    keyB,
+    ls.index,
+    ls.className,
+    10,
+    { zone: "Ложа Б", row: 0, seat: ls.index }
+  )
+);
+
       });
     }
 
