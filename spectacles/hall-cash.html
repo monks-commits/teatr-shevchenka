@@ -321,6 +321,21 @@
 
     // ---- схема (как раньше) ----
   
+let SEANCE_CONFIG = null;
+
+async function loadSeanceConfig() {
+  if (!showSlug) return null;
+
+  const url = `../data/seances/${showSlug}.json`;
+  const cfg = await fetchJsonSafe(url);
+
+  if (cfg && typeof cfg === "object") {
+    console.log("[hall-cash] seance config loaded", cfg);
+    return cfg;
+  }
+
+  return null;
+}
 
 
     const amphiLeftRows  = [
