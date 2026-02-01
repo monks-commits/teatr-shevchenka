@@ -1028,8 +1028,17 @@ function applySeanceConfig(meta) {
 
         for (let s=1; s<=r.seats; s++){
           const key = seatKey({zone:"Партер", row:r.row, seat:s});
-          const cls = r.className + (s===10 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
+         const cls = r.className + (s===10 ? " seat--gap-right" : "");
+seatsRow.appendChild(
+  makeSeatElement(
+    key,
+    s,
+    cls,
+    r.price,
+    { zone: "Партер", row: r.row, seat: s }
+  )
+);
+
         }
 
         rowLine.appendChild(seatsRow);
@@ -1112,7 +1121,16 @@ function applySeanceConfig(meta) {
         for(let pos=1;pos<=28;pos++){
           const key = seatKey({zone:"Балкон", row:r.row, seat:pos});
           const cls = r.className + (pos===14 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
+seatsRow.appendChild(
+  makeSeatElement(
+    key,
+    pos,
+    cls,
+    100,
+    { zone: "Балкон", row: r.row, seat: pos }
+  )
+);
+
         }
 
         rowLine.appendChild(seatsRow);
