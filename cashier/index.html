@@ -1,132 +1,213 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="utf-8">
-<title>Панель касира</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="../styles.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Панель касира</title>
 
-<style>
-html,body{margin:0;height:100%;overflow:hidden;font-family:system-ui}
-#app{display:flex;height:100vh}
-#left{width:300px;border-right:1px solid #e5e7eb;padding:12px;overflow:auto}
-#right{flex:1;padding:12px;overflow:auto}
+  <link rel="stylesheet" href="../styles.css" />
 
-.seance{padding:10px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;cursor:pointer}
-.seance.active{background:#dbeafe}
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
 
-.row{display:flex;gap:4px;margin-bottom:4px}
-.lbl{width:28px;text-align:right;font-size:12px;color:#6b7280}
-.seat{width:26px;height:26px;border-radius:6px;border:1px solid #d1d5db;font-size:11px;cursor:pointer}
-.seat.sel{outline:3px solid #2563eb}
-.seat--nosale{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
+    body {
+      background: #f3f4f6;
+    }
 
-#panel{margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px}
-button{padding:10px 14px;border-radius:10px;border:0;font-weight:700;cursor:pointer}
-.sell{background:#bbf7d0}
-.clear{background:#e5e7eb}
-</style>
+    .layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      height: 100vh;
+    }
+
+    /* LEFT */
+    .left {
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .left h2 {
+      margin: 16px;
+      font-size: 18px;
+    }
+
+    .search {
+      padding: 0 16px 12px;
+    }
+
+    .search input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      font-size: 14px;
+    }
+
+    .seances {
+      flex: 1;
+      overflow: auto;
+      padding: 0 8px 8px;
+    }
+
+    .seance {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+      margin: 8px;
+      cursor: pointer;
+    }
+
+    .seance.active {
+      background: #111827;
+      color: #fff;
+    }
+
+    .seance-title {
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .seance-meta {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+
+    /* RIGHT */
+    .right {
+      background: #000;
+      position: relative;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+
+    .placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 18px;
+      background: #fff;
+    }
+  </style>
 </head>
-
 <body>
-<div id="app">
 
-<div id="left">
-<h3>Сеанси (data/seances)</h3>
-<div id="list">Завантаження…</div>
-</div>
+<div class="layout">
+  <!-- LEFT -->
+  <div class="left">
+    <h2>Сеанси (data/seances)</h2>
 
-<div id="right">
-<h2 id="title">Схема залу</h2>
-<div id="hall"></div>
+    <div class="search">
+      <input id="search" placeholder="пошук..." />
+    </div>
 
-<div id="panel">
-<div id="summary">Місця: — | Сума: 0 грн</div>
-<button class="sell" id="sell" disabled>ПРОДАТИ</button>
-<button class="clear" id="clear">ОЧИСТИТИ</button>
-</div>
-</div>
+    <div class="seances" id="seancesList">
+      <div style="padding:16px;color:#9ca3af">Завантаження…</div>
+    </div>
+  </div>
 
+  <!-- RIGHT -->
+  <div class="right">
+    <div class="placeholder" id="placeholder">
+      Оберіть сеанс зліва
+    </div>
+    <iframe id="hallFrame"></iframe>
+  </div>
 </div>
 
 <script>
-let SEANCE=null;
-let SELECTED=new Map();
+(async () => {
+  const listEl = document.getElementById("seancesList");
+  const frame = document.getElementById("hallFrame");
+  const placeholder = document.getElementById("placeholder");
+  const searchEl = document.getElementById("search");
 
-function seatKey(r,s){return`P${r}-M${s}`}
+  let seances = [];
+  let activeId = null;
 
-function render(){
-  const hall=document.getElementById("hall");
-  hall.innerHTML="";
-  SELECTED.clear();
-  update();
-
-  for(let r=1;r<=18;r++){
-    const row=document.createElement("div");row.className="row";
-    const lbl=document.createElement("div");lbl.className="lbl";lbl.textContent=r;
-    row.appendChild(lbl);
-
-    for(let s=1;s<=20;s++){
-      const k=seatKey(r,s);
-      const cfg=SEANCE.seat_overrides?.[k]||{};
-      const rule=Object.entries(SEANCE.pricing||{}).find(([x])=>{
-        const m=x.match(/^P(\d+)-(\d+)$/);return m&&r>=+m[1]&&r<=+m[2];
-      });
-
-      let price=rule?.[1]?.price||0;
-      let cls=rule?.[1]?.class||"";
-      if(cfg.sale===false)cls="seat--nosale";
-
-      const b=document.createElement("button");
-      b.className=`seat ${cls}`;
-      b.textContent=s;
-      b.onclick=()=>{
-        if(cls==="seat--nosale")return;
-        b.classList.toggle("sel");
-        SELECTED.has(k)?SELECTED.delete(k):SELECTED.set(k,price);
-        update();
-      };
-      row.appendChild(b);
+  async function loadSeances() {
+    try {
+      const res = await fetch("../data/seances/index.json", { cache: "no-store" });
+      if (!res.ok) throw new Error("index.json not found");
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("index.json is not array");
+      seances = data;
+      renderList();
+    } catch (e) {
+      listEl.innerHTML = `<div style="padding:16px;color:#ef4444">
+        Помилка завантаження data/seances/index.json
+      </div>`;
+      console.error(e);
     }
-    hall.appendChild(row);
   }
-}
 
-function update(){
-  const sum=[...SELECTED.values()].reduce((a,b)=>a+b,0);
-  document.getElementById("summary").textContent=
-    `Місця: ${SELECTED.size||"—"} | Сума: ${sum} грн`;
-  document.getElementById("sell").disabled=!SELECTED.size;
-}
+  function renderList() {
+    const q = searchEl.value.toLowerCase().trim();
 
-async function openSeance(id){
-  const r=await fetch(`../data/seances/${id}.json`,{cache:"no-store"});
-  SEANCE=await r.json();
-  document.getElementById("title").textContent=
-    `${SEANCE.meta?.title||id} ${SEANCE.meta?.date||""} ${SEANCE.meta?.time||""}`;
-  render();
-}
+    const items = seances.filter(s => {
+      if (!q) return true;
+      return (
+        s.seance_id?.toLowerCase().includes(q) ||
+        s.meta?.title?.toLowerCase().includes(q)
+      );
+    });
 
-(async()=>{
-  const res=await fetch("../data/seances/index.json",{cache:"no-store"});
-  const list=await res.json();
+    if (!items.length) {
+      listEl.innerHTML = `<div style="padding:16px;color:#9ca3af">Немає сеансів</div>`;
+      return;
+    }
 
-  const box=document.getElementById("list");
-  box.innerHTML="";
-  list.forEach(id=>{
-    const d=document.createElement("div");
-    d.className="seance";
-    d.textContent=id;
-    d.onclick=()=>{
-      document.querySelectorAll(".seance").forEach(x=>x.classList.remove("active"));
-      d.classList.add("active");
-      openSeance(id);
-    };
-    box.appendChild(d);
-  });
+    listEl.innerHTML = items.map(s => {
+      const active = s.seance_id === activeId ? "active" : "";
+      return `
+        <div class="seance ${active}" data-id="${s.seance_id}">
+          <div class="seance-title">${s.meta?.title || s.seance_id}</div>
+          <div class="seance-meta">
+            ${s.meta?.date || ""} ${s.meta?.time || ""}
+            <br>
+            ${s.seance_id}
+          </div>
+        </div>
+      `;
+    }).join("");
 
-  if(list[0])box.firstChild.click();
+    listEl.querySelectorAll(".seance").forEach(el => {
+      el.addEventListener("click", () => {
+        openSeance(el.dataset.id);
+      });
+    });
+  }
+
+  function openSeance(seanceId) {
+    activeId = seanceId;
+    renderList();
+
+    const url = `../spectacles/hall-cash.html?seance=${encodeURIComponent(seanceId)}&embed=1`;
+    frame.src = url;
+    placeholder.style.display = "none";
+  }
+
+  searchEl.addEventListener("input", renderList);
+
+  await loadSeances();
 })();
 </script>
+
 </body>
 </html>
