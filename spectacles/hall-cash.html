@@ -1032,12 +1032,13 @@ function applySeanceConfig(meta) {
 seatsRow.appendChild(
   makeSeatElement(
     key,
-    s,
+    pos,
     cls,
-    r.price,
-    { zone: "Партер", row: r.row, seat: s }
+    80,
+    { zone: "Балкон", row: 6, seat: pos }
   )
 );
+
 
         }
 
@@ -1084,14 +1085,32 @@ seatsRow.appendChild(
         if (leftCfg){
           for(let s=1;s<=leftCfg.seats;s++){
             const key = seatKey({zone:leftCfg.zone, row:rowNum, seat:s});
-            left.appendChild(makeSeatElement(key, s, leftCfg.className, 120));
+            left.appendChild(
+  makeSeatElement(
+    key,
+    s,
+    leftCfg.className,
+    120,
+    { zone: leftCfg.zone, row: rowNum, seat: s }
+  )
+);
+
           }
         }
         if (rightCfg){
           for(let s=1;s<=rightCfg.seats;s++){
             const seatNum = s+11;
             const key = seatKey({zone:rightCfg.zone, row:rowNum, seat:seatNum});
-            right.appendChild(makeSeatElement(key, seatNum, rightCfg.className, 120));
+            right.appendChild(
+  makeSeatElement(
+    key,
+    seatNum,
+    rightCfg.className,
+    120,
+    { zone: rightCfg.zone, row: rowNum, seat: seatNum }
+  )
+);
+
           }
         }
 
@@ -1124,12 +1143,13 @@ seatsRow.appendChild(
 seatsRow.appendChild(
   makeSeatElement(
     key,
-    pos,
-    cls,
-    100,
-    { zone: "Балкон", row: r.row, seat: pos }
+    seatNum,
+    "seat--balcony",
+    80,
+    { zone: "Балкон", row: 6, seat: seatNum }
   )
 );
+
 
         }
 
