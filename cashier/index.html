@@ -2,175 +2,175 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Панель касира</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="../styles.css" />
+
   <style>
-    html, body { height: 100%; }
-    body { overflow: hidden; }
+    html,body{height:100%;margin:0}
+    body{overflow:hidden;background:#f3f4f6}
 
-    .c-wrap{
-      max-width: 1520px;
-      margin: 0 auto;
-      padding: 12px;
-      height: calc(100vh - 24px);
-    }
-
-    .top{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:12px; margin-bottom:10px;
-    }
-    .title{margin:0;font-size:20px;font-weight:900}
-    .muted{color:#6b7280;font-size:12px}
-
-    .grid{
+    .wrap{
       display:grid;
-      grid-template-columns: 420px 1fr;
-      gap: 12px;
-      height: calc(100vh - 120px);
+      grid-template-columns:360px 1fr;
+      height:100vh;
+      gap:12px;
+      padding:12px;
+      box-sizing:border-box;
     }
 
-    .panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px}
-    .left{display:flex;flex-direction:column;min-height:0}
-    .right{display:flex;flex-direction:column;min-height:0}
+    .left,.right{
+      background:#fff;
+      border-radius:16px;
+      border:1px solid #e5e7eb;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      min-height:0;
+    }
 
-    .field{display:grid;gap:6px;margin-bottom:10px}
-    .field label{font-size:12px;color:#6b7280}
-    .field input{
-      border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;
+    h1{margin:0 0 8px;font-size:18px}
+    .muted{font-size:12px;color:#6b7280}
+
+    .search{
+      margin:8px 0;
+    }
+    .search input{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #e5e7eb;
+      font-size:14px;
     }
 
     .list{
+      flex:1;
       overflow:auto;
-      border:1px solid #e5e7eb;border-radius:12px;
-      min-height:0;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
     }
 
     .item{
       padding:10px;
       border-bottom:1px dashed #e5e7eb;
       cursor:pointer;
+      font-weight:700;
     }
-    .item.active{background:#111827;color:#fff}
     .item:last-child{border-bottom:0}
-
-    .frameWrap{
-      background:#f3f4f6;border:1px solid #e5e7eb;border-radius:16px;
-      height:100%;overflow:auto;position:relative;
+    .item.active{
+      background:#111827;
+      color:#fff;
     }
 
     iframe{
-      width:100%;height:100%;border:0;background:#fff;
+      border:0;
+      width:100%;
+      height:100%;
+      border-radius:12px;
     }
 
-    #hint{
-      position:absolute;inset:0;
-      display:flex;align-items:center;justify-content:center;
-      color:#6b7280;font-weight:800;
+    .hint{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100%;
+      color:#6b7280;
+      font-weight:800;
     }
   </style>
 </head>
 
 <body>
-<main class="main">
-<div class="c-wrap">
+<div class="wrap">
 
-  <div class="top">
-    <div>
-      <h1 class="title">Панель касира</h1>
-      <div class="muted">Сеанси з <b>data/seances</b>. Єдина схема для онлайн і каси.</div>
+  <!-- LEFT -->
+  <aside class="left">
+    <h1>Панель касира</h1>
+    <div class="muted">Сеанси з <b>/data/seances</b></div>
+
+    <div class="search">
+      <input id="q" placeholder="пошук seance_id">
     </div>
-    <div class="muted" id="status">—</div>
-  </div>
 
-  <div class="grid">
-    <section class="panel left">
-      <div class="field">
-        <label>Пошук</label>
-        <input id="q" placeholder="частина seance_id" />
-      </div>
+    <div class="list" id="list"></div>
+  </aside>
 
-      <div class="list" id="list">
-        <div class="muted" style="padding:12px">Завантаження…</div>
-      </div>
-    </section>
-
-    <section class="panel right">
-      <div class="frameWrap">
-        <div id="hint">Оберіть сеанс зліва</div>
-        <iframe id="frame"></iframe>
-      </div>
-    </section>
-  </div>
+  <!-- RIGHT -->
+  <section class="right">
+    <div class="muted" id="meta">Оберіть сеанс</div>
+    <div style="flex:1;margin-top:8px">
+      <div class="hint" id="hint">Сеанс не обрано</div>
+      <iframe id="frame" style="display:none"></iframe>
+    </div>
+  </section>
 
 </div>
-</main>
 
 <script>
 (async () => {
   const LIST = document.getElementById("list");
+  const Q = document.getElementById("q");
   const FRAME = document.getElementById("frame");
   const HINT = document.getElementById("hint");
-  const Q = document.getElementById("q");
-  const STATUS = document.getElementById("status");
+  const META = document.getElementById("meta");
+
+  const REPO = "monks-commits/teatr-shevchenka";
+  const PATH = "data/seances";
 
   let SEANCES = [];
   let ACTIVE = "";
 
-  async function loadSeances() {
-    STATUS.textContent = "Завантаження seances…";
+  async function loadSeances(){
+    const url = `https://api.github.com/repos/${REPO}/contents/${PATH}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("GitHub API error");
 
-    const api =
-      "https://api.github.com/repos/monks-commits/teatr-shevchenka/contents/data/seances";
-
-    const res = await fetch(api);
     const files = await res.json();
-
-    const jsonFiles = files.filter(f => f.name.endsWith(".json"));
-
-    const loaded = [];
-    for (const f of jsonFiles) {
-      const r = await fetch(f.download_url);
-      const j = await r.json();
-      if (j.seance_id) loaded.push(j.seance_id);
-    }
-
-    SEANCES = loaded.sort();
-    STATUS.textContent = `Сеансів: ${SEANCES.length}`;
-    render();
+    SEANCES = files
+      .filter(f => f.name.endsWith(".json"))
+      .map(f => f.name.replace(".json",""));
   }
 
-  function render() {
-    const q = Q.value.trim().toLowerCase();
-    const items = SEANCES.filter(s => !q || s.toLowerCase().includes(q));
-
-    if (!items.length) {
-      LIST.innerHTML = `<div class="muted" style="padding:12px">Немає сеансів</div>`;
-      return;
-    }
+  function render(){
+    const q = Q.value.toLowerCase();
+    const items = SEANCES.filter(id => id.includes(q));
 
     LIST.innerHTML = items.map(id => `
-      <div class="item ${id===ACTIVE?"active":""}" data-id="${id}">
-        <b>${id}</b>
+      <div class="item ${id===ACTIVE?'active':''}" data-id="${id}">
+        ${id}
       </div>
     `).join("");
 
-    LIST.querySelectorAll(".item").forEach(el => {
-      el.onclick = () => openSeance(el.dataset.id);
+    LIST.querySelectorAll(".item").forEach(el=>{
+      el.onclick = ()=>{
+        openSeance(el.dataset.id);
+      };
     });
+
+    if(!items.length){
+      LIST.innerHTML = `<div class="muted" style="padding:12px">Немає сеансів</div>`;
+    }
   }
 
-  function openSeance(id) {
+  function openSeance(id){
     ACTIVE = id;
-    render();
-    FRAME.src = `../spectacles/hall-cash.html?seance=${encodeURIComponent(id)}`;
+    const url = `../spectacles/hall-cash.html?seance=${id}&embed=1`;
+    FRAME.src = url;
     FRAME.style.display = "block";
     HINT.style.display = "none";
+    META.innerHTML = `<b>${id}</b>`;
+    render();
   }
 
   Q.oninput = render;
 
-  await loadSeances();
+  try{
+    await loadSeances();
+    render();
+  }catch(e){
+    LIST.innerHTML = `<div style="padding:12px;color:red">Помилка завантаження seances</div>`;
+    console.error(e);
+  }
 })();
 </script>
 </body>
