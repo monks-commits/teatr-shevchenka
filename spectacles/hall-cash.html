@@ -320,30 +320,7 @@
     const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync-ts`;
 
     // ---- схема (как раньше) ----
-   const parterRows = Array.from({ length: 18 }, (_, i) => {
-  const row = i + 1;
-
-  let price = 0;
-  let className = "";
-
-  if (row === 1)           { price = 170; className = "seat--170"; }
-  else if (row <= 3)       { price = 200; className = "seat--200"; }
-  else if (row <= 6)       { price = 180; className = "seat--180"; }
-  else if (row <= 8)       { price = 170; className = "seat--170"; }
-  else if (row <= 10)      { price = 160; className = "seat--160"; }
-  else if (row <= 12)      { price = 140; className = "seat--140"; }
-  else if (row <= 14)      { price = 120; className = "seat--120"; }
-  else if (row <= 16)      { price = 100; className = "seat--100"; }
-  else                     { price = 70;  className = "seat--70"; }
-
-  return {
-    row,
-    seats: 20,
-    zone: "Партер",
-    price,
-    className
-  };
-});
+  
 
 
     const amphiLeftRows  = [
