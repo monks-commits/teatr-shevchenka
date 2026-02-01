@@ -1030,15 +1030,15 @@ function applySeanceConfig(meta) {
   const key = seatKey({ zone: "Партер", row: r.row, seat: s });
   const cls = r.className + (s === 10 ? " seat--gap-right" : "");
   seatsRow.appendChild(
-    makeSeatElement(
-      key,
-      s,
-      cls,
-      r.price,
-      { zone: "Партер", row: r.row, seat: s }
-    )
-  );
-}
+  makeSeatElement(
+    key,
+    s,
+    cls,
+    r.price,
+    { zone: "Партер", row: r.row, seat: s }
+  )
+);
+
 
 
 
