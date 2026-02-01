@@ -1,82 +1,174 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Панель касира</title>
-  <link rel="stylesheet" href="../styles.css" />
+<meta charset="utf-8">
+<title>Панель касира</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<style>
+html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{background:#f3f4f6;overflow:hidden}
+
+.app{
+  display:grid;
+  grid-template-columns:320px 1fr 360px;
+  height:100vh;
+}
+
+/* LEFT */
+.left{
+  background:#fff;
+  border-right:1px solid #e5e7eb;
+  padding:12px;
+  overflow:auto;
+}
+.item{
+  background:#f9fafb;
+  border-radius:12px;
+  padding:10px;
+  margin-bottom:10px;
+  cursor:pointer;
+}
+.item:hover{background:#eef2f7}
+.item b{display:block}
+
+/* CENTER */
+.center{
+  background:#e5e7eb;
+  position:relative;
+}
+iframe{
+  width:100%;
+  height:100%;
+  border:0;
+}
+
+/* RIGHT — CASH PANEL */
+.right{
+  background:#fff;
+  border-left:1px solid #e5e7eb;
+  padding:16px;
+}
+h2{margin-top:0}
+
+.actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:16px;
+}
+.actions button{
+  padding:14px;
+  font-weight:800;
+  border-radius:12px;
+  border:0;
+  cursor:pointer;
+}
+.sell{background:#fca5a5}
+.reserve{background:#fed7aa}
+.clear{background:#e5e7eb}
+.sync{background:#bbf7d0}
+.small{font-size:12px;color:#6b7280;margin-top:12px}
+</style>
 </head>
 
 <body>
-<main class="main">
-  <div class="container">
-    <h1>Панель касира</h1>
-    <p class="muted">Одна схема сеансу для онлайн і каси</p>
 
-    <input id="q" placeholder="пошук..." style="width:100%;margin-bottom:10px">
+<div class="app">
 
+  <!-- LEFT -->
+  <div class="left">
+    <h3>Сеанси</h3>
     <div id="list"></div>
-
-    <iframe
-  id="cashFrame"
-  src=""
-  style="
-    width:100vw;
-    height:100vh;
-    border:0;
-    display:block;
-  "
-></iframe>
-
   </div>
-</main>
+
+  <!-- CENTER -->
+  <div class="center">
+    <iframe id="hall"></iframe>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+    <h2>Каса</h2>
+
+    <div><b>Місця:</b></div>
+    <div id="cp-seats">—</div>
+
+    <div style="margin-top:8px"><b>Сума:</b></div>
+    <div id="cp-total">0 грн</div>
+
+    <div class="actions">
+      <button class="sell" id="btn-sell">ПРОДАТИ + ДРУК</button>
+      <button class="reserve" id="btn-reserve">ДО РЕЗЕРВУ</button>
+      <button class="clear" id="btn-clear">ОЧИСТИТИ</button>
+      <button class="sync" id="btn-sync">SYNC</button>
+    </div>
+
+    <div class="small">
+      ЄДИНА схема для онлайн і каси.<br>
+      Управління — тут, кліки — в схемі.
+    </div>
+  </div>
+
+</div>
 
 <script>
-(async () => {
-  const list = document.getElementById("list");
-  const q = document.getElementById("q");
-  const frame = document.getElementById("frame");
+const listEl = document.getElementById("list");
+const frame = document.getElementById("hall");
 
-  let AFISHA = [];
+let CURRENT = { seats:[], total:0 };
 
-  try {
-    const res = await fetch("../data/afisha.json", { cache: "no-store" });
-    AFISHA = res.ok ? await res.json() : [];
-  } catch {}
+// загрузка афиши
+fetch("../data/afisha.json",{cache:"no-store"})
+  .then(r=>r.json())
+  .then(arr=>{
+    arr.forEach(x=>{
+      const d = document.createElement("div");
+      d.className="item";
+      d.innerHTML=`
+        <b>${x.title}</b>
+        ${x.date} ${x.time}<br>
+        <small>id: ${x.id}</small>
+      `;
+      d.onclick=()=>{
+        frame.src = `../spectacles/hall-cash.html?show=${x.id}&embed=1`;
+      };
+      listEl.appendChild(d);
+    });
+  });
 
-  function render() {
-    const query = q.value.toLowerCase();
+// принимаем корзину от схемы
+window.addEventListener("message",(ev)=>{
+  const m = ev.data||{};
+  if(m.source!=="hall-cash") return;
 
-    list.innerHTML = AFISHA
-      .filter(x =>
-        [x.title, x.date, x.time, x.id].join(" ").toLowerCase().includes(query)
-      )
-      .map(x => `
-        <div class="card" style="cursor:pointer;margin-bottom:8px"
-          onclick="openSeance('${x.seance}','${x.id}')">
-          <b>${x.title}</b><br>
-          ${x.date} ${x.time}<br>
-          <small>seance: ${x.seance}</small>
-        </div>
-      `).join("");
+  if(m.type==="basket:update"){
+    CURRENT = m.payload;
+    document.getElementById("cp-seats").textContent =
+      CURRENT.seats.join(", ") || "—";
+    document.getElementById("cp-total").textContent =
+      CURRENT.total + " грн";
   }
+});
 
-  window.openSeance = (seance, showId) => {
-    if (!seance) {
-      alert("У події не вказано seance");
-      return;
-    }
-    frame.hidden = false;
-    frame.src =
-  `../spectacles/hall-cash.html?seance=${encodeURIComponent(seance)}&show=${encodeURIComponent(showId)}`;
-+
-      `&show=${encodeURIComponent(showId)}` +
-      `&role=cashier`;
-  };
+// отправка команд в схему
+function send(status){
+  frame.contentWindow.postMessage({
+    source:"backoffice",
+    type:"apply_status",
+    payload:{ status, seats: CURRENT.seats }
+  },"*");
+}
 
-  q.addEventListener("input", render);
-  render();
-})();
+document.getElementById("btn-sell").onclick=()=>send("sold");
+document.getElementById("btn-reserve").onclick=()=>send("reserved");
+document.getElementById("btn-clear").onclick=()=>{
+  frame.contentWindow.postMessage({source:"backoffice",type:"reload"},"*");
+};
+document.getElementById("btn-sync").onclick=()=>{
+  frame.contentWindow.postMessage({source:"backoffice",type:"sync"},"*");
+};
 </script>
+
 </body>
 </html>
