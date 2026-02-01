@@ -1,174 +1,142 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
-<meta charset="utf-8">
-<title>Панель касира</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8" />
+<title>Панель кассира</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <style>
-html,body{margin:0;height:100%;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-body{background:#f3f4f6;overflow:hidden}
-
-.app{
-  display:grid;
-  grid-template-columns:320px 1fr 360px;
-  height:100vh;
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* LEFT */
-.left{
-  background:#fff;
-  border-right:1px solid #e5e7eb;
-  padding:12px;
-  overflow:auto;
-}
-.item{
-  background:#f9fafb;
-  border-radius:12px;
-  padding:10px;
-  margin-bottom:10px;
-  cursor:pointer;
-}
-.item:hover{background:#eef2f7}
-.item b{display:block}
-
-/* CENTER */
-.center{
-  background:#e5e7eb;
-  position:relative;
-}
-iframe{
-  width:100%;
-  height:100%;
-  border:0;
+.app {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  height: 100vh;
 }
 
-/* RIGHT — CASH PANEL */
-.right{
-  background:#fff;
-  border-left:1px solid #e5e7eb;
-  padding:16px;
+/* ---------- LEFT: seances ---------- */
+.sidebar {
+  border-right: 1px solid #e5e7eb;
+  padding: 12px;
+  overflow-y: auto;
+  background: #f8fafc;
 }
-h2{margin-top:0}
 
-.actions{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  margin-top:16px;
+.sidebar h1 {
+  font-size: 16px;
+  margin: 0 0 10px;
 }
-.actions button{
-  padding:14px;
-  font-weight:800;
-  border-radius:12px;
-  border:0;
-  cursor:pointer;
+
+.seance {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
 }
-.sell{background:#fca5a5}
-.reserve{background:#fed7aa}
-.clear{background:#e5e7eb}
-.sync{background:#bbf7d0}
-.small{font-size:12px;color:#6b7280;margin-top:12px}
+
+.seance:hover {
+  background: #f1f5f9;
+}
+
+.seance b {
+  display: block;
+  font-size: 14px;
+}
+
+.seance small {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* ---------- RIGHT: hall ---------- */
+.main {
+  position: relative;
+  background: #000;
+}
+
+iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
 </style>
 </head>
 
 <body>
-
 <div class="app">
 
   <!-- LEFT -->
-  <div class="left">
-    <h3>Сеанси</h3>
-    <div id="list"></div>
-  </div>
-
-  <!-- CENTER -->
-  <div class="center">
-    <iframe id="hall"></iframe>
-  </div>
+  <aside class="sidebar">
+    <h1>Сеансы (data/seances)</h1>
+    <div id="list">Загрузка…</div>
+  </aside>
 
   <!-- RIGHT -->
-  <div class="right">
-    <h2>Каса</h2>
-
-    <div><b>Місця:</b></div>
-    <div id="cp-seats">—</div>
-
-    <div style="margin-top:8px"><b>Сума:</b></div>
-    <div id="cp-total">0 грн</div>
-
-    <div class="actions">
-      <button class="sell" id="btn-sell">ПРОДАТИ + ДРУК</button>
-      <button class="reserve" id="btn-reserve">ДО РЕЗЕРВУ</button>
-      <button class="clear" id="btn-clear">ОЧИСТИТИ</button>
-      <button class="sync" id="btn-sync">SYNC</button>
-    </div>
-
-    <div class="small">
-      ЄДИНА схема для онлайн і каси.<br>
-      Управління — тут, кліки — в схемі.
-    </div>
-  </div>
+  <main class="main">
+    <iframe id="hall" src=""></iframe>
+  </main>
 
 </div>
 
 <script>
 const listEl = document.getElementById("list");
-const frame = document.getElementById("hall");
+const hall   = document.getElementById("hall");
 
-let CURRENT = { seats:[], total:0 };
+async function loadSeances() {
+  listEl.textContent = "Загрузка…";
 
-// загрузка афиши
-fetch("../data/afisha.json",{cache:"no-store"})
-  .then(r=>r.json())
-  .then(arr=>{
-    arr.forEach(x=>{
-      const d = document.createElement("div");
-      d.className="item";
-      d.innerHTML=`
-        <b>${x.title}</b>
-        ${x.date} ${x.time}<br>
-        <small>id: ${x.id}</small>
-      `;
-      d.onclick=()=>{
-        frame.src = `../spectacles/hall-cash.html?show=${x.id}&embed=1`;
-      };
-      listEl.appendChild(d);
-    });
-  });
-
-// принимаем корзину от схемы
-window.addEventListener("message",(ev)=>{
-  const m = ev.data||{};
-  if(m.source!=="hall-cash") return;
-
-  if(m.type==="basket:update"){
-    CURRENT = m.payload;
-    document.getElementById("cp-seats").textContent =
-      CURRENT.seats.join(", ") || "—";
-    document.getElementById("cp-total").textContent =
-      CURRENT.total + " грн";
+  let index;
+  try {
+    index = await fetch("../data/seances/index.json", { cache: "no-store" })
+      .then(r => r.json());
+  } catch (e) {
+    listEl.textContent = "Ошибка загрузки index.json";
+    return;
   }
-});
 
-// отправка команд в схему
-function send(status){
-  frame.contentWindow.postMessage({
-    source:"backoffice",
-    type:"apply_status",
-    payload:{ status, seats: CURRENT.seats }
-  },"*");
+  listEl.innerHTML = "";
+
+  for (const id of index) {
+    let cfg;
+    try {
+      cfg = await fetch(`../data/seances/${id}.json`, { cache: "no-store" })
+        .then(r => r.json());
+    } catch {
+      continue;
+    }
+
+    const div = document.createElement("div");
+    div.className = "seance";
+    div.innerHTML = `
+      <b>${cfg.title || id}</b>
+      <small>${cfg.date || ""} ${cfg.time || ""}</small>
+      <small>${cfg.seance_id}</small>
+    `;
+
+    div.onclick = () => {
+      hall.src =
+        `../spectacles/hall-cash.html?seance=${cfg.seance_id}&embed=1`;
+    };
+
+    listEl.appendChild(div);
+  }
+
+  if (!listEl.children.length) {
+    listEl.textContent = "Нет сеансов";
+  }
 }
 
-document.getElementById("btn-sell").onclick=()=>send("sold");
-document.getElementById("btn-reserve").onclick=()=>send("reserved");
-document.getElementById("btn-clear").onclick=()=>{
-  frame.contentWindow.postMessage({source:"backoffice",type:"reload"},"*");
-};
-document.getElementById("btn-sync").onclick=()=>{
-  frame.contentWindow.postMessage({source:"backoffice",type:"sync"},"*");
-};
+loadSeances();
 </script>
-
 </body>
 </html>
