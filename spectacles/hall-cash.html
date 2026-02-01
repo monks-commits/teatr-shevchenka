@@ -1301,8 +1301,9 @@
       setSyncPill("SYNC: —", "");
       refreshQueueCount();
 
-      await loadShowMeta();
-      CASH_PATCH = loadCashPatch();
+     await loadShowMeta();
+SEANCE_CONFIG = await loadSeanceConfig();
+ 
 
       await loadTakenSeatsOnline().catch(()=>{});
       renderParter();
