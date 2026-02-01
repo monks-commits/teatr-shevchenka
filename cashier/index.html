@@ -1,142 +1,169 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
-<meta charset="utf-8" />
-<title>Панель кассира</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="utf-8">
+<title>Панель касира</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="../styles.css">
 
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-}
+html,body{margin:0;padding:0;overflow:hidden;font-family:system-ui}
+#app{display:flex;height:100vh}
+#left{width:320px;border-right:1px solid #e5e7eb;overflow:auto;padding:12px}
+#right{flex:1;overflow:hidden;padding:12px}
 
-.app {
-  display: grid;
-  grid-template-columns: 360px 1fr;
-  height: 100vh;
-}
+.seance{padding:10px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;cursor:pointer}
+.seance:hover{background:#f1f5f9}
+.seance.active{background:#dbeafe}
 
-/* ---------- LEFT: seances ---------- */
-.sidebar {
-  border-right: 1px solid #e5e7eb;
-  padding: 12px;
-  overflow-y: auto;
-  background: #f8fafc;
-}
+.hall{overflow:visible}
+.row{display:flex;gap:4px;margin-bottom:4px}
+.lbl{width:28px;text-align:right;font-size:12px;color:#6b7280}
+.seat{width:26px;height:26px;border-radius:6px;border:1px solid #d1d5db;cursor:pointer;font-size:11px}
+.seat.sel{outline:3px solid #2563eb}
+.seat--200{background:#0ea5e9;color:#fff}
+.seat--180{background:#a3a300}
+.seat--170{background:#155e75;color:#fff}
+.seat--160{background:#facc15}
+.seat--140{background:#84cc16}
+.seat--120{background:#38bdf8}
+.seat--100{background:#c2410c;color:#fff}
+.seat--80{background:#f59e0b}
+.seat--nosale{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
 
-.sidebar h1 {
-  font-size: 16px;
-  margin: 0 0 10px;
-}
-
-.seance {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
-
-.seance:hover {
-  background: #f1f5f9;
-}
-
-.seance b {
-  display: block;
-  font-size: 14px;
-}
-
-.seance small {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-/* ---------- RIGHT: hall ---------- */
-.main {
-  position: relative;
-  background: #000;
-}
-
-iframe {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
+#panel{margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px}
+button{padding:10px;border-radius:10px;border:0;font-weight:700;cursor:pointer}
+.sell{background:#bbf7d0}
+.clear{background:#e5e7eb}
 </style>
 </head>
 
 <body>
-<div class="app">
+<div id="app">
 
-  <!-- LEFT -->
-  <aside class="sidebar">
-    <h1>Сеансы (data/seances)</h1>
-    <div id="list">Загрузка…</div>
-  </aside>
+<!-- LEFT -->
+<div id="left">
+<h3>Сеанси (data/seances)</h3>
+<div id="seanceList">Завантаження…</div>
+</div>
 
-  <!-- RIGHT -->
-  <main class="main">
-    <iframe id="hall" src=""></iframe>
-  </main>
+<!-- RIGHT -->
+<div id="right">
+<h2 id="title">Схема залу</h2>
+<div id="hall" class="hall"></div>
+
+<div id="panel">
+<div id="summary">Місця: — | Сума: 0 грн</div>
+<button class="sell" id="sellBtn" disabled>ПРОДАТИ</button>
+<button class="clear" id="clearBtn">ОЧИСТИТИ</button>
+</div>
+</div>
 
 </div>
 
 <script>
-const listEl = document.getElementById("list");
-const hall   = document.getElementById("hall");
+/* ---------- ЗАГРУЗКА СПИСКА СЕАНСОВ ---------- */
 
-async function loadSeances() {
-  listEl.textContent = "Загрузка…";
+async function loadSeancesList(){
+  const res = await fetch("../data/seances/",{cache:"no-store"});
+  const html = await res.text();
 
-  let index;
-  try {
-    index = await fetch("../data/seances/index.json", { cache: "no-store" })
-      .then(r => r.json());
-  } catch (e) {
-    listEl.textContent = "Ошибка загрузки index.json";
-    return;
-  }
+  const matches = [...html.matchAll(/href="([^"]+\.json)"/g)]
+    .map(m=>m[1]);
 
-  listEl.innerHTML = "";
+  return [...new Set(matches)];
+}
 
-  for (const id of index) {
-    let cfg;
-    try {
-      cfg = await fetch(`../data/seances/${id}.json`, { cache: "no-store" })
-        .then(r => r.json());
-    } catch {
-      continue;
+/* ---------- ГЛОБАЛЬНЫЕ ---------- */
+
+let SEANCE = null;
+let SELECTED = new Map();
+
+/* ---------- ОТРИСОВКА ---------- */
+
+function seatKey(r,s){ return `P${r}-M${s}` }
+
+function renderHall(){
+  const hall = document.getElementById("hall");
+  hall.innerHTML = "";
+  SELECTED.clear();
+  updateSummary();
+
+  for(let r=1;r<=18;r++){
+    const row = document.createElement("div");
+    row.className="row";
+
+    const lbl=document.createElement("div");
+    lbl.className="lbl"; lbl.textContent=r;
+    row.appendChild(lbl);
+
+    for(let s=1;s<=20;s++){
+      const key=seatKey(r,s);
+      const cfg=SEANCE.seat_overrides?.[key] || {};
+      const rule = Object.entries(SEANCE.pricing||{}).find(([k])=>{
+        const m=k.match(/^P(\d+)-(\d+)$/);
+        return m && r>=+m[1] && r<=+m[2];
+      });
+
+      let price=rule?.[1]?.price||0;
+      let cls=rule?.[1]?.class||"";
+      if(cfg.sale===false){cls="seat--nosale"}
+
+      const b=document.createElement("button");
+      b.className=`seat ${cls}`;
+      b.textContent=s;
+      b.onclick=()=>{
+        if(b.classList.contains("seat--nosale"))return;
+        b.classList.toggle("sel");
+        if(SELECTED.has(key))SELECTED.delete(key);
+        else SELECTED.set(key,price);
+        updateSummary();
+      };
+      row.appendChild(b);
     }
-
-    const div = document.createElement("div");
-    div.className = "seance";
-    div.innerHTML = `
-      <b>${cfg.title || id}</b>
-      <small>${cfg.date || ""} ${cfg.time || ""}</small>
-      <small>${cfg.seance_id}</small>
-    `;
-
-    div.onclick = () => {
-      hall.src =
-        `../spectacles/hall-cash.html?seance=${cfg.seance_id}&embed=1`;
-    };
-
-    listEl.appendChild(div);
-  }
-
-  if (!listEl.children.length) {
-    listEl.textContent = "Нет сеансов";
+    hall.appendChild(row);
   }
 }
 
-loadSeances();
+function updateSummary(){
+  const sum=[...SELECTED.values()].reduce((a,b)=>a+b,0);
+  document.getElementById("summary").textContent=
+    `Місця: ${SELECTED.size||"—"} | Сума: ${sum} грн`;
+  document.getElementById("sellBtn").disabled=!SELECTED.size;
+}
+
+/* ---------- ЗАГРУЗКА СЕАНСА ---------- */
+
+async function openSeance(file){
+  const res=await fetch(`../data/seances/${file}`,{cache:"no-store"});
+  SEANCE=await res.json();
+  document.getElementById("title").textContent=
+    `${SEANCE.meta?.title||file} ${SEANCE.meta?.date||""} ${SEANCE.meta?.time||""}`;
+  renderHall();
+}
+
+/* ---------- INIT ---------- */
+
+(async()=>{
+  const list=await loadSeancesList();
+  const box=document.getElementById("seanceList");
+  box.innerHTML="";
+
+  list.forEach(f=>{
+    const d=document.createElement("div");
+    d.className="seance";
+    d.textContent=f.replace(".json","");
+    d.onclick=()=>{
+      document.querySelectorAll(".seance").forEach(x=>x.classList.remove("active"));
+      d.classList.add("active");
+      openSeance(f);
+    };
+    box.appendChild(d);
+  });
+
+  if(list[0]) box.firstChild.click();
+})();
 </script>
 </body>
 </html>
