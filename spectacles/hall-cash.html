@@ -350,6 +350,42 @@
   };
 });
 
+function applySeanceConfig(meta) {
+  if (!SEANCE_CONFIG) return null;
+
+  const key = seatKey(meta);
+
+  // 1️⃣ override конкретного места
+  if (SEANCE_CONFIG.seat_overrides?.[key]) {
+    return SEANCE_CONFIG.seat_overrides[key];
+  }
+
+  // 2️⃣ правила по диапазонам
+  const zoneLetter =
+    meta.zone === "Партер" ? "P" :
+    meta.zone.startsWith("Амфітеатр") ? "A" :
+    meta.zone === "Балкон" ? "B" : null;
+
+  if (!zoneLetter) return null;
+
+  for (const rule in SEANCE_CONFIG.pricing) {
+    const m = rule.match(/^([PAB])(\d+)-(\d+)$/);
+    if (!m) continue;
+
+    const [, z, from, to] = m;
+    if (
+      z === zoneLetter &&
+      meta.row >= Number(from) &&
+      meta.row <= Number(to)
+    ) {
+      return SEANCE_CONFIG.pricing[rule];
+    }
+  }
+
+  return null;
+}
+
+    
     function seatKey(meta){
       const row = meta.row ?? 0;
       const seat = meta.seat ?? 0;
