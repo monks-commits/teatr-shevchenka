@@ -319,7 +319,18 @@
     const PROJECT_REF = "fhusjlkneckbvnrdhbil";
     const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync-ts`;
 
-    // ---- схема (как раньше) ----
+    // Партер 1–18 по 20 місць, проход після 10-го
+    const parterRows = Array.from({ length: 18 }, (_, i) => {
+  const row = i + 1;
+
+  return {
+    row,
+    seats: 20,
+    zone: "Партер",
+    price: 0,
+    className: ""
+  };
+});
   
 let SEANCE_CONFIG = null;
 
