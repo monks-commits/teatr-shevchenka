@@ -61,7 +61,8 @@
     }
     frame.hidden = false;
     frame.src =
-      `../spectacles/hall.html?seance=${encodeURIComponent(seance)}` +
+  `../spectacles/hall-cash.html?seance=${encodeURIComponent(seance)}&show=${encodeURIComponent(showId)}`;
++
       `&show=${encodeURIComponent(showId)}` +
       `&role=cashier`;
   };
