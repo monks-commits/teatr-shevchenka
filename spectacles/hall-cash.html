@@ -609,33 +609,50 @@
       if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
     }
 
-    function makeSeatElement(key,label,extraClass,price){
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
-      btn.dataset.price = String(price);
+    function makeSeatElement(key, label, extraClass, basePrice, meta){
+  let finalPrice = basePrice;
+  let finalClass = extraClass;
+  let saleAllowed = true;
 
-      applyStatusClass(btn, getEffectiveStatus(key));
+  const cfg = applySeanceConfig(meta);
+  if (cfg) {
+    if (cfg.price !== undefined) finalPrice = cfg.price;
+    if (cfg.class) finalClass = cfg.class;
+    if (cfg.sale === false) saleAllowed = false;
+  }
 
-      btn.addEventListener("click", ()=>{
-        const st = getEffectiveStatus(key);
-        if (st === "sold" || st === "blocked") return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = label;
+  btn.className = "seat" + (finalClass ? " " + finalClass : "");
+  btn.dataset.key = key;
+  btn.dataset.price = String(finalPrice);
 
-        if (btn.classList.contains("seat--selected")){
-          btn.classList.remove("seat--selected");
-          selected.delete(key);
-        } else {
-          btn.classList.add("seat--selected");
-          selected.set(key, { price });
-        }
-        updateSummary();
-      });
+  applyStatusClass(btn, getEffectiveStatus(key));
 
-      seatButtons.set(key, btn);
-      return btn;
+  if (!saleAllowed) {
+    btn.classList.add("seat--no-sale");
+    btn.disabled = true;
+  }
+
+  btn.addEventListener("click", ()=>{
+    const st = getEffectiveStatus(key);
+    if (st === "sold" || st === "blocked") return;
+
+    if (btn.classList.contains("seat--selected")){
+      btn.classList.remove("seat--selected");
+      selected.delete(key);
+    } else {
+      btn.classList.add("seat--selected");
+      selected.set(key, { price: finalPrice });
     }
+    updateSummary();
+  });
+
+  seatButtons.set(key, btn);
+  return btn;
+}
+
 
     function clearSelection(){
       for (const k of selected.keys()){
