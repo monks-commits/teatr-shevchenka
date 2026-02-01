@@ -1026,19 +1026,20 @@ function applySeanceConfig(meta) {
         const seatsRow = document.createElement("div");
         seatsRow.className = "seats-row";
 
-        for (let s=1; s<=r.seats; s++){
-          const key = seatKey({zone:"Партер", row:r.row, seat:s});
-         const cls = r.className + (s===10 ? " seat--gap-right" : "");
+        for (let s = 1; s <= r.seats; s++) {
+  const key = seatKey({ zone: "Партер", row: r.row, seat: s });
+  const cls = r.className + (s === 10 ? " seat--gap-right" : "");
+  seatsRow.appendChild(
+    makeSeatElement(
+      key,
+      s,
+      cls,
+      r.price,
+      { zone: "Партер", row: r.row, seat: s }
+    )
+  );
+}
 
-seatsRow.appendChild(
-  makeSeatElement(
-    key,
-    pos,
-    cls,
-    80,
-    { zone: "Балкон", row: 6, seat: pos }
-  )
-);
 
 
         }
