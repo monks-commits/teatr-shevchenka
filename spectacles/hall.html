@@ -161,11 +161,8 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-
-const showSlug  = (qs.get("show")   || "").trim();
-const showTitle = (qs.get("title")  || "").trim() || showSlug || "Вистава";
-const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
-
+    const showSlug  = (qs.get("show")  || "").trim();
+    const showTitle = (qs.get("title") || "").trim() || showSlug || "Вистава";
 
     document.getElementById("summary-show").textContent = "Вистава: " + (showTitle || "—");
 
@@ -176,12 +173,25 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
     const parterRows = Array.from({ length: 18 }, (_, i) => {
   const row = i + 1;
 
+  let price = 0;
+  let className = "";
+
+  if (row === 1)           { price = 170; className = "seat--170"; }
+  else if (row <= 3)       { price = 200; className = "seat--200"; }
+  else if (row <= 6)       { price = 180; className = "seat--180"; }
+  else if (row <= 8)       { price = 170; className = "seat--170"; }
+  else if (row <= 10)      { price = 160; className = "seat--160"; }
+  else if (row <= 12)      { price = 140; className = "seat--140"; }
+  else if (row <= 14)      { price = 120; className = "seat--120"; }
+  else if (row <= 16)      { price = 100; className = "seat--100"; }
+  else                     { price = 70;  className = "seat--70"; }
+
   return {
     row,
     seats: 20,
     zone: "Партер",
-    price: 0,
-    className: ""
+    price,
+    className 
   };
 });
 
@@ -197,12 +207,21 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
     const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
     const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
-    const lodgeSeats = Array.from({ length: 18 }, (_, i) => ({
-  index: i + 1,
-  price: 0,
-  zone: "Ложа",
-  className: ""
-}));
+    const lodgeSeats = Array.from({ length: 18 }, (_, i) => {
+  const row = i + 1;
+  let price = row <= 2 ? 170 :
+              row <= 4 ? 200 :
+              row <= 8 ? 180 :
+              row <= 12 ? 140 :
+              row <= 15 ? 120 : 100;
+
+  return {
+    index: row,
+    price,
+    zone: "Ложа",
+    className: `seat--${price}`
+  };
+});
 
 
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
@@ -228,30 +247,6 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
       rows.forEach(r => { if (r && r.seat_label) takenSeats.add(String(r.seat_label)); });
     }
 
-let SEANCE_CONFIG = null;
-
-async function loadSeanceConfig() {
-  if (!SEANCE_ID) return null;
-
-  try {
-    const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
-      cache: "no-store"
-    });
-
-    if (!res.ok) {
-      console.warn("seance.json not found:", SEANCE_ID);
-      return null;
-    }
-
-    return await res.json();
-  } catch (e) {
-    console.error("Failed to load seance.json", e);
-    return null;
-  }
-}
-
-
-    
     function seatKey(meta){
       const row  = meta.row ?? meta.index ?? 0;
       const seat = meta.seat ?? meta.index ?? 0;
@@ -280,72 +275,21 @@ async function loadSeanceConfig() {
       return k;
     }
 
-function applySeanceConfig(meta) {
-  if (!SEANCE_CONFIG) return null;
-
-  const key = seatKey(meta);
-
-  // 1️⃣ Индивидуальное место
-  if (SEANCE_CONFIG.seat_overrides?.[key]) {
-    return SEANCE_CONFIG.seat_overrides[key];
-  }
-
-  // 2️⃣ Правила по зонам / рядам
-  const zoneLetter =
-    meta.zone === "Партер" ? "P" :
-    meta.zone.startsWith("Амфітеатр") ? "A" :
-    meta.zone === "Балкон" ? "B" : null;
-
-  if (!zoneLetter) return null;
-
-  for (const rule in SEANCE_CONFIG.pricing) {
-    const m = rule.match(/^([PAB])(\d+)-(\d+)$/);
-    if (!m) continue;
-
-    const [, z, from, to] = m;
-    if (z === zoneLetter &&
-        meta.row >= Number(from) &&
-        meta.row <= Number(to)) {
-      return SEANCE_CONFIG.pricing[rule];
-    }
-  }
-
-  return null;
-}
-
-    
     function makeSeatElement(key,label,extraClass,price,meta){
-        let finalPrice = price;
-  let finalClass = extraClass;
-  let saleAllowed = true;
-
-  const cfg = applySeanceConfig(meta);
-  if (cfg) {
-    if (cfg.price !== undefined) finalPrice = cfg.price;
-    if (cfg.class) finalClass = cfg.class;
-    if (cfg.sale === false) saleAllowed = false;
-  }
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = label;
-      btn.className = "seat" + (finalClass ? " " + finalClass : "");
-btn.dataset.price = finalPrice;
-
-      
-      
+      btn.className = "seat" + (extraClass ? " " + extraClass : "");
+      btn.dataset.key = key;
+      btn.dataset.price = price;
+      btn.dataset.zone = meta.zone;
 
       if (takenSeats.has(key)){
         btn.classList.add("seat--taken");
         btn.disabled = true;
       }
 
-if (!saleAllowed) {
-  btn.classList.add("seat--no-sale");
-  btn.disabled = true;
-}
-
-      
-      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, finalPrice));
+      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
       return btn;
     }
 
@@ -547,16 +491,13 @@ if (!saleAllowed) {
     });
 
     (async ()=>{
-  SEANCE_CONFIG = await loadSeanceConfig();
-  await loadTakenSeats();
-
-  renderParter();
-  renderLodges();
-  renderAmphi();
-  renderBalcony();
-  updateSummary();
-})();
-
+      await loadTakenSeats();
+      renderParter();
+      renderLodges();
+      renderAmphi();
+      renderBalcony();
+      updateSummary();
+    })();
   </script>
 </body>
 </html>
