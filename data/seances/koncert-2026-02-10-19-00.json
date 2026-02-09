@@ -1,18 +1,10 @@
 {
-  "seance_id": "koncert-2026-02-10-19-00",
   "pricing": {
     "P1-1": { "price": 170, "class": "seat--170", "sale": true },
     "P2-3": { "price": 200, "class": "seat--200", "sale": true },
-    "P4-4": { "price": 180, "class": "seat--180", "sale": true },
-
-    "A19-23": { "price": 120, "class": "seat--120", "sale": true },
-    "B1-5":   { "price": 100, "class": "seat--100", "sale": true },
-    "B6-6":   { "price": 80,  "class": "seat--80",  "sale": true }
+    "P4-4": { "price": 180, "class": "seat--180", "sale": true }
   },
   "seat_overrides": {
-    "P3-M5": { "sale": false },
-    "P3-M6": { "sale": false },
-    "B2-M10": { "price": 150, "class": "seat--150" }
+    "P3-M5": { "sale": false } 
   }
 }
-
