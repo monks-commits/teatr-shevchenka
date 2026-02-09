@@ -20,7 +20,11 @@
       background:#e5e7eb;border-radius:16px;padding:12px;
       overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;
     }
-    .hall-inner{width:max(980px,100%);}
+    .hall-inner{
+  width: max-content;
+  margin: 0 auto;
+}
+
 
     .hall-section{margin-bottom:18px;}
     .hall-section-title{
@@ -125,6 +129,12 @@
     .formRow input{border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;font-size:14px;}
     .modalActions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap;}
 
+.hall-left {
+  display: flex;
+  justify-content: center;
+}
+
+    
     @media (max-width:900px){
       .hall-layout{flex-direction:column;}
       .hall-sidebar{width:auto;}
@@ -196,16 +206,11 @@
             </div>
           </div>
 
-          <div class="row-price-list">
-            <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
-            <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
-            <div class="row-price"><span>Партер, ряди 13–18</span><span class="dots"></span><b>140 грн</b></div>
-            <div class="row-price"><span>Амфітеатр (усі ряди)</span><span class="dots"></span><b>120 грн</b></div>
-            <div class="row-price"><span>Балкон, ряди 1–5</span><span class="dots"></span><b>100 грн</b></div>
-            <div class="row-price"><span>Балкон, ряд 6</span><span class="dots"></span><b>80 грн</b></div>
-            <div class="row-price"><span>Ложі А і Б</span><span class="dots"></span><b>10 грн</b></div>
+        <div class="row-price-list">
+            <
+            <div class="row-price"><span>Vash Admin TM</span><span class="dots"></span><b></b></div>
           </div>
-        </div>
+        </div>  
 
         <aside class="hall-sidebar">
           <div class="card hall-card">
@@ -299,7 +304,8 @@
   <script>
     const qs = new URLSearchParams(location.search);
     const showSlug  = (qs.get("show")   || "").trim();
-let SEANCE_ID = (qs.get("seance") || "").trim();
+const SEANCE_ID = (qs.get("seance") || "").trim();
+
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
     if (EMBED) document.documentElement.classList.add("embed");
@@ -823,7 +829,7 @@ if (cfg && cfg.color) {
       return `CASH-${base}-${op_id}`;
     }
 
-    // ---- печать билетов (с QR) ----
+// ---- печать билетов (с QR) ----
     async function openPrintWindowOffline(tickets, meta){
       const theatre = "Театр ім. Т. Г. Шевченка";
       const title = meta?.title || showSlug || "Квиток";
@@ -901,6 +907,8 @@ if (cfg && cfg.color) {
       setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} }, 250);
     }
 
+
+    
     async function postCashSync(cashier_id, ops){
       const secret = getCashierSecret().trim();
       const headers = { "Content-Type": "application/json" };
