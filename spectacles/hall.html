@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html>  
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
@@ -34,12 +34,18 @@
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;
     }
-    .seat--parter-front{background:#fef9c3;}
-    .seat--parter-mid{background:#dbeafe;}
-    .seat--parter-back{background:#e5e7eb;}
-    .seat--amphi{background:#e0f2fe;}
-    .seat--balcony{background:#f3e8ff;}
-    .seat--lodge{background:#fee2e2;}
+
+
+/* НЕ продаются */
+.seat--no-sale {
+  background:#e5e7eb !important;
+  color:#9ca3af !important;
+  cursor:not-allowed;
+
+
+
+}
+
 
     .seat--selected{background:#2563eb !important;color:#fff;border-color:#2563eb;}
     .seat--taken{background:#9ca3af !important;color:#fff;cursor:not-allowed;}
@@ -121,16 +127,7 @@
             </div>
           </div>
 
-          <div class="row-price-list">
-            <div class="row-price"><span>Партер, ряди 1–6</span><span class="dots"></span><b>200 грн</b></div>
-            <div class="row-price"><span>Партер, ряди 7–12</span><span class="dots"></span><b>160 грн</b></div>
-            <div class="row-price"><span>Партер, ряди 13–18</span><span class="dots"></span><b>140 грн</b></div>
-            <div class="row-price"><span>Амфітеатр (усі ряди)</span><span class="dots"></span><b>120 грн</b></div>
-            <div class="row-price"><span>Балкон, ряди 1–5</span><span class="dots"></span><b>100 грн</b></div>
-            <div class="row-price"><span>Балкон, ряд 6</span><span class="dots"></span><b>80 грн</b></div>
-            <div class="row-price"><span>Ложі А і Б</span><span class="dots"></span><b>10 грн</b></div>
-          </div>
-        </div>
+          
 
         <aside class="hall-sidebar">
           <div class="card hall-card">
@@ -153,8 +150,11 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug  = (qs.get("show")  || "").trim();
-    const showTitle = (qs.get("title") || "").trim() || showSlug || "Вистава";
+
+const showSlug  = (qs.get("show")   || "").trim();
+const showTitle = (qs.get("title")  || "").trim() || showSlug || "Вистава";
+const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
+
 
     document.getElementById("summary-show").textContent = "Вистава: " + (showTitle || "—");
 
@@ -162,28 +162,37 @@
     const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
     // Партер 1–18 по 20 місць, проход після 10-го
-    const parterRows = Array.from({length:18}, (_,i)=>( {
-      row: i+1,
-      seats: 20,
-      zone: "Партер",
-      price: i+1 <= 6 ? 200 : (i+1 <= 12 ? 160 : 140),
-      className: i+1 <= 6 ? "seat--parter-front"
-               : i+1 <= 12 ? "seat--parter-mid"
-                           : "seat--parter-back"
-    } ));
+    const parterRows = Array.from({ length: 18 }, (_, i) => {
+  const row = i + 1;
+
+  return {
+    row,
+    seats: 20,
+    zone: "Партер",
+    price: 0,
+    className: ""
+  };
+});
+
 
     const amphiLeftRows  = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:0, className:"seat--amphi"}));
 
     const amphiRightRows = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (права)", price:0, className:"seat--amphi"}));
 
-    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
-    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
+    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
+    const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
-    const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, zone:"Ложа", className:"seat--lodge" } ));
+    const lodgeSeats = Array.from({ length: 18 }, (_, i) => ({
+  index: i + 1,
+  price: 0,
+  zone: "Ложа",
+  className: ""
+}));
+
 
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
 
@@ -208,6 +217,53 @@
       rows.forEach(r => { if (r && r.seat_label) takenSeats.add(String(r.seat_label)); });
     }
 
+let SEANCE_CONFIG = null;
+
+async function loadSeanceConfig() {
+  if (!SEANCE_ID) return null;
+
+  // 1️⃣ пробуем Supabase
+  try {
+    const url =
+      `${SUPABASE_URL}/rest/v1/seances_pricing` +
+      `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+      `&select=pricing,seat_overrides`;
+
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      cache: "no-store"
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows && rows.length) {
+        return {
+          pricing: rows[0].pricing || {},
+          seat_overrides: rows[0].seat_overrides || {}
+        };
+      }
+    }
+  } catch (e) {
+    // молча падаем дальше
+  }
+
+  // 2️⃣ fallback на локальный файл
+  try {
+    const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
+      cache: "no-store"
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+    
     function seatKey(meta){
       const row  = meta.row ?? meta.index ?? 0;
       const seat = meta.seat ?? meta.index ?? 0;
@@ -236,21 +292,79 @@
       return k;
     }
 
+function applySeanceConfig(meta) {
+  if (!SEANCE_CONFIG) return null;
+
+  const key = seatKey(meta);
+
+  // 1️⃣ Индивидуальное место
+  if (SEANCE_CONFIG.seat_overrides?.[key]) {
+    return SEANCE_CONFIG.seat_overrides[key];
+  }
+
+  // 2️⃣ Правила по зонам / рядам
+  const zoneLetter =
+    meta.zone === "Партер" ? "P" :
+    meta.zone.startsWith("Амфітеатр") ? "A" :
+    meta.zone === "Балкон" ? "B" : null;
+
+  if (!zoneLetter) return null;
+
+  for (const rule in SEANCE_CONFIG.pricing) {
+    const m = rule.match(/^([PAB])(\d+)-(\d+)$/);
+    if (!m) continue;
+
+    const [, z, from, to] = m;
+    if (z === zoneLetter &&
+        meta.row >= Number(from) &&
+        meta.row <= Number(to)) {
+      return SEANCE_CONFIG.pricing[rule];
+    }
+  }
+
+  return null;
+}
+
+    
     function makeSeatElement(key,label,extraClass,price,meta){
+        let finalPrice = price;
+  let finalClass = extraClass;
+  let saleAllowed = true;
+
+  const cfg = applySeanceConfig(meta);
+  if (cfg) {
+    if (cfg.price !== undefined) finalPrice = cfg.price;
+    if (cfg.class) finalClass = cfg.class;
+    if (cfg.sale === false) saleAllowed = false;
+  }
       const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
-      btn.dataset.price = price;
-      btn.dataset.zone = meta.zone;
+btn.type = "button";
+btn.textContent = label;
+btn.className = "seat" + (finalClass ? " " + finalClass : "");
+btn.dataset.price = finalPrice;
+
+// 🎨 APPLY COLOR FROM SEANCE
+if (cfg && cfg.color) {
+  btn.style.background = cfg.color;
+  btn.style.color = "#fff";
+}
+
+
+      
+      
 
       if (takenSeats.has(key)){
         btn.classList.add("seat--taken");
         btn.disabled = true;
       }
 
-      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, price));
+if (!saleAllowed) {
+  btn.classList.add("seat--no-sale");
+  btn.disabled = true;
+}
+
+      
+      btn.addEventListener("click", ()=>onSeatClick(btn, key, meta, finalPrice));
       return btn;
     }
 
@@ -452,13 +566,16 @@
     });
 
     (async ()=>{
-      await loadTakenSeats();
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-    })();
+  SEANCE_CONFIG = await loadSeanceConfig();
+  await loadTakenSeats();
+
+  renderParter();
+  renderLodges();
+  renderAmphi();
+  renderBalcony();
+  updateSummary();
+})();
+
   </script>
 </body>
 </html>
