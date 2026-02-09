@@ -12,8 +12,8 @@ body{
   margin:0;
   padding:20px;
 }
-.wrap{max-width:900px;margin:auto;}
-h1{margin-bottom:10px}
+.wrap{max-width:980px;margin:auto;}
+h1{margin-bottom:6px}
 .card{
   background:#fff;
   border-radius:12px;
@@ -21,7 +21,7 @@ h1{margin-bottom:10px}
   margin-bottom:16px;
   box-shadow:0 4px 14px rgba(0,0,0,.08);
 }
-.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
 label{font-size:14px}
 input,select,button,textarea{
   padding:8px 10px;
@@ -35,10 +35,33 @@ textarea{
 }
 .badge{
   font-size:12px;
-  padding:2px 6px;
+  padding:2px 8px;
   border-radius:6px;
   background:#e5e7eb;
+  display:inline-block;
 }
+
+.rule-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:6px;
+  font-size:14px;
+}
+.rule-color{
+  width:18px;
+  height:18px;
+  border-radius:4px;
+  border:1px solid #999;
+}
+.rule-del{
+  border:none;
+  background:#fee2e2;
+  border-radius:6px;
+  padding:4px 8px;
+}
+.rule-del:hover{background:#fecaca}
+small{color:#6b7280}
 </style>
 </head>
 
@@ -46,15 +69,18 @@ textarea{
 <div class="wrap">
 
 <h1>🎛️ Редактор seance.json</h1>
-<p class="badge">Генерує ціни + CSS-класи для hall.html</p>
+<span class="badge">Ціни + кольори + окремі місця (один сеанс)</span>
 
+<!-- Seance -->
 <div class="card">
   <div class="row">
     <label>Seance ID</label>
     <input id="seanceId" placeholder="koncert-2026-02-10-19-00" style="flex:1">
+    <button onclick="loadSeance()">Завантажити</button>
   </div>
 </div>
 
+<!-- Rules -->
 <div class="card">
   <h3>➕ Правило по рядах</h3>
 
@@ -73,6 +99,9 @@ textarea{
     <label>Ціна</label>
     <input id="price" type="number" placeholder="200">
 
+    <label>Колір</label>
+    <input id="color" type="color" value="#9333ea">
+
     <label>
       <input type="checkbox" id="sale" checked>
       Продається
@@ -80,13 +109,23 @@ textarea{
 
     <button onclick="addRule()">Додати</button>
   </div>
+
+  <small>Можна додавати скільки завгодно правил — всі працюють одночасно</small>
 </div>
 
+<!-- Rules list -->
+<div class="card">
+  <h3>📋 Правила цього сеансу</h3>
+  <div id="rulesList"></div>
+</div>
+
+<!-- Seat override -->
 <div class="card">
   <h3>🎯 Окреме місце</h3>
   <div class="row">
     <input id="seatKey" placeholder="P3-M5">
     <input id="seatPrice" type="number" placeholder="ціна">
+    <input id="seatColor" type="color" value="#ef4444">
     <label>
       <input type="checkbox" id="seatSale">
       Заборонити продаж
@@ -95,6 +134,7 @@ textarea{
   </div>
 </div>
 
+<!-- JSON -->
 <div class="card">
   <h3>📄 seance.json</h3>
   <textarea id="output"></textarea>
@@ -106,6 +146,8 @@ textarea{
 </div>
 
 <script>
+const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 const SUPABASE_FUNCTION_URL =
   "https://fhusjlkneckbvnrdhbil.supabase.co/functions/v1/save-seance";
 
@@ -114,29 +156,51 @@ const data = {
   seat_overrides: {}
 };
 
-function seatClass(price){
-  return `seat--${price}`;
-}
-
 function addRule(){
-  const z = zone.value;
-  const from = fromRow.value;
-  const to = toRow.value;
-  const p = price.value;
-  const saleAllowed = sale.checked;
+  const z = document.getElementById("zone").value;
+  const from = Number(document.getElementById("fromRow").value);
+  const to   = Number(document.getElementById("toRow").value);
+  const p    = Number(document.getElementById("price").value);
+  const c    = document.getElementById("color").value;
+  const saleAllowed = document.getElementById("sale").checked;
 
-  if(!from || !to || !p){
-    alert("Заповни ряди і ціну");
+  if (!z || !from || !to || !p) {
+    alert("❗ Вкажи зону, ряди ВІД–ДО і ціну");
+    return;
+  }
+
+  if (from > to) {
+    alert("❗ Ряд 'від' не може бути більшим за 'до'");
     return;
   }
 
   const key = `${z}${from}-${to}`;
+
   data.pricing[key] = {
-    price: Number(p),
-    class: seatClass(p),
+    price: p,
+    color: c,
     sale: saleAllowed
   };
+
   render();
+}
+
+
+function removeRule(key){
+  delete data.pricing[key];
+  render();
+}
+
+function renderRulesList(){
+  rulesList.innerHTML = Object.entries(data.pricing).map(([k,r])=>`
+    <div class="rule-row">
+      <span class="rule-color" style="background:${r.color}"></span>
+      <b>${k}</b>
+      <span>${r.price} грн</span>
+      <span>${r.sale === false ? "❌ не продається" : "✔ продається"}</span>
+      <button class="rule-del" onclick="removeRule('${k}')">✖</button>
+    </div>
+  `).join("") || "<small>Поки що правил немає</small>";
 }
 
 function addSeatOverride(){
@@ -144,26 +208,62 @@ function addSeatOverride(){
   if(!key) return;
 
   const obj = {};
-  if(seatPrice.value){
-    obj.price = Number(seatPrice.value);
-    obj.class = seatClass(seatPrice.value);
-  }
-  if(seatSale.checked){
-    obj.sale = false;
-  }
+  if(seatPrice.value) obj.price = Number(seatPrice.value);
+  obj.color = seatColor.value;
+  if(seatSale.checked) obj.sale = false;
 
   data.seat_overrides[key] = obj;
   render();
 }
 
 function render(){
-  const out = {
+  output.value = JSON.stringify({
     seance_id: seanceId.value.trim(),
     pricing: data.pricing,
     seat_overrides: data.seat_overrides
-  };
-  output.value = JSON.stringify(out, null, 2);
+  }, null, 2);
+
+  const list = document.getElementById("rulesList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  Object.entries(data.pricing).forEach(([key, r]) => {
+    const zone =
+      key.startsWith("P") ? "Партер" :
+      key.startsWith("A") ? "Амфітеатр" :
+      key.startsWith("B") ? "Балкон" : "?";
+
+    const rows = key.slice(1); // <-- ВАЖНО: "1-6"
+
+    const div = document.createElement("div");
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.gap = "10px";
+    div.style.marginBottom = "6px";
+
+    div.innerHTML = `
+      <span style="
+        width:16px;
+        height:16px;
+        border-radius:4px;
+        background:${r.color || "#e5e7eb"};
+        display:inline-block;
+      "></span>
+      <b>${zone}</b>
+      <span>ряди <b>${rows}</b></span>
+      <span>—</span>
+      <b>${r.price} грн</b>
+      <span style="opacity:.6">
+        ${r.sale === false ? "❌ не продається" : "✔ продається"}
+      </span>
+    `;
+
+    list.appendChild(div);
+  });
 }
+
+
 
 function copy(){
   output.select();
@@ -171,32 +271,39 @@ function copy(){
   alert("Скопійовано");
 }
 
-document.getElementById("publish").onclick = async () => {
+publish.onclick = async ()=>{
   const seance = seanceId.value.trim();
-  if(!seance){
-    alert("Вкажи Seance ID");
-    return;
-  }
+  if(!seance) return alert("Вкажи Seance ID");
 
-  const payload = {
-    seance_id: seance,
-    pricing: data.pricing,
-    seat_overrides: data.seat_overrides
-  };
-
-  const res = await fetch(SUPABASE_FUNCTION_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+  const res = await fetch(SUPABASE_FUNCTION_URL,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      seance_id: seance,
+      pricing: data.pricing,
+      seat_overrides: data.seat_overrides
+    })
   });
 
-  if(res.ok){
-    alert("✅ Опубліковано");
-  } else {
-    alert("❌ Помилка публікації");
-  }
+  alert(res.ok ? "✅ Опубліковано" : "❌ Помилка");
 };
-</script>
 
+async function loadSeance(){
+  const seance = seanceId.value.trim();
+  if(!seance) return;
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/seances_pricing?seance_id=eq.${encodeURIComponent(seance)}&select=pricing,seat_overrides`,
+    { headers:{ apikey:SUPABASE_ANON_KEY, Authorization:`Bearer ${SUPABASE_ANON_KEY}` } }
+  );
+
+  const rows = await res.json();
+  if(!rows.length) return alert("Не знайдено");
+
+  data.pricing = rows[0].pricing || {};
+  data.seat_overrides = rows[0].seat_overrides || {};
+  render();
+}
+</script>
 </body>
 </html>
