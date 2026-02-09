@@ -1,54 +1,10 @@
 {
-  "show": "visim",
-  "title": "Вісім люблячих жінок",
-  "date": "2026-01-10",
-  "time": "16:00",
-  "hall_id": "shevchenko-big",
-
-  "prices": {
-    "p_parter_1_6": 200,
-    "p_parter_7_12": 180,
-    "p_parter_13_18": 160,
-    "p_amphi_all": 140,
-    "p_balcony_1_5": 120,
-    "p_balcony_6": 100,
-    "p_boxes": 200
+  "pricing": {
+    "P1-1": { "price": 170, "class": "seat--170", "sale": true },
+    "P2-3": { "price": 200, "class": "seat--200", "sale": true },
+    "P4-4": { "price": 180, "class": "seat--180", "sale": true }
   },
-
-  "places": {
-    "_comment": "ключ = '<row>-<seat>' або 'boxA-5', 'boxB-3'",
-
-    "1-1": {
-      "status": "sold",
-      "channel": "online",
-      "order_id": "ORD-1001"
-    },
-
-    "1-2": {
-      "status": "reserved",
-      "channel": "cash",
-      "comment": "бронь режисер"
-    },
-
-    "9-6": {
-      "status": "sold",
-      "channel": "boxoffice",
-      "order_id": "ORD-1002"
-    },
-
-    "19-5": {
-      "status": "blocked",
-      "comment": "звукорежисер"
-    },
-
-    "boxA-1": {
-      "status": "sold",
-      "channel": "agent",
-      "agent": "Ірина"
-    },
-
-    "23-11": {
-      "status": "free"
-    }
+  "seat_overrides": {
+    "P3-M5": { "sale": false }
   }
 }
