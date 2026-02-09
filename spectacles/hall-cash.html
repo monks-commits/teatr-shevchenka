@@ -37,12 +37,15 @@
       font-size:11px;display:flex;align-items:center;justify-content:center;
       cursor:pointer;padding:0;user-select:none;
     }
-    .seat--parter-front{background:#fef9c3;}
-    .seat--parter-mid{background:#dbeafe;}
-    .seat--parter-back{background:#e5e7eb;}
-    .seat--amphi{background:#e0f2fe;}
-    .seat--balcony{background:#f3e8ff;}
-    .seat--lodge{background:#fee2e2;}
+  
+
+.seat--no-sale {
+  background:#e5e7eb !important;
+  color:#9ca3af !important;
+  cursor:not-allowed;
+}
+
+
 
     .seat--selected{background:#2563eb !important;color:#fff;border-color:#2563eb;}
 
@@ -295,7 +298,8 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug = (qs.get("show") || "").trim();
+    const showSlug  = (qs.get("show")   || "").trim();
+const SEANCE_ID = (qs.get("seance") || "").trim();
 
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
@@ -309,44 +313,83 @@
     const PROJECT_REF = "fhusjlkneckbvnrdhbil";
     const CASH_SYNC_V1 = `https://${PROJECT_REF}.functions.supabase.co/functions/v1/cash-sync-ts`;
 
-    // Партер 1–18 по 20 місць, проход після 10-го
-    const parterRows = Array.from({ length: 18 }, (_, i) => {
-  const row = i + 1;
+let SEANCE_CONFIG = null;
 
-  let price = 0;
-  let className = "";
+async function loadSeanceConfig() {
+  if (!SEANCE_ID) return null;
 
-  if (row === 1)           { price = 170; className = "seat--170"; }
-  else if (row <= 3)       { price = 200; className = "seat--200"; }
-  else if (row <= 6)       { price = 180; className = "seat--180"; }
-  else if (row <= 8)       { price = 170; className = "seat--170"; }
-  else if (row <= 10)      { price = 160; className = "seat--160"; }
-  else if (row <= 12)      { price = 140; className = "seat--140"; }
-  else if (row <= 14)      { price = 120; className = "seat--120"; }
-  else if (row <= 16)      { price = 100; className = "seat--100"; }
-  else                     { price = 70;  className = "seat--70"; }
+  // 1️⃣ пробуем Supabase
+  try {
+    const url =
+      `${SUPABASE_URL}/rest/v1/seances_pricing` +
+      `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+      `&select=pricing,seat_overrides`;
 
-  return {
-    row,
-    seats: 20,
-    zone: "Партер",
-    price,
-    className 
-  };
-});
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      cache: "no-store"
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows && rows.length) {
+        return {
+          pricing: rows[0].pricing || {},
+          seat_overrides: rows[0].seat_overrides || {}
+        };
+      }
+    }
+  } catch (e) {
+    // молча падаем дальше
+  }
+
+  // 2️⃣ fallback на локальный файл
+  try {
+    const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
+      cache: "no-store"
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+
+    
+   const parterRows = Array.from({ length: 18 }, (_, i) => ({
+  row: i + 1,
+  seats: 20,
+  zone: "Партер",
+  price: 0,
+  className: ""
+}));
+
+
 
     const amphiLeftRows  = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},{row:22,seats:11},{row:23,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:0, className:"seat--amphi"}));
 
     const amphiRightRows = [
       {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (права)", price:120, className:"seat--amphi"}));
+    ].map(r=>({...r, zone:"Амфітеатр (права)", price:0, className:"seat--amphi"}));
 
-    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:100, className:"seat--balcony" } ));
-    const balconyRow6 = { row:6, zone:"Балкон", price:80, className:"seat--balcony" };
+    const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
+    const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
-    const lodgeSeats = Array.from({length:18}, (_,i)=>( { index:i+1, price:10, className:"seat--lodge" } ));
+   const lodgeSeats = Array.from({ length: 18 }, (_, i) => ({
+  index: i + 1,
+  price: 0,
+  zone: "Ложа",
+  className: ""
+}));
+
+
 
     function seatKey(meta){
       const row = meta.row ?? 0;
@@ -511,7 +554,8 @@
 
     // ---- show meta / seance_id ----
     let SHOW_META = null;
-    let SEANCE_ID = "";
+// SEANCE_ID берётся из query (?seance=...)
+
     async function loadShowMeta(){
       if (!showSlug) return;
       const list = await fetchJsonSafe("../data/afisha.json");
@@ -607,33 +651,86 @@
       if (status === "blocked"){ btn.classList.add("seat--blocked"); btn.disabled = true; }
     }
 
-    function makeSeatElement(key,label,extraClass,price){
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = label;
-      btn.className = "seat" + (extraClass ? " " + extraClass : "");
-      btn.dataset.key = key;
-      btn.dataset.price = String(price);
+    function applySeanceConfig(meta){
+  if (!SEANCE_CONFIG) return null;
 
-      applyStatusClass(btn, getEffectiveStatus(key));
+  const key = seatKey(meta);
 
-      btn.addEventListener("click", ()=>{
-        const st = getEffectiveStatus(key);
-        if (st === "sold" || st === "blocked") return;
+  if (SEANCE_CONFIG.seat_overrides?.[key]) {
+    return SEANCE_CONFIG.seat_overrides[key];
+  }
 
-        if (btn.classList.contains("seat--selected")){
-          btn.classList.remove("seat--selected");
-          selected.delete(key);
-        } else {
-          btn.classList.add("seat--selected");
-          selected.set(key, { price });
-        }
-        updateSummary();
-      });
+  const zoneLetter =
+    meta.zone === "Партер" ? "P" :
+    meta.zone.startsWith("Амфітеатр") ? "A" :
+    meta.zone === "Балкон" ? "B" : null;
 
-      seatButtons.set(key, btn);
-      return btn;
+  if (!zoneLetter) return null;
+
+  for (const rule in SEANCE_CONFIG.pricing || {}) {
+    const m = rule.match(/^([PAB])(\d+)-(\d+)$/);
+    if (!m) continue;
+    const [, z, from, to] = m;
+    if (z === zoneLetter &&
+        meta.row >= Number(from) &&
+        meta.row <= Number(to)) {
+      return SEANCE_CONFIG.pricing[rule]; 
     }
+  }
+  return null;
+}
+
+function makeSeatElement(key,label,extraClass,price,meta){
+  let finalPrice = price;
+  let finalClass = extraClass;
+  let saleAllowed = true;
+
+  const cfg = applySeanceConfig(meta);
+  if (cfg) {
+    if (cfg.price !== undefined) finalPrice = cfg.price;
+    if (cfg.class) finalClass = cfg.class;
+    if (cfg.sale === false) saleAllowed = false;
+  }
+
+ const btn = document.createElement("button");
+btn.type = "button";
+btn.textContent = label;
+btn.className = "seat" + (finalClass ? " " + finalClass : "");
+btn.dataset.key = key;
+btn.dataset.price = String(finalPrice);
+
+// 🎨 APPLY COLOR FROM SEANCE (cash)
+if (cfg && cfg.color) {
+  btn.style.background = cfg.color;
+  btn.style.color = "#fff";
+}
+
+
+  applyStatusClass(btn, getEffectiveStatus(key));
+
+  if (!saleAllowed) {
+    btn.classList.add("seat--no-sale");
+    btn.disabled = true;
+  }
+
+  btn.addEventListener("click", ()=>{
+    const st = getEffectiveStatus(key);
+    if (st === "sold" || st === "blocked" || !saleAllowed) return;
+
+    if (btn.classList.contains("seat--selected")){
+      btn.classList.remove("seat--selected");
+      selected.delete(key);
+    } else {
+      btn.classList.add("seat--selected");
+      selected.set(key, { price: finalPrice });
+    }
+    updateSummary();
+  });
+
+  seatButtons.set(key, btn);
+  return btn;
+}
+
 
     function clearSelection(){
       for (const k of selected.keys()){
@@ -946,9 +1043,13 @@
         seatsRow.className = "seats-row";
 
         for (let s=1; s<=r.seats; s++){
-          const key = seatKey({zone:"Партер", row:r.row, seat:s});
-          const cls = r.className + (s===10 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, s, cls, r.price));
+          const meta = { zone:"Партер", row:r.row, seat:s };
+const cls = r.className + (s===10 ? " seat--gap-right" : "");
+seatsRow.appendChild(
+  makeSeatElement(seatKey(meta), s, cls, r.price, meta)
+);
+
+
         }
 
         rowLine.appendChild(seatsRow);
@@ -962,10 +1063,12 @@
       a.innerHTML = ""; b.innerHTML = "";
 
       lodgeSeats.forEach(ls=>{
-        const keyA = seatKey({zone:"Ложа А", row:0, seat:ls.index});
-        const keyB = seatKey({zone:"Ложа Б", row:0, seat:ls.index});
-        a.appendChild(makeSeatElement(keyA, ls.index, ls.className, 10));
-        b.appendChild(makeSeatElement(keyB, ls.index, ls.className, 10));
+        const metaA = { zone:"Ложа А", row:0, seat:ls.index };
+const metaB = { zone:"Ложа Б", row:0, seat:ls.index };
+
+a.appendChild(makeSeatElement(seatKey(metaA), ls.index, ls.className, 10, metaA));
+b.appendChild(makeSeatElement(seatKey(metaB), ls.index, ls.className, 10, metaB));
+
       });
     }
 
@@ -993,15 +1096,17 @@
 
         if (leftCfg){
           for(let s=1;s<=leftCfg.seats;s++){
-            const key = seatKey({zone:leftCfg.zone, row:rowNum, seat:s});
-            left.appendChild(makeSeatElement(key, s, leftCfg.className, 120));
+            const meta = { zone:leftCfg.zone, row:rowNum, seat:s };
+left.appendChild(makeSeatElement(seatKey(meta), s, leftCfg.className, 120, meta));
+
           }
         }
         if (rightCfg){
           for(let s=1;s<=rightCfg.seats;s++){
             const seatNum = s+11;
-            const key = seatKey({zone:rightCfg.zone, row:rowNum, seat:seatNum});
-            right.appendChild(makeSeatElement(key, seatNum, rightCfg.className, 120));
+            const meta = { zone:rightCfg.zone, row:rowNum, seat:seatNum };
+right.appendChild(makeSeatElement(seatKey(meta), seatNum, rightCfg.className, 120, meta));
+
           }
         }
 
@@ -1020,7 +1125,7 @@
         const rowLine = document.createElement("div");
         rowLine.className = "row-line";
 
-        const lab = document.createElement("div");
+        const lab = document.createElement("div"); 
         lab.className = "row-label";
         lab.textContent = r.row;
         rowLine.appendChild(lab);
@@ -1029,9 +1134,19 @@
         seatsRow.className = "seats-row";
 
         for(let pos=1;pos<=28;pos++){
-          const key = seatKey({zone:"Балкон", row:r.row, seat:pos});
-          const cls = r.className + (pos===14 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, pos, cls, 100));
+          const meta = { zone:"Балкон", row:6, seat:pos };
+
+const cls  = r.className + (pos === 14 ? " seat--gap-right" : "");
+seatsRow.appendChild(
+  makeSeatElement(
+    seatKey(meta),
+    pos,
+    cls,
+    100,
+    meta
+  )
+);
+
         }
 
         rowLine.appendChild(seatsRow);
@@ -1051,13 +1166,30 @@
 
       for(let pos=1;pos<=28;pos++){
         if (pos<=10){
-          const key = seatKey({zone:"Балкон", row:6, seat:pos});
-          const cls = "seat--balcony" + (pos===10 ? " seat--gap-right" : "");
-          seatsRow.appendChild(makeSeatElement(key, pos, cls, 80));
+          const meta = { zone:"Балкон", row:6, seat:pos };
+const cls = "seat--balcony" + (pos === 14 ? " seat--gap-right" : "");
+seatsRow.appendChild(
+  makeSeatElement(
+    seatKey(meta),
+    pos,
+    cls,
+    100,
+    meta
+  )
+);
+
         } else if (pos>=19){
           const seatNum = pos-8;
-          const key = seatKey({zone:"Балкон", row:6, seat:seatNum});
-          seatsRow.appendChild(makeSeatElement(key, seatNum, "seat--balcony", 80));
+          const meta = { zone: "Балкон", row: 6, seat: seatNum };
+seatsRow.appendChild(
+  makeSeatElement(
+    seatKey(meta),
+    seatNum,
+    "seat--balcony",
+    80,
+    meta
+  )
+);
         } else {
           const empty = document.createElement("button");
           empty.type="button";
@@ -1283,9 +1415,10 @@
       refreshQueueCount();
 
       await loadShowMeta();
-      CASH_PATCH = loadCashPatch();
+SEANCE_CONFIG = await loadSeanceConfig();
+CASH_PATCH = loadCashPatch();
+await loadTakenSeatsOnline();
 
-      await loadTakenSeatsOnline().catch(()=>{});
       renderParter();
       renderLodges();
       renderAmphi();
