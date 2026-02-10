@@ -304,8 +304,26 @@
  <script>
   const qs = new URLSearchParams(location.search);
 
+// 1️⃣ читаем из URL
 let SEANCE_ID = (qs.get("seance") || "").trim();
 let showSlug  = (qs.get("show")   || "").trim();
+
+// 2️⃣ если пришёл seance — сохраняем
+if (SEANCE_ID) {
+  localStorage.setItem("last_seance_id", SEANCE_ID);
+}
+
+// 3️⃣ если URL пустой — восстанавливаем
+if (!SEANCE_ID) {
+  SEANCE_ID = localStorage.getItem("last_seance_id") || "";
+}
+
+// 4️⃣ если show не передан — извлекаем из seance_id
+// формат: showSlug-YYYY-MM-DD-HH-MM
+if (!showSlug && SEANCE_ID) {
+  showSlug = SEANCE_ID.split("-").slice(0, -3).join("-");
+}
+
 
 // ✅ FIX: если show не передан — извлекаем его из seance_id
 // формат seance_id: showSlug-YYYY-MM-DD-HH-MM
