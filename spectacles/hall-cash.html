@@ -304,14 +304,14 @@
  <script>
   const qs = new URLSearchParams(location.search);
 
-  let SEANCE_ID = (qs.get("seance") || "").trim();
-  let showSlug  = (qs.get("show")   || "").trim();
+let SEANCE_ID = (qs.get("seance") || "").trim();
+let showSlug  = (qs.get("show")   || "").trim();
 
-  // ✅ FIX: если show не передан — извлекаем его из seance_id
-  // формат: showSlug-YYYY-MM-DD-HH-MM
-  if (!showSlug && SEANCE_ID) {
-    showSlug = SEANCE_ID.split("-").slice(0, -3).join("-");
-  }
+// ✅ FIX: если show не передан — извлекаем его из seance_id
+// формат seance_id: showSlug-YYYY-MM-DD-HH-MM
+if (!showSlug && SEANCE_ID) {
+  showSlug = SEANCE_ID.split("-").slice(0, -3).join("-");
+}
 
 
     // embed mode (backoffice): ?embed=1
