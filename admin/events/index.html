@@ -1,18 +1,16 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8" />
-  <title>Події</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <link rel="stylesheet" href="../../styles.css">
+  <meta charset="UTF-8">
+  <title>Події — список</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <style>
     body {
       margin: 0;
       padding: 24px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f8fafc;
+      background: #f3f4f6;
     }
 
     h1 {
@@ -20,27 +18,30 @@
     }
 
     .event {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 16px 18px;
-      margin-bottom: 14px;
-      box-shadow: 0 6px 20px rgba(0,0,0,.06);
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
-    .event-info {
-      line-height: 1.4;
+    .event-id {
+      font-weight: 600;
+      font-size: 14px;
     }
 
-    .event-info strong {
-      font-size: 16px;
+    .event-meta {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 4px;
     }
 
-    .event button {
-      padding: 10px 16px;
-      border-radius: 8px;
+    button {
+      padding: 8px 14px;
+      border-radius: 6px;
       border: none;
       background: #2563eb;
       color: #fff;
@@ -48,76 +49,70 @@
       cursor: pointer;
     }
 
-    .event button[disabled] {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-
-    .muted {
-      color: #6b7280;
-      font-size: 13px;
-    }
-
-    .empty {
-      color: #6b7280;
+    .error {
+      color: #b91c1c;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
 
-<h1>Події</h1>
+<h1>Події (діагностика)</h1>
 
-<div id="events">Завантаження…</div>
+<div id="out">Завантаження…</div>
 
 <script>
 (async () => {
-  const container = document.getElementById('events');
+  const out = document.getElementById('out');
 
   try {
-    const response = await fetch('/teatr-shevchenka/data/seances/index.json');
-    if (!response.ok) {
-      throw new Error('index.json not found');
-    }
+    const r = await fetch('/teatr-shevchenka/data/seances/index.json');
+    if (!r.ok) throw new Error('index.json not found');
 
-    const seances = await response.json();
-    container.innerHTML = '';
+    const ids = await r.json();
 
-    if (!Array.isArray(seances) || seances.length === 0) {
-      container.innerHTML = '<div class="empty">Подій немає</div>';
+    if (!Array.isArray(ids) || !ids.length) {
+      out.innerHTML = '<div class="error">index.json порожній</div>';
       return;
     }
 
-    seances.forEach(s => {
-      const isActive = s.active === true;
+    out.innerHTML = '';
 
-      const el = document.createElement('div');
-      el.className = 'event';
+    ids.forEach(id => {
+      const div = document.createElement('div');
+      div.className = 'event';
 
-      el.innerHTML = `
-        <div class="event-info">
-          <strong>${s.title || s.id}</strong><br>
-          ${s.date || ''} ${s.time || ''}
-          ${!isActive ? '<div class="muted">(неактивний)</div>' : ''}
-        </div>
-        <button ${!isActive ? 'disabled' : ''}>В касу</button>
-      `;
+      // парсим дату и время из ID
+      let date = '—';
+      let time = '—';
 
-      if (isActive) {
-        el.querySelector('button').onclick = () => {
-          location.href =
-            '/teatr-shevchenka/spectacles/hall-cash.html'
-            + '?show=' + encodeURIComponent(s.show)
-            + '&seance=' + encodeURIComponent(s.id);
-        };
+      const p = id.split('-');
+      if (p.length >= 6) {
+        date = `${p[1]}-${p[2]}-${p[3]}`;
+        time = `${p[4]}:${p[5]}`;
       }
 
-      container.appendChild(el);
+      div.innerHTML = `
+        <div>
+          <div class="event-id">${id}</div>
+          <div class="event-meta">${date} ${time}</div>
+        </div>
+        <button>В касу</button>
+      `;
+
+      div.querySelector('button').onclick = () => {
+        location.href =
+          '/teatr-shevchenka/spectacles/hall-cash.html'
+          + '?show=koncert'
+          + '&seance=' + encodeURIComponent(id);
+      };
+
+      out.appendChild(div);
     });
 
-  } catch (err) {
-    console.error(err);
-    container.innerHTML =
-      '<div class="empty">Помилка завантаження подій</div>';
+  } catch (e) {
+    out.innerHTML = '<div class="error">Помилка завантаження index.json</div>';
+    console.error(e);
   }
 })();
 </script>
