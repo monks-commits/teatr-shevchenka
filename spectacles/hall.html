@@ -197,25 +197,27 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
 
     async function loadTakenSeats(){
-      if (!showSlug) return;
+  if (!SEANCE_ID) return;
 
-      const url =
-        `${SUPABASE_URL}/rest/v1/tickets` +
-        `?show_slug=eq.${encodeURIComponent(showSlug)}` +
-        `&select=seat_label`;
+  const url =
+    `${SUPABASE_URL}/rest/v1/tickets` +
+    `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+    `&select=seat_label`;
 
-      const res = await fetch(url, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        }
-      });
-
-      if (!res.ok) return;
-
-      const rows = await res.json().catch(()=>[]);
-      rows.forEach(r => { if (r && r.seat_label) takenSeats.add(String(r.seat_label)); });
+  const res = await fetch(url, {
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     }
+  });
+
+  if (!res.ok) return;
+
+  const rows = await res.json().catch(()=>[]);
+  rows.forEach(r => {
+    if (r?.seat_label) takenSeats.add(String(r.seat_label));
+  });
+}
 
 let SEANCE_CONFIG = null;
 
