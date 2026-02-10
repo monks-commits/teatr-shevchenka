@@ -298,8 +298,19 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug  = (qs.get("show")   || "").trim();
-const SEANCE_ID = (qs.get("seance") || "").trim();
+
+let SEANCE_ID = (qs.get("seance") || "").trim();
+let showSlug  = (qs.get("show") || "").trim();
+
+// 🔴 КРИТИЧЕСКИ ВАЖНО
+// если show не передан — вытаскиваем из seance_id
+// формат: showSlug-YYYY-MM-DD-HH-MM
+if (!showSlug && SEANCE_ID) {
+  showSlug = SEANCE_ID.split("-").slice(0, -3).join("-");
+}
+
+console.log("[cash] showSlug =", showSlug);
+console.log("[cash] SEANCE_ID =", SEANCE_ID);
 
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
