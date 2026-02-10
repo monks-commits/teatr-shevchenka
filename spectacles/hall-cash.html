@@ -306,10 +306,7 @@
     const showSlug  = (qs.get("show")   || "").trim();
     const SEANCE_ID = (qs.get("seance") || "").trim();
 
-// 🔧 CRITICAL FIX: derive showSlug from seance_id
-if (!showSlug && SEANCE_ID) {
-  showSlug = SEANCE_ID.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/, "");
-}
+
     
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
