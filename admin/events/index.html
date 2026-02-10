@@ -5,34 +5,50 @@
   <title>Події</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="../../styles.css">
+
   <style>
     body {
       margin: 0;
+      padding: 24px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #f8fafc;
-      padding: 24px;
     }
+
     h1 {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
+
     .event {
-      background: #fff;
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 12px;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
       box-shadow: 0 6px 20px rgba(0,0,0,.06);
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
+
+    .event-info {
+      line-height: 1.4;
+    }
+
+    .event-info strong {
+      font-size: 16px;
+    }
+
     .event button {
-      padding: 10px 14px;
-      border-radius: 6px;
+      padding: 10px 16px;
+      border-radius: 8px;
       border: none;
       background: #2563eb;
       color: #fff;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .empty {
+      color: #6b7280;
     }
   </style>
 </head>
@@ -40,35 +56,52 @@
 
 <h1>Події</h1>
 
-<div id="events"></div>
+<div id="events">Завантаження…</div>
 
 <script>
-fetch('../../data/seances.json')
-  .then(r => r.json())
-  .then(seances => {
-    const wrap = document.getElementById('events');
+(async () => {
+  const container = document.getElementById('events');
 
-    seances
-      .filter(s => s.active)
-      .forEach(s => {
-        const div = document.createElement('div');
-        div.className = 'event';
+  try {
+    const response = await fetch('/teatr-shevchenka/data/seances/index.json');
+    if (!response.ok) throw new Error('index.json not found');
 
-        div.innerHTML = `
-          <div>
-            <strong>${s.title}</strong><br>
-            ${s.date} • ${s.time}
-          </div>
-          <button>В касу</button>
-        `;
+    const seances = await response.json();
+    container.innerHTML = '';
 
-        div.querySelector('button').onclick = () => {
-          location.href = `../../spectacles/hall-cash.html?show=${s.show}&seance=${s.id}`;
-        };
+    const active = seances.filter(s => s.active);
 
-        wrap.appendChild(div);
-      });
-  });
+    if (!active.length) {
+      container.innerHTML = '<div class="empty">Немає активних подій</div>';
+      return;
+    }
+
+    active.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'event';
+
+      el.innerHTML = `
+        <div class="event-info">
+          <strong>${s.title}</strong><br>
+          ${s.date} • ${s.time}
+        </div>
+        <button>В касу</button>
+      `;
+
+      el.querySelector('button').onclick = () => {
+        location.href =
+          `/teatr-shevchenka/spectacles/hall-cash.html?show=${s.show}&seance=${s.id}`;
+      };
+
+      container.appendChild(el);
+    });
+
+  } catch (err) {
+    console.error(err);
+    container.innerHTML =
+      '<div class="empty">Помилка завантаження подій</div>';
+  }
+})();
 </script>
 
 </body>
