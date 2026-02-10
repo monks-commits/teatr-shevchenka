@@ -1,103 +1,63 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <title>Офлайн каса — Адмін</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  <meta charset="UTF-8" />
+  <title>Адмінка</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="../styles.css">
   <style>
-    body{
-      margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background:#f3f4f6;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
-
-    header{
-      background:#111827;
-      color:#fff;
-      padding:14px 20px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
+    .admin-frame {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      width: 320px;
+      display: grid;
+      gap: 16px;
     }
-
-    .title{
-      font-size:18px;
-      font-weight:800;
-      display:flex;
-      gap:10px;
-      align-items:center;
+    .admin-frame h1 {
+      margin: 0 0 12px;
+      font-size: 20px;
+      text-align: center;
     }
-
-    .nav{
-      display:flex;
-      gap:10px;
+    .admin-frame a {
+      display: block;
+      text-align: center;
+      padding: 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      background: #2563eb;
+      color: #fff;
     }
-
-    .nav a{
-      text-decoration:none;
-      background:#fff;
-      color:#111827;
-      padding:8px 14px;
-      border-radius:999px;
-      font-weight:700;
-      font-size:14px;
+    .admin-frame a.secondary {
+      background: #64748b;
     }
-
-    .nav a.primary{
-      background:#2563eb;
-      color:#fff;
-    }
-
-    main{
-      max-width:1200px;
-      margin:40px auto;
-      padding:0 20px;
-    }
-
-    .card{
-      background:#fff;
-      border-radius:16px;
-      padding:24px;
-      box-shadow:0 4px 14px rgba(0,0,0,.06);
-    }
-
-    h1{
-      margin:0 0 10px;
-    }
-
-    p{
-      color:#6b7280;
-      margin:0;
+    .admin-frame a.disabled {
+      background: #e5e7eb;
+      color: #6b7280;
+      pointer-events: none;
     }
   </style>
 </head>
-
 <body>
 
-<header>
-  <div class="title"> 
-    🎟 Офлайн каса
-  </div>
+  <div class="admin-frame">
+    <h1>Адмінка</h1>
 
-  <nav class="nav">
-    <!-- ГЛАВНОЕ -->
-    <a href="./events/index.html" class="primary">Події</a>
+    <a href="./events/index.html">Події</a>
     <a href="./seance-editor.html">Створення</a>
-  </nav>
-</header>
-
-<main>
-  <div class="card">
-    <h1>Білетний відділ</h1>
-    <p>
-      Оберіть режим роботи:
-      <br><br>
-      <b>Події</b> — робота з касою (продаж, бронь, друк).<br>
-      <b>Створення</b> — створення та редагування сеансів.
-    </p>
+    <a href="./reports/index.html" class="secondary">Звіти</a>
   </div>
-</main>
 
 </body>
 </html>
