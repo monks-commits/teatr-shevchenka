@@ -303,8 +303,9 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug  = (qs.get("show")   || "").trim();
-const SEANCE_ID = (qs.get("seance") || "").trim();
+
+const showSlug = qs.get("show")?.trim() || "";
+const SEANCE_ID = qs.get("seance")?.trim() || "";
 
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
