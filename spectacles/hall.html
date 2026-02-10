@@ -196,28 +196,37 @@ const SEANCE_ID = (qs.get("seance") || "").trim(); // ← ВАЖНО
 
     const takenSeats = new Set(); // seat_label keys like P2-M2 / A19-M12 / B1-M5 / A0-M1 / B0-M1
 
-    async function loadTakenSeats(){
-  if (!SEANCE_ID) return;
+
+async function loadTakenSeats() {
+  takenSeats.clear();
+
+  if (!showSlug) return;
 
   const url =
     `${SUPABASE_URL}/rest/v1/tickets` +
-    `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+    `?show_slug=eq.${encodeURIComponent(showSlug)}` +
     `&select=seat_label`;
 
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    }
+    },
+    cache: "no-store"
   });
 
-  if (!res.ok) return;
+  if (!res.ok) {
+    console.warn("tickets load failed", res.status);
+    return;
+  }
 
-  const rows = await res.json().catch(()=>[]);
+  const rows = await res.json().catch(() => []);
   rows.forEach(r => {
     if (r?.seat_label) takenSeats.add(String(r.seat_label));
   });
 }
+
+    
 
 let SEANCE_CONFIG = null;
 
