@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Створення / редагування сеансу</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"> 
+
+<style>
+.page-wrap{padding:20px;max-width:1200px;margin:auto}
+.card{
+  background:#fff;border-radius:14px;padding:16px;margin-bottom:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+label{font-size:13px;color:#374151}
+input,select{
+  padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;
+}
+h1{margin-bottom:10px}
+h3{margin:0 0 10px}
+.btn{
+  padding:10px 16px;border-radius:12px;border:none;
+  font-weight:800;cursor:pointer
+}
+.btn-primary{background:#111827;color:#fff}
+.btn-ghost{background:#f3f4f6}
+.badge{
+  padding:4px 10px;border-radius:999px;font-size:12px;
+  background:#e5e7eb
+}
+.badge.ready{background:#bbf7d0}
+.section-actions{display:flex;gap:10px;flex-wrap:wrap}
+pre{
+  background:#0f172a;color:#e5e7eb;
+  padding:12px;border-radius:12px;
+  font-size:12px;overflow:auto
+}
+.note{
+  font-size:13px;
+  color:#475569;
+  margin-top:6px
+}
+</style>
+</head>
+
+<body>
+
+<div id="admin-header"></div>
+
+<main class="page-wrap">
+  <h1>🛠 Створення / редагування сеансу</h1>
+
+  <!-- 1. DATA -->
+  <div class="card">
+    <h3>1️⃣ Дані сеансу</h3>
+
+    <div class="row">
+      <label>
+        Подія
+        <input id="eventSlug" placeholder="koncert">
+      </label>
+
+      <label>
+        Дата
+        <input type="date" id="eventDate">
+      </label>
+
+      <label>
+        Час
+        <input type="time" id="eventTime">
+      </label>
+
+      <label>
+        Seance ID
+        <input type="text" id="seanceId" disabled>
+      </label>
+
+      <span id="statusBadge" class="badge">чернетка</span>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <label>
+        Статус
+        <select id="seanceStatus">
+          <option value="draft">Чернетка</option>
+          <option value="ready">Готовий</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- 2. PRICING (stub) -->
+  <div class="card">
+    <h3>2️⃣ Ціни та кольори</h3>
+    <div class="note">
+      Редактор цін і кольорів буде підключено окремим модулем.
+      Зараз формується базовий JSON сеансу.
+    </div>
+  </div>
+
+  <!-- 3. SAVE -->
+  <div class="card">
+    <h3>3️⃣ Збереження (офлайн)</h3>
+    <div class="section-actions">
+      <button class="btn btn-primary" onclick="saveToFile()">💾 Зберегти у файл</button>
+      <button class="btn btn-ghost" onclick="backToEvents()">⬅ До подій</button>
+    </div>
+
+    <h4 style="margin-top:12px">JSON (поточний стан)</h4>
+    <pre id="output">{}</pre>
+  </div>
+</main>
+
+<script>
+/* =====================
+   STATE
+===================== */
+const seance = {
+  seance_id:"",
+  event:"",
+  date:"",
+  time:"",
+  status:"draft",
+  pricing:{},
+  seat_overrides:{}
+};
+
+const qs = new URLSearchParams(location.search);
+const EDIT_ID = qs.get("seance");
+
+/* =====================
+   HELPERS
+===================== */
+function updateSeanceId(){
+  if(!seance.event||!seance.date||!seance.time) return;
+  const t = seance.time.replace(":","-");
+  seance.seance_id = `${seance.event}-${seance.date}-${t}`;
+  seanceId.value = seance.seance_id;
+}
+
+function updateStatusUI(){
+  statusBadge.textContent = seance.status==="ready"?"готовий":"чернетка";
+  statusBadge.classList.toggle("ready",seance.status==="ready");
+  seanceStatus.value = seance.status;
+}
+
+function render(){
+  output.textContent = JSON.stringify(seance,null,2);
+}
+
+/* =====================
+   LOAD EXISTING
+===================== */
+async function loadSeance(){
+  if(!EDIT_ID) return;
+  try{
+    const data = await fetch(`../../data/seances/${EDIT_ID}.json`).then(r=>r.json());
+    Object.assign(seance,data);
+
+    eventSlug.value = seance.event||"";
+    eventDate.value = seance.date||"";
+    eventTime.value = seance.time||"";
+    seanceId.value = seance.seance_id||EDIT_ID;
+
+    updateStatusUI();
+    render();
+  }catch(e){
+    alert("Не вдалося завантажити сеанс");
+    console.error(e);
+  }
+}
+
+/* =====================
+   SAVE FILE
+===================== */
+function saveToFile(){
+  render();
+  const blob = new Blob([JSON.stringify(seance,null,2)],{type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${seance.seance_id||"seance"}.json`;
+  a.click();
+}
+
+/* =====================
+   EVENTS
+===================== */
+eventSlug.oninput = e=>{seance.event=e.target.value;updateSeanceId();render();}
+eventDate.onchange = e=>{seance.date=e.target.value;updateSeanceId();render();}
+eventTime.onchange = e=>{seance.time=e.target.value;updateSeanceId();render();}
+seanceStatus.onchange = e=>{seance.status=e.target.value;updateStatusUI();render();}
+
+/* =====================
+   NAV
+===================== */
+function backToEvents(){
+  location.href = "../events/index.html";
+}
+
+/* =====================
+   HEADER
+===================== */
+fetch("../index.html")
+  .then(r=>r.text())
+  .then(html=>admin-header.innerHTML=html);
+
+loadSeance();
+updateStatusUI();
+render();
+</script>
+
+</body>
+</html>
