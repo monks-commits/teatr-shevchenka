@@ -572,7 +572,7 @@ async function loadSeanceConfig() {
       const dt = (date && time) ? ` • ${date} ${time}` : "";
 
       const t2 = String(time || "").replace(":", "-");
-      SEANCE_ID = (showSlug && date && t2) ? `${showSlug}-${date}-${t2}` : "";
+     
 
       const elShow = document.getElementById("summary-show");
       const elSeance = document.getElementById("summary-seance");
