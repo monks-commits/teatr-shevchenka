@@ -304,13 +304,13 @@
   <script>
     const qs = new URLSearchParams(location.search);
     const showSlug  = (qs.get("show")   || "").trim();
-    // 🔧 CRITICAL FIX: derive showSlug from seance_id
+    const SEANCE_ID = (qs.get("seance") || "").trim();
+
+// 🔧 CRITICAL FIX: derive showSlug from seance_id
 if (!showSlug && SEANCE_ID) {
   showSlug = SEANCE_ID.replace(/-\d{4}-\d{2}-\d{2}-\d{2}-\d{2}$/, "");
 }
-
-const SEANCE_ID = (qs.get("seance") || "").trim();
-
+    
     // embed mode (backoffice): ?embed=1
     const EMBED = qs.get("embed") === "1";
     if (EMBED) document.documentElement.classList.add("embed");
