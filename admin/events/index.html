@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Події</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <link rel="stylesheet" href="../../styles.css">
 
   <style>
@@ -47,6 +48,16 @@
       cursor: pointer;
     }
 
+    .event button[disabled] {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .muted {
+      color: #6b7280;
+      font-size: 13px;
+    }
+
     .empty {
       color: #6b7280;
     }
@@ -64,34 +75,41 @@
 
   try {
     const response = await fetch('/teatr-shevchenka/data/seances/index.json');
-    if (!response.ok) throw new Error('index.json not found');
+    if (!response.ok) {
+      throw new Error('index.json not found');
+    }
 
     const seances = await response.json();
     container.innerHTML = '';
 
-    const active = seances.filter(s => s.active);
-
-    if (!active.length) {
-      container.innerHTML = '<div class="empty">Немає активних подій</div>';
+    if (!Array.isArray(seances) || seances.length === 0) {
+      container.innerHTML = '<div class="empty">Подій немає</div>';
       return;
     }
 
-    active.forEach(s => {
+    seances.forEach(s => {
+      const isActive = s.active === true;
+
       const el = document.createElement('div');
       el.className = 'event';
 
       el.innerHTML = `
         <div class="event-info">
-          <strong>${s.title}</strong><br>
-          ${s.date} • ${s.time}
+          <strong>${s.title || s.id}</strong><br>
+          ${s.date || ''} ${s.time || ''}
+          ${!isActive ? '<div class="muted">(неактивний)</div>' : ''}
         </div>
-        <button>В касу</button>
+        <button ${!isActive ? 'disabled' : ''}>В касу</button>
       `;
 
-      el.querySelector('button').onclick = () => {
-        location.href =
-          `/teatr-shevchenka/spectacles/hall-cash.html?show=${s.show}&seance=${s.id}`;
-      };
+      if (isActive) {
+        el.querySelector('button').onclick = () => {
+          location.href =
+            '/teatr-shevchenka/spectacles/hall-cash.html'
+            + '?show=' + encodeURIComponent(s.show)
+            + '&seance=' + encodeURIComponent(s.id);
+        };
+      }
 
       container.appendChild(el);
     });
