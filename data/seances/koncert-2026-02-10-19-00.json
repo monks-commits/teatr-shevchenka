@@ -1,10 +1,14 @@
 {
+  "title": "Концерт",
+  "date": "2026-02-10",
+  "time": "19:00",
+
   "pricing": {
     "P1-1": { "price": 170, "class": "seat--170", "sale": true },
     "P2-3": { "price": 200, "class": "seat--200", "sale": true },
     "P4-4": { "price": 180, "class": "seat--180", "sale": true }
   },
   "seat_overrides": {
-    "P3-M5": { "sale": false } 
+    "P3-M5": { "sale": false }
   }
 }
