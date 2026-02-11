@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <title>Каса — Продаж квитків (офлайн)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
   <link rel="stylesheet" href="../../styles.css">
-
   <style>
     html, body {
       height: 100%;
@@ -14,14 +12,11 @@
       background: #f8fafc;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     }
-
     .layout {
       position: relative;
       height: 100vh;
       overflow: hidden;
     }
-
-    /* Верхняя панель кассы */
     .cash-top {
       position: absolute;
       top: 0;
@@ -35,12 +30,10 @@
       align-items: center;
       gap: 12px;
     }
-
     .cash-top label {
       font-size: 14px;
       opacity: .85;
     }
-
     .cash-top select {
       padding: 6px 10px;
       font-size: 15px;
@@ -48,28 +41,11 @@
       border: none;
       min-width: 320px;
     }
-
-    .cash-top button {
-      margin-left: auto;
-      padding: 6px 14px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-    }
-
-    .btn-reports {
-      background: #334155;
-      color: #fff;
-    }
-
-    /* iframe со схемой */
     .hall-wrap {
       position: absolute;
       inset: 0;
-      padding-top: 52px; /* место под верхнюю панель */
+      padding-top: 52px;
     }
-
     iframe {
       width: 100%;
       height: 100%;
@@ -83,60 +59,61 @@
 
 <div class="layout">
 
-  <!-- ВЕРХНЯЯ ПАНЕЛЬ КАССЫ -->
   <div class="cash-top">
     <label>Сеанс:</label>
     <select id="seanceSelect">
       <option value="">Завантаження…</option>
     </select>
-
-    <button class="btn-reports" onclick="openReports()">Звіти</button>
   </div>
 
-  <!-- ЗАЛ -->
   <div class="hall-wrap">
-    <iframe id="hallFrame" src="../../hall/hall-cash.html"></iframe>
+    <iframe id="hallFrame"></iframe>
   </div>
 
 </div>
 
 <script>
-const SEANCES_PATH = "../../data/seances/";
-
 const seanceSelect = document.getElementById("seanceSelect");
 const hallFrame = document.getElementById("hallFrame");
 
-// список сеансов — пока вручную, потом можно автоген
+// список сеансов (временно вручную)
 const SEANCES = [
-  "koncert-2026-02-10-19-00"
+  "koncert-2026-02-17-18-00",
+  "koncert-2026-03-01-18-00",
+  "koncert-2026-02-16-18-00"
 ];
 
-// загрузка списка
+// читаем параметр из URL
+const params = new URLSearchParams(window.location.search);
+const urlSeance = params.get("seance");
+
 function loadSeances() {
   seanceSelect.innerHTML = `<option value="">Оберіть сеанс…</option>`;
+
   SEANCES.forEach(id => {
     const opt = document.createElement("option");
     opt.value = id;
-    opt.textContent = id.replace(/-/g, " ");
+    opt.textContent = id;
     seanceSelect.appendChild(opt);
   });
+
+  if (urlSeance) {
+    seanceSelect.value = urlSeance;
+    loadHall(urlSeance);
+  }
 }
 
-// смена сеанса
-seanceSelect.addEventListener("change", () => {
-  const seanceId = seanceSelect.value;
-  if (!seanceId) return;
-
+function loadHall(seanceId) {
   hallFrame.src =
     "../../hall/hall-cash.html?mode=cash&seance=" +
     encodeURIComponent(seanceId);
-});
-
-
-// отчёты
-function openReports() {
-  window.open("../../reports/index.html", "_blank");
 }
+
+seanceSelect.addEventListener("change", () => {
+  const seanceId = seanceSelect.value;
+  if (!seanceId) return;
+  loadHall(seanceId);
+});
 
 loadSeances();
 </script>
