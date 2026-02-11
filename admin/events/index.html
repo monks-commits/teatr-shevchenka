@@ -125,8 +125,7 @@ async function loadSeances() {
 
       // Редагувати
       div.querySelector(".btnEdit").onclick = () => {
-        location.href = `./seance-editor.html?id=${s.id}`;
-      };
+        location.href = `../seance-editor.html?id=${s.id}`;
 
       // Toggle active
       div.querySelector(".btnToggle").onclick = async () => {
