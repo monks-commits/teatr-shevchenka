@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -59,6 +59,7 @@ main{
   border:none;
   cursor:pointer;
   font-weight:700;
+  margin-left:6px;
 }
 .btnEdit{background:#2563eb;color:#fff;}
 .btnToggle{background:#e5e7eb;}
@@ -85,7 +86,7 @@ async function loadSeances() {
 
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=*&order=date.asc`,
+      `${SUPABASE_URL}/rest/v1/seances?select=*&order=created_at.desc`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -123,43 +124,26 @@ async function loadSeances() {
         </div>
       `;
 
-     // Редагувати
-div.querySelector(".btnEdit").onclick = () => {
-  location.href = `./seance-editor.html?id=${s.id}`;
-};
+      // Редагувати
+      div.querySelector(".btnEdit").onclick = () => {
+        location.href = `../seance-editor.html?id=${s.id}`;
+      };
 
-// Toggle active
-div.querySelector(".btnToggle").onclick = async () => {
-  await fetch(
-    `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(s.id)}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-      },
-      body: JSON.stringify({
-        active: !s.active
-      })
-    }
-  );
+      // Toggle active
+      div.querySelector(".btnToggle").onclick = async () => {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(s.id)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+            },
+            body: JSON.stringify({
+              active: !s.active
+            })
+          }
+        );
 
-  loadSeances();
-};
-
-
-
-      container.appendChild(div);
-    });
-
-  } catch (err) {
-    container.innerHTML = "Помилка завантаження";
-  }
-}
-
-loadSeances();
-</script>
-
-</body>
-</html>
+        loadSeances
