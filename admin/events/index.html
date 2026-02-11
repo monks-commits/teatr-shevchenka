@@ -124,27 +124,30 @@ async function loadSeances() {
       `;
 
       // Редагувати
-      div.querySelector(".btnEdit").onclick = () => {
-        location.href = `../seance-editor.html?id=${s.id}`;
+div.querySelector(".btnEdit").onclick = () => {
+  location.href = `../seance-editor.html?id=${s.id}`;
+};
 
-      // Toggle active
-      div.querySelector(".btnToggle").onclick = async () => {
-        await fetch(
-          `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(s.id)}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: SUPABASE_ANON_KEY,
-              Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              active: !s.active
-            })
-          }
-        );
-        loadSeances();
-      };
+// Toggle active
+div.querySelector(".btnToggle").onclick = async () => {
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(s.id)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        active: !s.active
+      })
+    }
+  );
+
+  loadSeances();
+};
+
 
       container.appendChild(div);
     });
