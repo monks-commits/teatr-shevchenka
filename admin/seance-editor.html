@@ -40,7 +40,6 @@ textarea{
   background:#e5e7eb;
   display:inline-block;
 }
-
 .rule-row{
   display:flex;
   align-items:center;
@@ -48,20 +47,14 @@ textarea{
   margin-bottom:6px;
   font-size:14px;
 }
-.rule-color{
-  width:18px;
-  height:18px;
-  border-radius:4px;
-  border:1px solid #999;
-}
-.rule-del{
-  border:none;
-  background:#fee2e2;
-  border-radius:6px;
-  padding:4px 8px;
-}
-.rule-del:hover{background:#fecaca}
 small{color:#6b7280}
+.new-btn{
+  background:#16a34a;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-weight:700;
+}
 </style>
 </head>
 
@@ -77,6 +70,7 @@ small{color:#6b7280}
     <label>Seance ID</label>
     <input id="seanceId" placeholder="koncert-2026-02-10-19-00" style="flex:1">
     <button onclick="loadSeance()">Завантажити</button>
+    <button class="new-btn" onclick="createNewSeance()">➕ Новий сеанс</button>
   </div>
 </div>
 
@@ -156,21 +150,41 @@ const data = {
   seat_overrides: {}
 };
 
+function createNewSeance(){
+  const show = prompt("Назва show:", "koncert");
+  if(!show) return;
+
+  const date = prompt("Дата YYYY-MM-DD:", "2026-02-15");
+  if(!date) return;
+
+  const time = prompt("Час HH-MM:", "18-00");
+  if(!time) return;
+
+  const id = `${show}-${date}-${time}`;
+
+  seanceId.value = id;
+
+  data.pricing = {};
+  data.seat_overrides = {};
+  render();
+
+  alert(
+    "Створено новий сеанс:\n\n" +
+    id +
+    "\n\nПісля налаштування натисніть 'Опублікувати'."
+  );
+}
+
 function addRule(){
-  const z = document.getElementById("zone").value;
-  const from = Number(document.getElementById("fromRow").value);
-  const to   = Number(document.getElementById("toRow").value);
-  const p    = Number(document.getElementById("price").value);
-  const c    = document.getElementById("color").value;
-  const saleAllowed = document.getElementById("sale").checked;
+  const z = zone.value;
+  const from = Number(fromRow.value);
+  const to   = Number(toRow.value);
+  const p    = Number(price.value);
+  const c    = color.value;
+  const saleAllowed = sale.checked;
 
   if (!z || !from || !to || !p) {
-    alert("❗ Вкажи зону, ряди ВІД–ДО і ціну");
-    return;
-  }
-
-  if (from > to) {
-    alert("❗ Ряд 'від' не може бути більшим за 'до'");
+    alert("Вкажи зону, ряди і ціну");
     return;
   }
 
@@ -183,24 +197,6 @@ function addRule(){
   };
 
   render();
-}
-
-
-function removeRule(key){
-  delete data.pricing[key];
-  render();
-}
-
-function renderRulesList(){
-  rulesList.innerHTML = Object.entries(data.pricing).map(([k,r])=>`
-    <div class="rule-row">
-      <span class="rule-color" style="background:${r.color}"></span>
-      <b>${k}</b>
-      <span>${r.price} грн</span>
-      <span>${r.sale === false ? "❌ не продається" : "✔ продається"}</span>
-      <button class="rule-del" onclick="removeRule('${k}')">✖</button>
-    </div>
-  `).join("") || "<small>Поки що правил немає</small>";
 }
 
 function addSeatOverride(){
@@ -223,47 +219,14 @@ function render(){
     seat_overrides: data.seat_overrides
   }, null, 2);
 
-  const list = document.getElementById("rulesList");
-  if (!list) return;
-
-  list.innerHTML = "";
-
-  Object.entries(data.pricing).forEach(([key, r]) => {
-    const zone =
-      key.startsWith("P") ? "Партер" :
-      key.startsWith("A") ? "Амфітеатр" :
-      key.startsWith("B") ? "Балкон" : "?";
-
-    const rows = key.slice(1); // <-- ВАЖНО: "1-6"
-
-    const div = document.createElement("div");
-    div.style.display = "flex";
-    div.style.alignItems = "center";
-    div.style.gap = "10px";
-    div.style.marginBottom = "6px";
-
-    div.innerHTML = `
-      <span style="
-        width:16px;
-        height:16px;
-        border-radius:4px;
-        background:${r.color || "#e5e7eb"};
-        display:inline-block;
-      "></span>
-      <b>${zone}</b>
-      <span>ряди <b>${rows}</b></span>
-      <span>—</span>
-      <b>${r.price} грн</b>
-      <span style="opacity:.6">
-        ${r.sale === false ? "❌ не продається" : "✔ продається"}
-      </span>
-    `;
-
-    list.appendChild(div);
-  });
+  rulesList.innerHTML = Object.entries(data.pricing).map(([k,r])=>`
+    <div class="rule-row">
+      <b>${k}</b>
+      <span>${r.price} грн</span>
+      <span>${r.sale === false ? "❌" : "✔"}</span>
+    </div>
+  `).join("") || "<small>Поки що правил немає</small>";
 }
-
-
 
 function copy(){
   output.select();
