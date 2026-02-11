@@ -1445,72 +1445,77 @@ seatsRow.appendChild(
     });
 
     // ---- boot ----
-    (async ()=>{
+(async ()=>{
 
-async function loadSeancesForCash() {
+  // загрузка списка сеансов в селект
+  async function loadSeancesForCash() {
 
-  const select = document.getElementById("cashSeanceSelect");
-  if (!select) return;
+    const select = document.getElementById("cashSeanceSelect");
+    if (!select) return;
 
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=id,show,active&active=eq.true&order=created_at.desc`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/seances?select=id,active&active=eq.true&order=created_at.desc`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+          }
         }
+      );
+
+      const rows = await res.json();
+
+      select.innerHTML = `<option value="">Оберіть сеанс…</option>`;
+
+      rows.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.id;
+        select.appendChild(opt);
+      });
+
+      if (SEANCE_ID) {
+        select.value = SEANCE_ID;
       }
-    );
 
-    const rows = await res.json();
-
-    select.innerHTML = `<option value="">Оберіть сеанс…</option>`;
-
-    rows.forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = s.id;
-      select.appendChild(opt);
-    });
-
-    // если seance уже передан в URL — выбрать его
-    if (SEANCE_ID) {
-      select.value = SEANCE_ID;
+    } catch (e) {
+      select.innerHTML = `<option value="">Помилка</option>`;
     }
 
-  } catch (e) {
-    select.innerHTML = `<option value="">Помилка</option>`;
+    select.addEventListener("change", () => {
+      const val = select.value;
+      if (!val) return;
+
+      location.href =
+        `hall-cash.html?show=${encodeURIComponent(showSlug || "test")}&seance=${encodeURIComponent(val)}`;
+    });
   }
 
-  select.addEventListener("change", () => {
-    const val = select.value;
-    if (!val) return;
+  await loadSeancesForCash();
 
-    location.href =
-      `hall-cash.html?show=${encodeURIComponent(showSlug || "test")}&seance=${encodeURIComponent(val)}`;
-  });
-}
+  setNetPill();
+  initLastSync();
+  setCashierId(getCashierId());
 
-      
-      setNetPill();
-      initLastSync();
-      setCashierId(getCashierId());
+  setSyncPill("SYNC: —", "");
+  refreshQueueCount();
 
-      setSyncPill("SYNC: —", "");
-      refreshQueueCount();
+  await loadShowMeta();
+  SEANCE_CONFIG = await loadSeanceConfig();
+  CASH_PATCH = loadCashPatch();
+  await loadTakenSeatsOnline();
 
-      await loadShowMeta();
-SEANCE_CONFIG = await loadSeanceConfig();
-CASH_PATCH = loadCashPatch();
-await loadTakenSeatsOnline();
+  renderParter();
+  renderLodges();
+  renderAmphi();
+  renderBalcony();
 
-      renderParter();
-      renderLodges();
-      renderAmphi();
-      renderBalcony();
-      updateSummary();
-      renderCashLog();
+  updateSummary();
+  renderCashLog();
+
+})();
+
     })();
   </script>
 </body>
