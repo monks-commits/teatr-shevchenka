@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Звіти — білетний відділ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+
+<style>
+.page-wrap{
+  padding:20px;
+  max-width:1200px;
+  margin:auto;
+}
+.card{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+}
+h1{margin-bottom:10px}
+h3{margin:0 0 10px}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:16px;
+}
+
+.report{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:14px;
+  background:#f9fafb;
+}
+.report h4{
+  margin:0 0 6px;
+}
+.report p{
+  font-size:13px;
+  color:#6b7280;
+  margin:0 0 10px;
+}
+.report button{
+  padding:8px 12px;
+  border-radius:10px;
+  border:none;
+  font-weight:700;
+  cursor:pointer;
+  background:#111827;
+  color:#fff;
+}
+.report button.secondary{
+  background:#e5e7eb;
+  color:#111827;
+}
+.badge{
+  display:inline-block;
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#e5e7eb;
+  margin-bottom:6px;
+}
+.note{
+  font-size:13px;
+  color:#6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div id="admin-header"></div>
+
+<main class="page-wrap">
+  <h1>📊 Звіти</h1>
+
+  <!-- SALES -->
+  <div class="card">
+    <h3>Продажі</h3>
+
+    <div class="grid">
+
+      <div class="report">
+        <span class="badge">основний</span>
+        <h4>Продажі за період</h4>
+        <p>Усі продажі (каса + безнал + сайт)</p>
+        <button>Відкрити</button>
+      </div>
+
+      <div class="report">
+        <h4>Продажі по сеансах</h4>
+        <p>Суми та кількість квитків по кожному сеансу</p>
+        <button>Відкрити</button>
+      </div>
+
+      <div class="report">
+        <h4>Продажі по каналах</h4>
+        <p>Каса / сайт / безнал</p>
+        <button>Відкрити</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOOKINGS -->
+  <div class="card">
+    <h3>Бронювання</h3>
+
+    <div class="grid">
+
+      <div class="report">
+        <h4>Активні бронювання</h4>
+        <p>Незакриті та прострочені броні</p>
+        <button>Відкрити</button>
+      </div>
+
+      <div class="report">
+        <h4>Історія бронювань</h4>
+        <p>Усі бронювання за період</p>
+        <button>Відкрити</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="card">
+    <h3>Клієнти</h3>
+
+    <div class="grid">
+
+      <div class="report">
+        <h4>Клієнти та покупки</h4>
+        <p>Список клієнтів і їх замовлення</p>
+        <button>Відкрити</button>
+      </div>
+
+      <div class="report">
+        <h4>Постійні клієнти</h4>
+        <p>Повторні покупки, статистика</p>
+        <button>Відкрити</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CASH -->
+  <div class="card">
+    <h3>Каса</h3>
+
+    <div class="grid">
+
+      <div class="report">
+        <span class="badge">каса</span>
+        <h4>Журнал каси</h4>
+        <p>Усі операції касира</p>
+        <button>Відкрити</button>
+      </div>
+
+      <div class="report">
+        <h4>Зміни касира</h4>
+        <p>Відкриття / закриття змін</p>
+        <button>Відкрити</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="card">
+    <h3>Експорт</h3>
+
+    <div class="grid">
+
+      <div class="report">
+        <h4>Експорт у CSV</h4>
+        <p>Для бухгалтерії</p>
+        <button class="secondary">Завантажити</button>
+      </div>
+
+      <div class="report">
+        <h4>Експорт у PDF</h4>
+        <p>Звіти для друку</p>
+        <button class="secondary">Завантажити</button>
+      </div>
+
+    </div>
+
+    <p class="note" style="margin-top:12px">
+      Формат та джерело даних підключаються у продуктових репо.
+    </p>
+  </div>
+
+</main>
+
+<script>
+fetch("../index.html")
+  .then(r=>r.text())
+  .then(html=>{
+    document.getElementById("admin-header").innerHTML = html;
+  });
+</script>
+
+</body>
+</html>
