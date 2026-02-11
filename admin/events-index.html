@@ -29,7 +29,7 @@ a.back{
   font-size:14px;
 }
 main{
-  max-width:1000px;
+  max-width:1100px;
   margin:40px auto;
   padding:0 20px;
 }
@@ -43,16 +43,19 @@ main{
   justify-content:space-between;
   align-items:center;
 }
-.info{
+.left{
   font-weight:700;
 }
 .status{
-  font-size:13px;
+  font-size:12px;
   padding:4px 10px;
   border-radius:999px;
+  margin-top:6px;
+  display:inline-block;
 }
 .active{background:#dcfce7;color:#166534;}
-.inactive{background:#fee2e2;color:#991b1b;}
+.cancelled{background:#fee2e2;color:#991b1b;}
+.sold{background:#e0e7ff;color:#1e3a8a;}
 .btn{
   padding:6px 12px;
   border-radius:8px;
@@ -61,8 +64,10 @@ main{
   font-weight:700;
   margin-left:6px;
 }
-.btnEdit{background:#2563eb;color:#fff;}
-.btnToggle{background:#e5e7eb;}
+.cash{background:#2563eb;color:#fff;}
+.delete{background:#f87171;color:#fff;}
+.cancel{background:#fbbf24;}
+.done{background:#10b981;color:#fff;}
 </style>
 </head>
 
@@ -70,7 +75,7 @@ main{
 
 <header>
   Події
-  <a href="./index.html" class="back">Назад</a>
+  <a href="../index.html" class="back">Назад</a>
 </header>
 
 <main>
@@ -84,78 +89,97 @@ const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 async function loadSeances() {
   const container = document.getElementById("list");
 
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=*&order=created_at.desc`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-        }
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/seances?select=*&order=created_at.desc`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
       }
-    );
-
-    const rows = await res.json();
-
-    if (!rows.length) {
-      container.innerHTML = "Сеансів немає";
-      return;
     }
+  );
 
-    container.innerHTML = "";
+  const rows = await res.json();
 
-    rows.forEach(s => {
+  if (!rows.length) {
+    container.innerHTML = "Сеансів немає";
+    return;
+  }
 
-      const div = document.createElement("div");
-      div.className = "event";
+  container.innerHTML = "";
 
-      div.innerHTML = `
-        <div>
-          <div class="info">${s.id}</div>
-          <div class="status ${s.active ? "active" : "inactive"}">
-            ${s.active ? "🟢 активний" : "🔴 вимкнений"}
-          </div>
+  rows.forEach(s => {
+
+    const div = document.createElement("div");
+    div.className = "event";
+
+    div.innerHTML = `
+      <div class="left">
+        ${s.id}
+        <div class="status ${s.status}">
+          ${s.status}
         </div>
-        <div>
-          <button class="btn btnEdit">Редагувати</button>
-          <button class="btn btnToggle">
-            ${s.active ? "Вимкнути" : "Активувати"}
-          </button>
-        </div>
-      `;
+      </div>
 
-      // Редагувати
-      div.querySelector(".btnEdit").onclick = () => {
-        location.href = `../seance-editor.html?id=${s.id}`;
-      };
+      <div>
+        <button class="btn cash">В касу</button>
+        <button class="btn cancel">Скасувати</button>
+        <button class="btn done">Продано</button>
+        <button class="btn delete">Видалити</button>
+      </div>
+    `;
 
-      // Toggle active
-      div.querySelector(".btnToggle").onclick = async () => {
+    // В касу
+    div.querySelector(".cash").onclick = () => {
+      location.href =
+        `/teatr-shevchenka/spectacles/hall-cash.html?seance=${s.id}`;
+    };
+
+    // Скасувати
+    div.querySelector(".cancel").onclick = async () => {
+      await updateStatus(s.id, "cancelled");
+    };
+
+    // Продано
+    div.querySelector(".done").onclick = async () => {
+      await updateStatus(s.id, "sold");
+    };
+
+    // Видалити
+    div.querySelector(".delete").onclick = async () => {
+      if (confirm("Видалити сеанс?")) {
         await fetch(
-          `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(s.id)}`,
+          `${SUPABASE_URL}/rest/v1/seances?id=eq.${s.id}`,
           {
-            method: "PATCH",
+            method: "DELETE",
             headers: {
-              "Content-Type": "application/json",
               apikey: SUPABASE_ANON_KEY,
               Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
-              active: !s.active
-            })
+            }
           }
         );
-
         loadSeances();
-      };
+      }
+    };
 
-      container.appendChild(div);
-    });
+    container.appendChild(div);
+  });
+}
 
-  } catch (err) {
-    container.innerHTML = "Помилка завантаження";
-    console.error(err);
-  }
+async function updateStatus(id, status) {
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/seances?id=eq.${id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({ status })
+    }
+  );
+  loadSeances();
 }
 
 loadSeances();
