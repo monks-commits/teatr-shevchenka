@@ -1446,6 +1446,53 @@ seatsRow.appendChild(
 
     // ---- boot ----
     (async ()=>{
+
+async function loadSeancesForCash() {
+
+  const select = document.getElementById("cashSeanceSelect");
+  if (!select) return;
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/seances?select=id,show,active&active=eq.true&order=created_at.desc`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+
+    const rows = await res.json();
+
+    select.innerHTML = `<option value="">Оберіть сеанс…</option>`;
+
+    rows.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.id;
+      select.appendChild(opt);
+    });
+
+    // если seance уже передан в URL — выбрать его
+    if (SEANCE_ID) {
+      select.value = SEANCE_ID;
+    }
+
+  } catch (e) {
+    select.innerHTML = `<option value="">Помилка</option>`;
+  }
+
+  select.addEventListener("change", () => {
+    const val = select.value;
+    if (!val) return;
+
+    location.href =
+      `hall-cash.html?show=${encodeURIComponent(showSlug || "test")}&seance=${encodeURIComponent(val)}`;
+  });
+}
+
+      
       setNetPill();
       initLastSync();
       setCashierId(getCashierId());
