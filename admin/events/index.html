@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Офлайн каса — Адмін</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#f3f4f6;
+    }
+
+    header{
+      background:#111827;
+      color:#fff;
+      padding:14px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .title{
+      font-size:18px;
+      font-weight:800;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .nav{
+      display:flex;
+      gap:10px;
+    }
+
+    .nav a{
+      text-decoration:none;
+      background:#fff;
+      color:#111827;
+      padding:8px 14px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    .nav a.primary{
+      background:#2563eb;
+      color:#fff;
+    }
+
+    main{
+      max-width:1200px;
+      margin:40px auto;
+      padding:0 20px;
+    }
+
+    .card{
+      background:#fff;
+      border-radius:16px;
+      padding:24px;
+      box-shadow:0 4px 14px rgba(0,0,0,.06);
+    }
+
+    h1{
+      margin:0 0 10px;
+    }
+
+    p{
+      color:#6b7280;
+      margin:0;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="title"> 
+    🎟 Офлайн каса
+  </div>
+
+  <nav class="nav">
+    <!-- ГЛАВНОЕ -->
+    <a href="./events/index.html" class="primary">Події</a>
+    <a href="./seance-editor.html">Створення</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card">
+    <h1>Білетний відділ</h1>
+    <p>
+      Оберіть режим роботи:
+      <br><br>
+      <b>Події</b> — робота з касою (продаж, бронь, друк).<br>
+      <b>Створення</b> — створення та редагування сеансів.
+    </p>
+  </div>
+</main>
+
+</body>
+</html>
