@@ -110,7 +110,8 @@ async function loadSeances() {
       `;
 
       div.querySelector(".btn").onclick = () => {
-        location.href = `../../spectacles/hall-cash.html?seance=${s.id}`;
+        location.href = `../../cashier/sales/index.html?seance=" +
+  encodeURIComponent(s.id);
       };
 
       container.appendChild(div);
