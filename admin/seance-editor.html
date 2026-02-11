@@ -234,21 +234,63 @@ function copy(){
   alert("Скопійовано");
 }
 
-publish.onclick = async ()=>{
+publish.onclick = async () => {
   const seance = seanceId.value.trim();
-  if(!seance) return alert("Вкажи Seance ID");
+  if (!seance) return alert("Вкажи Seance ID");
 
-  const res = await fetch(SUPABASE_FUNCTION_URL,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      seance_id: seance,
-      pricing: data.pricing,
-      seat_overrides: data.seat_overrides
-    })
-  });
+  try {
 
-  alert(res.ok ? "✅ Опубліковано" : "❌ Помилка");
+    // 1️⃣ Добавляем / обновляем запись в таблице seances
+    const seanceRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/seances`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          Prefer: "resolution=merge-duplicates"
+        },
+        body: JSON.stringify({
+          id: seance,
+          show: "test",
+          date: null,
+          time: null,
+          active: true
+        })
+      }
+    );
+
+    if (!seanceRes.ok) {
+      const text = await seanceRes.text();
+      alert("❌ Помилка запису в seances:\n" + text);
+      return;
+    }
+
+    // 2️⃣ Публикуем pricing через Edge Function
+    const pricingRes = await fetch(SUPABASE_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        seance_id: seance,
+        pricing: data.pricing,
+        seat_overrides: data.seat_overrides
+      })
+    });
+
+    if (!pricingRes.ok) {
+      const text = await pricingRes.text();
+      alert("❌ Помилка pricing:\n" + text);
+      return;
+    }
+
+    alert("✅ Сеанс створено та опубліковано");
+
+  } catch (err) {
+    alert("❌ Помилка: " + err.message);
+  }
 };
 
 
