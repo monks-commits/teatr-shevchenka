@@ -20,11 +20,20 @@
 </head>
 <body>
 
-<!--
-  Единственная задача этой страницы —
-  открыть кассовый движок
--->
-<iframe src="../hall/hall-cash.html"></iframe>
+<iframe id="hallFrame"></iframe>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const seance = params.get("seance");
+
+const frame = document.getElementById("hallFrame");
+
+if (seance) {
+  frame.src = `../hall/hall-cash.html?mode=cash&seance=${encodeURIComponent(seance)}`;
+} else {
+  frame.src = `../hall/hall-cash.html?mode=cash`;
+}
+</script>
 
 </body>
 </html>
