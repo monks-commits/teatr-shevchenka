@@ -33,22 +33,22 @@ main{
   margin:40px auto;
   padding:0 20px;
 }
-.event{
+.card{
   background:#fff;
   border-radius:14px;
-  padding:18px 20px;
-  margin-bottom:16px;
+  padding:24px;
   box-shadow:0 4px 14px rgba(0,0,0,.06);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
 }
-.title{
-  font-weight:700;
-  font-size:18px;
+select{
+  padding:10px 14px;
+  font-size:16px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  min-width:340px;
 }
-.btn{
-  padding:8px 16px;
+button{
+  margin-left:12px;
+  padding:10px 18px;
   border-radius:10px;
   border:none;
   cursor:pointer;
@@ -67,23 +67,30 @@ main{
 </header>
 
 <main>
-  <div id="list">Завантаження...</div>
+  <div class="card">
+    <h2>Вибір сеансу</h2>
+
+    <select id="seanceSelect">
+      <option value="">Завантаження…</option>
+    </select>
+
+    <button id="goBtn">В касу</button>
+  </div>
 </main>
 
 <script>
 const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
-const SUPABASE_ANON_KEY = "ТВОЙ_ANON_KEY";
+const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 
-async function loadSeances() {
+const select = document.getElementById("seanceSelect");
+const goBtn = document.getElementById("goBtn");
 
-  const container = document.getElementById("list");
-
-  try {
-
+async function loadSeances(){
+  try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=id,active&active=eq.true&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/seances?select=id&active=eq.true&order=created_at.desc`,
       {
-        headers: {
+        headers:{
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`
         }
@@ -92,37 +99,27 @@ async function loadSeances() {
 
     const rows = await res.json();
 
-    if (!rows.length) {
-      container.innerHTML = "Сеансів немає";
-      return;
-    }
+    select.innerHTML = `<option value="">Оберіть сеанс…</option>`;
 
-    container.innerHTML = "";
-
-    rows.forEach(s => {
-
-      const div = document.createElement("div");
-      div.className = "event";
-
-      div.innerHTML = `
-        <div class="title">${s.id}</div>
-        <button class="btn">В касу</button>
-      `;
-
-      div.querySelector(".btn").onclick = () => {
-        location.href =
-          "../../spectacles/hall-cash.html?show=test&seance=" +
-          encodeURIComponent(s.id);
-      };
-
-      container.appendChild(div);
+    rows.forEach(s=>{
+      const opt = document.createElement("option");
+      opt.value = s.id;
+      opt.textContent = s.id;
+      select.appendChild(opt);
     });
 
-  } catch (err) {
-    container.innerHTML = "Помилка завантаження";
-    console.error(err);
+  }catch(e){
+    select.innerHTML = `<option value="">Помилка</option>`;
   }
 }
+
+goBtn.onclick = ()=>{
+  const val = select.value;
+  if(!val) return;
+
+  location.href =
+    `../../spectacles/hall-cash.html?show=test&seance=${encodeURIComponent(val)}`;
+};
 
 loadSeances();
 </script>
