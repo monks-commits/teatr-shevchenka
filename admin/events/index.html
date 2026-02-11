@@ -63,7 +63,7 @@ main{
 
 <header>
   Події
-  <a href="..//cashier/sales/index.html" class="back">Назад</a>
+  <a href="../../cashier/sales/index.html" class="back">Назад</a>
 </header>
 
 <main>
@@ -110,8 +110,7 @@ async function loadSeances() {
       `;
 
       div.querySelector(".btn").onclick = () => {
-        location.href = `../../cashier/sales/index.html?seance=" +
-  encodeURIComponent(s.id);
+        location.href = `../../cashier/sales/index.html?seance=${encodeURIComponent(s.id)}`;
       };
 
       container.appendChild(div);
