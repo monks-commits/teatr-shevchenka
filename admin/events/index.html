@@ -1,129 +1,103 @@
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-<meta charset="UTF-8">
-<title>Події</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Офлайн каса — Адмін</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<style>
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,sans-serif;
-  background:#f3f4f6;
-}
-header{
-  background:#111827;
-  color:#fff;
-  padding:14px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-weight:800;
-}
-a.back{
-  background:#2563eb;
-  color:#fff;
-  text-decoration:none;
-  padding:6px 12px;
-  border-radius:999px;
-  font-size:14px;
-}
-main{
-  max-width:900px;
-  margin:40px auto;
-  padding:0 20px;
-}
-.event{
-  background:#fff;
-  border-radius:14px;
-  padding:18px 20px;
-  margin-bottom:16px;
-  box-shadow:0 4px 14px rgba(0,0,0,.06);
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.title{
-  font-weight:700;
-  font-size:18px;
-}
-.btn{
-  padding:8px 16px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-  font-weight:700;
-  background:#2563eb;
-  color:#fff;
-}
-</style>
+  <style>
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background:#f3f4f6;
+    }
+
+    header{
+      background:#111827;
+      color:#fff;
+      padding:14px 20px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .title{
+      font-size:18px;
+      font-weight:800;
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .nav{
+      display:flex;
+      gap:10px;
+    }
+
+    .nav a{
+      text-decoration:none;
+      background:#fff;
+      color:#111827;
+      padding:8px 14px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    .nav a.primary{
+      background:#2563eb;
+      color:#fff;
+    }
+
+    main{
+      max-width:1200px;
+      margin:40px auto;
+      padding:0 20px;
+    }
+
+    .card{
+      background:#fff;
+      border-radius:16px;
+      padding:24px;
+      box-shadow:0 4px 14px rgba(0,0,0,.06);
+    }
+
+    h1{
+      margin:0 0 10px;
+    }
+
+    p{
+      color:#6b7280;
+      margin:0;
+    }
+  </style>
 </head>
 
 <body>
 
 <header>
-  Події
-  <a href="../../cashier/sales/index.html" class="back">Назад</a>
+  <div class="title"> 
+    🎟 Офлайн каса
+  </div>
+
+  <nav class="nav">
+    <!-- ГЛАВНОЕ -->
+    <a href="./events-index.html" class="primary">Події</a>
+    <a href="./seance-editor.html">Створення</a>
+  </nav>
 </header>
 
 <main>
-  <div id="list">Завантаження...</div>
+  <div class="card">
+    <h1>Білетний відділ</h1>
+    <p>
+      Оберіть режим роботи:
+      <br><br>
+      <b>Події</b> — робота з касою (продаж, бронь, друк).<br>
+      <b>Створення</b> — створення та редагування сеансів.
+    </p>
+  </div>
 </main>
-
-<script>
-const SUPABASE_URL = "https://fhusjlkneckbvnrdhbil.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
-
-async function loadSeances() {
-
-  const container = document.getElementById("list");
-
-  try {
-
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=*&order=created_at.desc`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      }
-    );
-
-    const rows = await res.json();
-
-    if (!rows.length) {
-      container.innerHTML = "Сеансів немає";
-      return;
-    }
-
-    container.innerHTML = "";
-
-    rows.forEach(s => {
-
-      const div = document.createElement("div");
-      div.className = "event";
-
-      div.innerHTML = `
-        <div class="title">${s.id}</div>
-        <button class="btn">В касу</button>
-      `;
-
-      div.querySelector(".btn").onclick = () => {
-        location.href = `../../cashier/sales/index.html?seance=${encodeURIComponent(s.id)}`;
-      };
-
-      container.appendChild(div);
-    });
-
-  } catch (err) {
-    container.innerHTML = "Помилка завантаження";
-    console.error(err);
-  }
-}
-
-loadSeances();
-</script>
 
 </body>
 </html>
