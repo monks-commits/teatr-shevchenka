@@ -1543,17 +1543,13 @@ seatsRow.appendChild(
     }
 
     select.addEventListener("change", () => {
-      const val = select.value;
-      if (!val) return;
+  const val = select.value;
+  if (!val) return;
 
-      if (!showSlug) {
-        alert("Не визначено виставу (show)");
-        return;
-      }
+  location.href =
+    `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+});
 
-      location.href =
-        `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
-    });
   }
 
   // === ИНИЦИАЛИЗАЦИЯ ===
