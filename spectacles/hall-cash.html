@@ -593,24 +593,51 @@ async function loadSeanceConfig() {
     let SHOW_META = null;
 // SEANCE_ID берётся из query (?seance=...)
 
+
 async function loadShowMeta(){
 
-  if (!showSlug) return;
+  if (!SEANCE_ID) {
+    const elShow = document.getElementById("summary-show");
+    const elSeance = document.getElementById("summary-seance");
+
+    if (elShow) elShow.textContent = "Вистава: —";
+    if (elSeance) elSeance.textContent = "Seance: —";
+
+    renderCashLog();
+    return;
+  }
 
   try {
 
-    // грузим show из новой структуры
-    const res = await fetch(`../data/shows/${showSlug}.json`, {
+    // 1️⃣ Получаем show_slug из Supabase по текущему сеансу
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(SEANCE_ID)}&select=show_slug`,
+      {
+        headers:{
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+
+    if (!res.ok) throw new Error("seance not found");
+
+    const rows = await res.json();
+    if (!rows || !rows.length) throw new Error("empty seance");
+
+    const realShowSlug = rows[0].show_slug;
+    if (!realShowSlug) throw new Error("no show_slug");
+
+    // 2️⃣ Грузим show.json из data/shows
+    const showRes = await fetch(`../data/shows/${realShowSlug}.json`, {
       cache: "no-store"
     });
 
-    if (!res.ok) throw new Error("show not found");
+    if (!showRes.ok) throw new Error("show json not found");
 
-    SHOW_META = await res.json();
+    SHOW_META = await showRes.json();
 
-    const title = SHOW_META?.title || showSlug || "—";
-    const theatre = SHOW_META?.theatre || "";
-    const stage = SHOW_META?.stage || "";
+    const title = SHOW_META?.title || "—";
 
     const elShow = document.getElementById("summary-show");
     const elSeance = document.getElementById("summary-seance");
@@ -620,7 +647,7 @@ async function loadShowMeta(){
     }
 
     if (elSeance) {
-      elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
+      elSeance.textContent = `Seance: ${SEANCE_ID}`;
     }
 
   } catch(e) {
@@ -628,8 +655,10 @@ async function loadShowMeta(){
     console.warn("Помилка loadShowMeta:", e);
 
     const elShow = document.getElementById("summary-show");
-    if (elShow) elShow.textContent = "Вистава: —";
+    const elSeance = document.getElementById("summary-seance");
 
+    if (elShow) elShow.textContent = "Вистава: —";
+    if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
   }
 
   renderCashLog();
