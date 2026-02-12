@@ -593,26 +593,56 @@ async function loadSeanceConfig() {
     let SHOW_META = null;
 // SEANCE_ID берётся из query (?seance=...)
 
-    async function loadShowMeta(){
-      if (!showSlug) return;
-      const list = await fetchJsonSafe("../data/afisha.json");
-      if (Array.isArray(list)) SHOW_META = list.find(x => x && x.id === showSlug) || null;
+  async function loadShowMeta(){
 
-      const title = SHOW_META?.title || showSlug || "—";
-      const date = SHOW_META?.date || "";
-      const time = SHOW_META?.time || "";
-      const dt = (date && time) ? ` • ${date} ${time}` : "";
+  if (!SEANCE_ID) return;
 
-      const t2 = String(time || "").replace(":", "-");
-     
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(SEANCE_ID)}&select=id,show,title,date_time`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
 
-      const elShow = document.getElementById("summary-show");
-      const elSeance = document.getElementById("summary-seance");
-      if(elShow) elShow.textContent = `Вистава: ${title}${dt}`;
-      if(elSeance) elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
+    if (!res.ok) return;
 
-      renderCashLog();
+    const rows = await res.json();
+    if (!rows || !rows.length) return;
+
+    const seance = rows[0];
+
+    // теперь showSlug берём из сеанса
+    showSlug = seance.show || "";
+    const title = seance.title || showSlug || "—";
+
+    // если есть дата/время в seances
+    let dt = "";
+    if (seance.date_time) {
+      const d = new Date(seance.date_time);
+      if (!isNaN(d)) {
+        const date = d.toISOString().slice(0,10);
+        const time = d.toTimeString().slice(0,5);
+        dt = ` • ${date} ${time}`;
+      }
     }
+
+    const elShow = document.getElementById("summary-show");
+    const elSeance = document.getElementById("summary-seance");
+
+    if (elShow) elShow.textContent = `Вистава: ${title}${dt}`;
+    if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID}`;
+
+    renderCashLog();
+
+  } catch(e) {
+    // тихо падаем
+  }
+}
+
 
     // Онлайн-проданные места из tickets (блокируем их)
     const takenSeatsOnline = new Set();
