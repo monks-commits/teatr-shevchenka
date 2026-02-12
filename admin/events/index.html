@@ -117,21 +117,34 @@ async function loadSeances(){
   }
 }
 
-goBtn.onclick = ()=>{
+goBtn.onclick = async () => {
   const val = select.value;
-  if(!val) return;
+  if (!val) return;
 
-  const showSlug = SEANCE_MAP[val];
-  if(!showSlug){
-    alert("Не знайдено show для сеансу");
-    return;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(val)}&select=show`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+
+    const rows = await res.json();
+    if (!rows.length) return;
+
+    const showSlug = rows[0].show;
+
+    location.href =
+      `../../spectacles/hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+
+  } catch(e) {
+    alert("Помилка переходу");
   }
-
-  location.href =
-    `../../spectacles/hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
 };
 
-loadSeances();
 </script>
 
 
