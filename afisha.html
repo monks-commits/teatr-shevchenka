@@ -63,88 +63,56 @@
   const grid = document.getElementById("afisha-grid");
   const emptyEl = document.getElementById("afisha-empty");
 
-  // 1️⃣ загружаем список сеансов
-  let seances = [];
   try {
-    const res = await fetch("data/seances/index.json", { cache:"no-store" });
-    seances = res.ok ? await res.json() : [];
-  } catch(e) {
-    seances = [];
-  }
 
-  if (!Array.isArray(seances) || !seances.length) {
-    emptyEl.style.display = "block";
-    return;
-  }
+    const res = await fetch("data/seances/index.json", { cache: "no-store" });
+    const seances = res.ok ? await res.json() : [];
 
-  const cards = [];
+    if (!Array.isArray(seances) || !seances.length) {
+      emptyEl.style.display = "block";
+      return;
+    }
 
-  // 2️⃣ для каждого seance загружаем файл
-  for (const seanceId of seances) {
+    const cards = [];
 
-    try {
-      const res = await fetch(`data/seances/${seanceId}.json`, { cache:"no-store" });
-      if (!res.ok) continue;
+    for (const seanceId of seances) {
 
-      const seance = await res.json();
-      if (!seance.active) continue;
+      const showSlug = seanceId.split("-")[0];
 
-      // 3️⃣ загружаем show
-      const showRes = await fetch(`data/shows/${seance.show}.json`, { cache:"no-store" });
+      const showRes = await fetch(`data/shows/${showSlug}.json`, { cache: "no-store" });
       if (!showRes.ok) continue;
 
       const show = await showRes.json();
 
       cards.push(`
         <article class="afisha-card">
-
           ${show.poster ? `
-            <img
-              src="${show.poster}"
-              alt="${show.title}"
-              class="afisha-poster"
-              onerror="this.style.display='none'"
-            />
+            <img src="${show.poster}" class="afisha-poster" />
           ` : ""}
 
           <div><strong>${show.title}</strong></div>
 
-          <div class="meta">
-            ${seance.date} • ${seance.time}
-          </div>
-
-          <div class="meta">
-            ${show.theatre || ""} ${show.stage ? "• " + show.stage : ""}
-          </div>
+          <div class="meta">${seanceId}</div>
 
           <div class="btn-row">
-            <a class="btn secondary"
-               href="show.html?show=${encodeURIComponent(seance.show)}">
-              Детальніше
-            </a>
-
             <a class="btn"
-               href="spectacles/hall.html?show=${encodeURIComponent(seance.show)}&seance=${encodeURIComponent(seance.id)}">
+              href="spectacles/hall.html?show=${showSlug}&seance=${seanceId}">
               Вибрати місця
             </a>
           </div>
-
         </article>
       `);
-
-    } catch(e) {
-      continue;
     }
-  }
 
-  if (!cards.length) {
+    grid.innerHTML = cards.join("");
+
+  } catch(e) {
+    console.error(e);
     emptyEl.style.display = "block";
-    return;
   }
-
-  grid.innerHTML = cards.join("");
 
 })();
+
 </script>
 
 </body>
