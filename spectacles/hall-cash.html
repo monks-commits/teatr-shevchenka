@@ -620,7 +620,11 @@ async function loadSeanceConfig() {
       setTicketsPill("tickets: читання…", "warn");
       if (!showSlug) { setTicketsPill("tickets: —", ""); return; }
 
-      const url = `${SUPABASE_URL}/rest/v1/tickets?show_slug=eq.${encodeURIComponent(showSlug)}&select=seat_label`;
+      const url =
+  `${SUPABASE_URL}/rest/v1/tickets` +
+  `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+  `&select=seat_label`;
+
       try{
         const res = await fetch(url, {
           headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
