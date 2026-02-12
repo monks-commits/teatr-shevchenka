@@ -203,9 +203,10 @@ async function loadTakenSeats() {
   if (!showSlug) return;
 
   const url =
-    `${SUPABASE_URL}/rest/v1/tickets` +
-    `?show_slug=eq.${encodeURIComponent(showSlug)}` +
-    `&select=seat_label`;
+  `${SUPABASE_URL}/rest/v1/tickets` +
+  `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+  `&select=seat_label`;
+
 
   const res = await fetch(url, {
     headers: {
