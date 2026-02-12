@@ -1546,7 +1546,12 @@ seatsRow.appendChild(
       const val = select.value;
       if (!val) return;
 
-    location.href =
+   if (!showSlug) {
+  alert("Не визначено виставу (show)");
+  return;
+}
+
+location.href =
   `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
 
 
