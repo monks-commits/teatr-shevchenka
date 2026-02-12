@@ -2,9 +2,10 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" /> 
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Афіша — Театр ім. Т. Г. Шевченка</title>
   <link rel="stylesheet" href="styles.css" />
+
   <style>
     .afisha-grid{
       display:grid;
@@ -30,92 +31,121 @@
     .meta{color:#6b7280;font-size:14px;}
     .btn-row{
       display:flex;
-      flex-wrap:wrap;
       gap:8px;
       margin-top:6px;
     }
   </style>
 </head>
 <body>
-  <div id="site-header"></div>
-  <script type="module" src="scripts/include.js"></script>
 
-  <main class="main">
-    <section class="section">
-      <div class="container">
-        <h1>Афіша</h1>
-        <p class="meta">Оберіть виставу та перейдіть до вибору місць у залі.</p>
+<div id="site-header"></div>
+<script type="module" src="scripts/include.js"></script>
 
-        <div id="afisha-grid" class="afisha-grid"></div>
-        <p id="afisha-empty" class="meta" style="display:none;margin-top:12px">
-          Наразі немає запланованих подій.
-        </p>
-      </div>
-    </section>
-  </main>
+<main class="main">
+  <section class="section">
+    <div class="container">
+      <h1>Афіша</h1>
+      <p class="meta">Оберіть виставу та перейдіть до вибору місць у залі.</p>
 
-  <div id="site-footer"></div>
+      <div id="afisha-grid" class="afisha-grid"></div>
+      <p id="afisha-empty" class="meta" style="display:none;margin-top:12px">
+        Наразі немає запланованих подій.
+      </p>
+    </div>
+  </section>
+</main>
 
-  <script>
-    (async () => {
-      const grid = document.getElementById('afisha-grid');
-      const emptyEl = document.getElementById('afisha-empty');
+<div id="site-footer"></div>
 
-      let items = [];
-      try {
-        const res = await fetch('data/afisha.json', { cache: 'no-store' });
-        items = res.ok ? await res.json() : [];
-      } catch (e) {
-        console.error(e);
-        items = [];
-      }
+<script>
+(async () => {
 
-      if (!Array.isArray(items) || !items.length) {
-        emptyEl.style.display = 'block';
-        return;
-      }
+  const grid = document.getElementById("afisha-grid");
+  const emptyEl = document.getElementById("afisha-empty");
 
-      function cardHTML(s) {
-        const id = s.id || '';
-        const poster = s.poster ? s.poster : '';
-        const when = [s.date, s.time].filter(Boolean).join(' • ');
-        const place = [s.theatre, s.stage].filter(Boolean).join(' • ');
+  // 1️⃣ загружаем список сеансов
+  let seances = [];
+  try {
+    const res = await fetch("data/seances/index.json", { cache:"no-store" });
+    seances = res.ok ? await res.json() : [];
+  } catch(e) {
+    seances = [];
+  }
 
-        return `
-          <article class="afisha-card">
-            ${poster ? `
-              <img
-                src="${poster}"
-                alt="${s.title || ''}"
-                class="afisha-poster"
-                onerror="this.style.display='none'"
-              />
-            ` : ''}
+  if (!Array.isArray(seances) || !seances.length) {
+    emptyEl.style.display = "block";
+    return;
+  }
 
-            <div>
-              <strong>${s.title || ''}</strong>
-            </div>
+  const cards = [];
 
-            ${when ? `<div class="meta">${when}</div>` : ''}
-            ${place ? `<div class="meta">${place}</div>` : ''}
+  // 2️⃣ для каждого seance загружаем файл
+  for (const seanceId of seances) {
 
-            <div class="btn-row">
-              <a class="btn secondary" href="show.html?show=${encodeURIComponent(id)}">
-                Детальніше
-              <a class="btn"
-   href="spectacles/hall.html?show=${encodeURIComponent(id)}&seance=${encodeURIComponent(s.seance || '')}">
+    try {
+      const res = await fetch(`data/seances/${seanceId}.json`, { cache:"no-store" });
+      if (!res.ok) continue;
 
-  Вибрати місця
-</a>
+      const seance = await res.json();
+      if (!seance.active) continue;
 
-              </a>
-            </div>
-          </article>
-        `;
-      }
- 
-      grid.innerHTML = items.map(cardHTML).join('');
-    })();
-  </script>
+      // 3️⃣ загружаем show
+      const showRes = await fetch(`data/shows/${seance.show}.json`, { cache:"no-store" });
+      if (!showRes.ok) continue;
+
+      const show = await showRes.json();
+
+      cards.push(`
+        <article class="afisha-card">
+
+          ${show.poster ? `
+            <img
+              src="${show.poster}"
+              alt="${show.title}"
+              class="afisha-poster"
+              onerror="this.style.display='none'"
+            />
+          ` : ""}
+
+          <div><strong>${show.title}</strong></div>
+
+          <div class="meta">
+            ${seance.date} • ${seance.time}
+          </div>
+
+          <div class="meta">
+            ${show.theatre || ""} ${show.stage ? "• " + show.stage : ""}
+          </div>
+
+          <div class="btn-row">
+            <a class="btn secondary"
+               href="show.html?show=${encodeURIComponent(seance.show)}">
+              Детальніше
+            </a>
+
+            <a class="btn"
+               href="spectacles/hall.html?show=${encodeURIComponent(seance.show)}&seance=${encodeURIComponent(seance.id)}">
+              Вибрати місця
+            </a>
+          </div>
+
+        </article>
+      `);
+
+    } catch(e) {
+      continue;
+    }
+  }
+
+  if (!cards.length) {
+    emptyEl.style.display = "block";
+    return;
+  }
+
+  grid.innerHTML = cards.join("");
+
+})();
+</script>
+
 </body>
 </html>
