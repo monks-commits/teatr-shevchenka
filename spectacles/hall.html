@@ -562,20 +562,23 @@ if (!saleAllowed) {
     }
 
     document.getElementById("go-order").addEventListener("click", ()=>{
-      const keys = Array.from(selected.keys());
-      if (!keys.length) return;
+  const keys = Array.from(selected.keys());
+  if (!keys.length) return;
 
-      const total = Array.from(selected.values()).reduce((sum,x)=> sum + (x.price||0), 0);
-      const seatsCsv = keys.join(",");
+  const total = Array.from(selected.values())
+    .reduce((sum,x)=> sum + (x.price||0), 0);
 
-      const u = new URL("../order.html", location.href);
-      u.searchParams.set("show", showSlug);
-      u.searchParams.set("title", showTitle);
-      u.searchParams.set("seats", seatsCsv);
-      u.searchParams.set("amount", String(total));
+  const seatsCsv = keys.join(",");
 
-      location.href = u.toString();
-    });
+  const u = new URL("../order.html", location.href);
+  u.searchParams.set("show", showSlug);
+  u.searchParams.set("title", showTitle);
+  u.searchParams.set("seats", seatsCsv);
+  u.searchParams.set("amount", String(total));
+  u.searchParams.set("seance", SEANCE_ID); // ← ВОТ ЭТО КРИТИЧНО
+
+  location.href = u.toString();
+});
 
     (async ()=>{
   SEANCE_CONFIG = await loadSeanceConfig();
