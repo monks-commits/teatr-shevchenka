@@ -85,10 +85,12 @@ const SUPABASE_ANON_KEY = "sb_publishable_nCCfptJOb8Lzy1uAwGBJzA_OJtDneTS";
 const select = document.getElementById("seanceSelect");
 const goBtn = document.getElementById("goBtn");
 
+let SEANCE_MAP = {}; // id → show
+
 async function loadSeances(){
   try{
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?select=id&active=eq.true&order=created_at.desc`,
+      `${SUPABASE_URL}/rest/v1/seances?select=id,show&active=eq.true&order=created_at.desc`,
       {
         headers:{
           apikey: SUPABASE_ANON_KEY,
@@ -102,6 +104,8 @@ async function loadSeances(){
     select.innerHTML = `<option value="">Оберіть сеанс…</option>`;
 
     rows.forEach(s=>{
+      SEANCE_MAP[s.id] = s.show;
+
       const opt = document.createElement("option");
       opt.value = s.id;
       opt.textContent = s.id;
@@ -117,12 +121,19 @@ goBtn.onclick = ()=>{
   const val = select.value;
   if(!val) return;
 
+  const showSlug = SEANCE_MAP[val];
+  if(!showSlug){
+    alert("Не знайдено show для сеансу");
+    return;
+  }
+
   location.href =
-    `../../spectacles/hall-cash.html?show=test&seance=${encodeURIComponent(val)}`;
+    `../../spectacles/hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
 };
 
 loadSeances();
 </script>
+
 
 </body>
 </html>
