@@ -670,28 +670,48 @@ async function loadShowMeta(){
 
     // Онлайн-проданные места из tickets (блокируем их)
     const takenSeatsOnline = new Set();
-    async function loadTakenSeatsOnline(){
-      setTicketsPill("tickets: читання…", "warn");
-      if (!showSlug) { setTicketsPill("tickets: —", ""); return; }
+    async function loadTakenSeatsOnline() {
 
-      const url =
-  `${SUPABASE_URL}/rest/v1/tickets` +
-  `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
-  `&select=seat_label`;
+  if (!SEANCE_ID) {
+    console.warn("SEANCE_ID пустой");
+    return;
+  }
 
-      try{
-        const res = await fetch(url, {
-          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
-        });
-        if (!res.ok) { setTicketsPill("tickets: помилка", "bad"); return; }
-        const rows = await res.json().catch(()=>[]);
-        takenSeatsOnline.clear();
-        rows.forEach(r => { if (r && r.seat_label) takenSeatsOnline.add(String(r.seat_label)); });
-        setTicketsPill(`tickets: ok (${takenSeatsOnline.size})`, "ok");
-      }catch(e){
-        setTicketsPill("tickets: нема інтернету", "bad");
+  const url =
+    `${SUPABASE_URL}/rest/v1/tickets` +
+    `?seance_id=eq.${encodeURIComponent(SEANCE_ID)}` +
+    `&select=seat_label`;
+
+  try {
+
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
       }
+    });
+
+    if (!res.ok) {
+      setTicketsPill("tickets: помилка", "bad");
+      return;
     }
+
+    const rows = await res.json().catch(() => []);
+
+    takenSeatsOnline.clear();
+
+    rows.forEach(r => {
+      if (r && r.seat_label) {
+        takenSeatsOnline.add(String(r.seat_label));
+      }
+    });
+
+    setTicketsPill(`tickets: ok (${takenSeatsOnline.size})`, "ok");
+
+  } catch (e) {
+    setTicketsPill("tickets: нема інтернету", "bad");
+  }
+}
 
     // Локальные состояния кассы по seance_id
     function cashPatchKey(){
