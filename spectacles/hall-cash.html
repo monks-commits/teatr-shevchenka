@@ -593,46 +593,48 @@ async function loadSeanceConfig() {
     let SHOW_META = null;
 // SEANCE_ID берётся из query (?seance=...)
 
-async function loadShowMeta() {
+async function loadShowMeta(){
 
-  if (!showSlug) {
-    console.error("showSlug не передан в URL");
-    return;
-  }
+  if (!showSlug) return;
 
-  const list = await fetchJsonSafe("../data/afisha.json");
+  try {
 
-  if (!Array.isArray(list)) {
-    console.error("afisha.json не найден или повреждён");
-    return;
-  }
+    // грузим show из новой структуры
+    const res = await fetch(`../data/shows/${showSlug}.json`, {
+      cache: "no-store"
+    });
 
-  SHOW_META = list.find(x => x && x.id === showSlug);
+    if (!res.ok) throw new Error("show not found");
 
-  if (!SHOW_META) {
-    console.error("В afisha.json нет спектакля с id =", showSlug);
-    return;
-  }
+    SHOW_META = await res.json();
 
-  const title = SHOW_META.title || "—";
-  const date  = SHOW_META.date  || "";
-  const time  = SHOW_META.time  || "";
+    const title = SHOW_META?.title || showSlug || "—";
+    const theatre = SHOW_META?.theatre || "";
+    const stage = SHOW_META?.stage || "";
 
-  const dt = (date && time) ? ` • ${date} ${time}` : "";
+    const elShow = document.getElementById("summary-show");
+    const elSeance = document.getElementById("summary-seance");
 
-  const elShow   = document.getElementById("summary-show");
-  const elSeance = document.getElementById("summary-seance");
+    if (elShow) {
+      elShow.textContent = `Вистава: ${title}`;
+    }
 
-  if (elShow) {
-    elShow.textContent = `Вистава: ${title}${dt}`;
-  }
+    if (elSeance) {
+      elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
+    }
 
-  if (elSeance) {
-    elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
+  } catch(e) {
+
+    console.warn("Помилка loadShowMeta:", e);
+
+    const elShow = document.getElementById("summary-show");
+    if (elShow) elShow.textContent = "Вистава: —";
+
   }
 
   renderCashLog();
 }
+
 
  
 
