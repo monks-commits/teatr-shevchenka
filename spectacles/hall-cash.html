@@ -593,13 +593,16 @@ async function loadSeanceConfig() {
     let SHOW_META = null;
 // SEANCE_ID берётся из query (?seance=...)
 
-  async function loadShowMeta(){
+async function loadShowMeta(){
 
   if (!SEANCE_ID) return;
 
+  let seance = null;
+
+  // 1️⃣ пробуем Supabase
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(SEANCE_ID)}&select=id,show,title,date_time`,
+      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(SEANCE_ID)}&select=*`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -608,36 +611,61 @@ async function loadSeanceConfig() {
       }
     );
 
-    if (!res.ok) return;
-
-    const rows = await res.json();
-    if (!rows || !rows.length) return;
-
-    const seance = rows[0];
-
-    // теперь showSlug берём из сеанса
-    showSlug = seance.show || "";
-    const title = seance.title || showSlug || "—";
-
-    // если есть дата/время в seances
-    let dt = "";
-    if (seance.date_time) {
-      const d = new Date(seance.date_time);
-      if (!isNaN(d)) {
-        const date = d.toISOString().slice(0,10);
-        const time = d.toTimeString().slice(0,5);
-        dt = ` • ${date} ${time}`;
+    if (res.ok) {
+      const rows = await res.json();
+      if (rows && rows.length) {
+        seance = rows[0];
       }
     }
+  } catch(e){}
 
+  // 2️⃣ fallback на локальный JSON
+  if (!seance) {
+    try {
+      const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
+        cache: "no-store"
+      });
+      if (res.ok) {
+        seance = await res.json();
+      }
+    } catch(e){}
+  }
+
+  // 3️⃣ если вообще ничего нет
+  if (!seance) {
     const elShow = document.getElementById("summary-show");
     const elSeance = document.getElementById("summary-seance");
 
-    if (elShow) elShow.textContent = `Вистава: ${title}${dt}`;
+    if (elShow) elShow.textContent = `Вистава: ${SEANCE_ID}`;
     if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID}`;
 
-    renderCashLog();
+    return;
+  }
 
+  // 4️⃣ нормальный вывод
+  const title = seance.title || seance.show || "—";
+
+  let dt = "";
+  if (seance.date_time) {
+    const d = new Date(seance.date_time);
+    if (!isNaN(d)) {
+      const date = d.toISOString().slice(0,10);
+      const time = d.toTimeString().slice(0,5);
+      dt = ` • ${date} ${time}`;
+    }
+  }
+
+  const elShow = document.getElementById("summary-show");
+  const elSeance = document.getElementById("summary-seance");
+
+  if (elShow) elShow.textContent = `Вистава: ${title}${dt}`;
+  if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID}`;
+
+  renderCashLog();
+}
+
+
+    
   } catch(e) {
     // тихо падаем
   }
