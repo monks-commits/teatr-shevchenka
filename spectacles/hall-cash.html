@@ -1503,10 +1503,10 @@ seatsRow.appendChild(
       }
     });
 
-    // ---- boot ----
+   // ---- boot ----
 (async ()=>{
 
-  // загрузка списка сеансов в селект
+  // загрузка списка сеансов
   async function loadSeancesForCash() {
 
     const select = document.getElementById("cashSeanceSelect");
@@ -1546,16 +1546,19 @@ seatsRow.appendChild(
       const val = select.value;
       if (!val) return;
 
-   if (!showSlug) {
-  alert("Не визначено виставу (show)");
-  return;
-}
+      if (!showSlug) {
+        alert("Не визначено виставу (show)");
+        return;
+      }
 
-location.href =
-  `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+      location.href =
+        `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+    });
+  }
 
+  // === ИНИЦИАЛИЗАЦИЯ ===
 
-  
+  await loadSeancesForCash();
 
   setNetPill();
   initLastSync();
@@ -1577,9 +1580,8 @@ location.href =
   updateSummary();
   renderCashLog();
 
+})();
 
-
-    })();
   </script>
 </body>
 </html>
