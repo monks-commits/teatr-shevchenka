@@ -1546,10 +1546,9 @@ seatsRow.appendChild(
       const val = select.value;
       if (!val) return;
 
-      location.href =
-        `hall-cash.html?show=${encodeURIComponent(showSlug || "test")}&seance=${encodeURIComponent(val)}`;
-    });
-  }
+    location.href =
+  `hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+
 
   await loadSeancesForCash();
 
