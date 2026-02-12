@@ -1007,7 +1007,7 @@ if (cfg && cfg.color) {
       const res = await fetch(CASH_SYNC_V1, {
         method:"POST",
         headers,
-        body: JSON.stringify({ cashier_id, ops }),
+        body: JSON.stringify({ cashier_id, ops }), 
       });
 
       const txt = await res.text();
