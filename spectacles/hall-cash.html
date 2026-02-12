@@ -593,79 +593,47 @@ async function loadSeanceConfig() {
     let SHOW_META = null;
 // SEANCE_ID берётся из query (?seance=...)
 
-async function loadShowMeta(){
+async function loadShowMeta() {
 
-  if (!SEANCE_ID) return;
-
-  let seance = null;
-
-  // 1️⃣ пробуем Supabase
-  try {
-    const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/seances?id=eq.${encodeURIComponent(SEANCE_ID)}&select=*`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      }
-    );
-
-    if (res.ok) {
-      const rows = await res.json();
-      if (rows && rows.length) {
-        seance = rows[0];
-      }
-    }
-  } catch(e){}
-
-  // 2️⃣ fallback на локальный JSON
-  if (!seance) {
-    try {
-      const res = await fetch(`../data/seances/${SEANCE_ID}.json`, {
-        cache: "no-store"
-      });
-      if (res.ok) {
-        seance = await res.json();
-      }
-    } catch(e){}
-  }
-
-  // 3️⃣ если вообще ничего нет
-  if (!seance) {
-    const elShow = document.getElementById("summary-show");
-    const elSeance = document.getElementById("summary-seance");
-
-    if (elShow) elShow.textContent = `Вистава: ${SEANCE_ID}`;
-    if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID}`;
-
+  if (!showSlug) {
+    console.error("showSlug не передан в URL");
     return;
   }
 
-  // 4️⃣ нормальный вывод
-  const title = seance.title || seance.show || "—";
+  const list = await fetchJsonSafe("../data/afisha.json");
 
-  let dt = "";
-  if (seance.date_time) {
-    const d = new Date(seance.date_time);
-    if (!isNaN(d)) {
-      const date = d.toISOString().slice(0,10);
-      const time = d.toTimeString().slice(0,5);
-      dt = ` • ${date} ${time}`;
-    }
+  if (!Array.isArray(list)) {
+    console.error("afisha.json не найден или повреждён");
+    return;
   }
 
-  const elShow = document.getElementById("summary-show");
+  SHOW_META = list.find(x => x && x.id === showSlug);
+
+  if (!SHOW_META) {
+    console.error("В afisha.json нет спектакля с id =", showSlug);
+    return;
+  }
+
+  const title = SHOW_META.title || "—";
+  const date  = SHOW_META.date  || "";
+  const time  = SHOW_META.time  || "";
+
+  const dt = (date && time) ? ` • ${date} ${time}` : "";
+
+  const elShow   = document.getElementById("summary-show");
   const elSeance = document.getElementById("summary-seance");
 
-  if (elShow) elShow.textContent = `Вистава: ${title}${dt}`;
-  if (elSeance) elSeance.textContent = `Seance: ${SEANCE_ID}`;
+  if (elShow) {
+    elShow.textContent = `Вистава: ${title}${dt}`;
+  }
+
+  if (elSeance) {
+    elSeance.textContent = `Seance: ${SEANCE_ID || "—"}`;
+  }
 
   renderCashLog();
 }
 
-
-    
  
 
 
