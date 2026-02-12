@@ -135,10 +135,9 @@ goBtn.onclick = async () => {
     const rows = await res.json();
     if (!rows.length) return;
 
-    const showSlug = rows[0].show;
-
     location.href =
-      `../../spectacles/hall-cash.html?show=${encodeURIComponent(showSlug)}&seance=${encodeURIComponent(val)}`;
+  `../../spectacles/hall-cash.html?show=test&seance=${encodeURIComponent(val)}`;
+
 
   } catch(e) {
     alert("Помилка переходу");
