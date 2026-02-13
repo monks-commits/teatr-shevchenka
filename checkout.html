@@ -69,6 +69,7 @@
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
 
     const p = new URLSearchParams(location.search);
+    const seance_id = p.get("seance") || "";
     const show   = p.get("show")  || "";
     const title  = p.get("title") || "";
     const seatsRaw = p.get("seats") || "";
