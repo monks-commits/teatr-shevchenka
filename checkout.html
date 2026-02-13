@@ -144,15 +144,17 @@
       const idempotency_key = newIdempotencyKey();
 
       const payload = {
-        idempotency_key,
-        show_slug: show,
-        seats,
-        amount,
-        currency: "UAH",
-        buyer_name,
-        buyer_email,
-        buyer_phone,
-      };
+  idempotency_key,
+  show_slug: show,
+  seance_id,          // ← ВОТ СЮДА
+  seats,
+  amount,
+  currency: "UAH",
+  buyer_name,
+  buyer_email,
+  buyer_phone,
+};
+
 
       debugEl.textContent = "liqpay-init payload:\n" + JSON.stringify(payload, null, 2);
 
