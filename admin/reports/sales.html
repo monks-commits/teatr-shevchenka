@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<title>Продажі — звіт</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  font-family:system-ui,-apple-system,Segoe UI,sans-serif;
+  margin:0;
+  background:#f3f4f6;
+}
+.page{
+  max-width:1200px;
+  margin:auto;
+  padding:20px;
+}
+.card{
+  background:#fff;
+  padding:16px;
+  border-radius:14px;
+  box-shadow:0 4px 14px rgba(0,0,0,.06);
+  margin-bottom:16px;
+}
+.filters{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+input,select{
+  padding:8px 10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+}
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:10px;
+  background:#111827;
+  color:#fff;
+  font-weight:600;
+  cursor:pointer;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:8px;
+  border-bottom:1px solid #eee;
+  font-size:14px;
+}
+th{
+  background:#f9fafb;
+  text-align:left;
+}
+.muted{
+  color:#6b7280;
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+<h1>Продажі</h1>
+
+<div class="card">
+  <div class="filters">
+    <div>
+      <label>Від</label><br>
+      <input type="date" id="fromDate">
+    </div>
+
+    <div>
+      <label>До</label><br>
+      <input type="date" id="toDate">
+    </div>
+
+    <div>
+      <label>Сеанс</label><br>
+      <input type="text" id="seanceFilter" placeholder="koncert-...">
+    </div>
+
+    <div>
+      <label>Канал</label><br>
+      <select id="channelFilter">
+        <option value="">Усі</option>
+        <option value="online">Онлайн</option>
+        <option value="cash">Каса</option>
+      </select>
+    </div>
+
+    <div style="align-self:flex-end">
+      <button id="btnApply">Застосувати</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <table id="salesTable">
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Сеанс</th>
+        <th>Вистава</th>
+        <th>Канал</th>
+        <th>Місця</th>
+        <th>Сума</th>
+        <th>Касир</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td colspan="7" class="muted">Немає даних</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script type="module" src="./sales.js"></script>
+
+</body>
+</html>
