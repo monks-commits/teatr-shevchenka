@@ -69,13 +69,13 @@
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
 
     const p = new URLSearchParams(location.search);
-    const seance_id = p.get("seance") || "";
+    
     const show   = p.get("show")  || "";
     const title  = p.get("title") || "";
     const seatsRaw = p.get("seats") || "";
     const amountStr = p.get("amount") || "0";
     const amount = Number(amountStr || 0);
-
+const seance_id = p.get("seance") || "";
     const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
 
     function seatHuman(key) {
