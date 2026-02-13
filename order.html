@@ -44,11 +44,12 @@
   <script>
   const p = new URLSearchParams(location.search);
 
-  const show    = p.get("show")   || "";
-  const title   = p.get("title")  || "";
-  const seatsRaw= p.get("seats")  || "";
-  const amount  = p.get("amount") || "0";
-  const seance  = p.get("seance") || "";   // ← ВАЖНО
+const show = p.get("show") || "";
+const title = p.get("title") || "";
+const seatsRaw = p.get("seats") || "";
+const amount = p.get("amount") || "0";
+const seance_id = p.get("seance") || null;   // ✅ ДОБАВЛЕНО
+
 
   const seatsPretty = seatsRaw
     ? seatsRaw
@@ -65,18 +66,22 @@
   document.getElementById("amount-line").textContent =
     `${Number(amount || 0).toFixed(2)} грн`;
 
-  document.getElementById("goPayBtn").addEventListener("click", () => {
-    const url = new URL("checkout.html", location.href);
+ document.getElementById("goPayBtn").addEventListener("click", () => {
 
-    url.searchParams.set("show", show);
-    if (title) url.searchParams.set("title", title);
-    url.searchParams.set("seats", seatsRaw);
-    url.searchParams.set("amount", amount);
-u.searchParams.set("seance", SEANCE_ID); 
-    if (seance) url.searchParams.set("seance", seance); // ← ВАЖНО
+  const url = new URL("checkout.html", location.href);
 
-    location.href = url.toString();
-  });
+  url.searchParams.set("show", show);
+  if (title) url.searchParams.set("title", title);
+  url.searchParams.set("seats", seatsRaw);
+  url.searchParams.set("amount", amount);
+
+  if (seance_id) {
+    url.searchParams.set("seance", seance_id);   // ✅ ВАЖНО
+  }
+
+  location.href = url.toString();
+});
+
 </script>
 
 </body>
