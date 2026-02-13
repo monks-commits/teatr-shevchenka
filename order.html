@@ -68,6 +68,9 @@ const seance_id = p.get("seance") || null;   // ✅ ДОБАВЛЕНО
 
  document.getElementById("goPayBtn").addEventListener("click", () => {
 
+  const p = new URLSearchParams(location.search);
+  const seance_id = p.get("seance") || "";   // ← берём из текущего URL
+
   const url = new URL("checkout.html", location.href);
 
   url.searchParams.set("show", show);
@@ -76,7 +79,7 @@ const seance_id = p.get("seance") || null;   // ✅ ДОБАВЛЕНО
   url.searchParams.set("amount", amount);
 
   if (seance_id) {
-    url.searchParams.set("seance", seance_id);   // ✅ ВАЖНО
+    url.searchParams.set("seance", seance_id);   // ← передаём дальше
   }
 
   location.href = url.toString();
