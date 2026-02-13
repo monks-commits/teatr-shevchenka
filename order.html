@@ -72,7 +72,7 @@
     if (title) url.searchParams.set("title", title);
     url.searchParams.set("seats", seatsRaw);
     url.searchParams.set("amount", amount);
-
+u.searchParams.set("seance", SEANCE_ID); 
     if (seance) url.searchParams.set("seance", seance); // ← ВАЖНО
 
     location.href = url.toString();
