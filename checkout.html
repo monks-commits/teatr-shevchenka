@@ -69,14 +69,16 @@
     const LIQPAY_INIT_URL = `${SUPABASE_URL}/functions/v1/liqpay-init`;
 
     const p = new URLSearchParams(location.search);
-    
-    const show   = p.get("show")  || "";
-    const title  = p.get("title") || "";
-    const seatsRaw = p.get("seats") || "";
-    const amountStr = p.get("amount") || "0"; 
-    const amount = Number(amountStr || 0);
-const seance_id = p.get("seance") || "";
-    const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
+
+const show       = p.get("show")   || "";
+const title      = p.get("title")  || "";
+const seatsRaw   = p.get("seats")  || "";
+const amountStr  = p.get("amount") || "0";
+const seance_id  = p.get("seance") || "";   // ← ВАЖНО
+
+const amount = Number(amountStr || 0);
+const seats = seatsRaw.split(",").map(s => s.trim()).filter(Boolean);
+
 
     function seatHuman(key) {
       const m = String(key).match(/^([PAB])(\d+)-M(\d+)$/i);
@@ -146,7 +148,7 @@ const seance_id = p.get("seance") || "";
       const payload = {
   idempotency_key,
   show_slug: show,
-  seance_id,          // ← ВОТ СЮДА
+  seance_id: seance_id || null,   // ← ВАЖНО
   seats,
   amount,
   currency: "UAH",
@@ -154,6 +156,8 @@ const seance_id = p.get("seance") || "";
   buyer_email,
   buyer_phone,
 };
+
+
 
 
       debugEl.textContent = "liqpay-init payload:\n" + JSON.stringify(payload, null, 2);
