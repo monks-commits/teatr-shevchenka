@@ -23,18 +23,24 @@ function ensureAudio() {
 
 function beep({ freq = 880, duration = 0.10, type = "sine", gain = 0.12 } = {}) {
   try {
+    ensureAudio();  // ← ДОБАВЛЕНО
+
     if (!audioCtx) return;
+
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
     o.type = type;
     o.frequency.value = freq;
     g.gain.value = gain;
+
     o.connect(g);
     g.connect(audioCtx.destination);
+
     o.start();
     setTimeout(() => {
       try { o.stop(); } catch {}
     }, duration * 1000);
+
   } catch {}
 }
 
