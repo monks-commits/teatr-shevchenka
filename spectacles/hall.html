@@ -497,7 +497,23 @@ if (rowNum === 22 || rowNum === 23) {
     }
 
     rowLine.appendChild(seatsLeft);
+// FIX: выравниваем 22–23 как у верхних рядов
+if (!rightCfg) {
+  rowLine.appendChild(gap);
 
+  const ghost = document.createElement("div");
+  ghost.className = "seats-row";
+  ghost.style.visibility = "hidden";
+  ghost.style.pointerEvents = "none";
+
+  for (let i = 0; i < 11; i++) {
+    const fake = document.createElement("button");
+    fake.className = "seat";
+    ghost.appendChild(fake);
+  }
+
+  rowLine.appendChild(ghost);
+}
     // === ПРАВАЯ ЧАСТЬ ТОЛЬКО ДЛЯ 19–21
     if (rightCfg){
       rowLine.appendChild(gap);
