@@ -457,51 +457,61 @@ if (!saleAllowed) {
       });
     }
 
-    function renderAmphi(){
-      const block = document.getElementById("amphi-block");
-      block.innerHTML = "";
+   function renderAmphi(){
+  const block = document.getElementById("amphi-block");
+  block.innerHTML = "";
 
-      [19,20,21,22,23].forEach(rowNum=>{
-        const rowLine = document.createElement("div");
-        rowLine.className = "row-line";
+  [19,20,21,22,23].forEach(rowNum=>{
+    const rowLine = document.createElement("div");
+    rowLine.className = "row-line";
 
-        const lab = document.createElement("div");
-        lab.className = "row-label";
-        lab.textContent = rowNum;
-        rowLine.appendChild(lab);
+    const lab = document.createElement("div");
+    lab.className = "row-label";
+    lab.textContent = rowNum;
+    rowLine.appendChild(lab);
 
-        const seatsLeft  = document.createElement("div");
-        seatsLeft.className = "seats-row";
-        const seatsRight = document.createElement("div");
-        seatsRight.className = "seats-row";
-        const gap = document.createElement("div");
-        gap.className = "amphi-gap";
+    const seatsLeft  = document.createElement("div");
+    seatsLeft.className = "seats-row";
 
-        const leftCfg  = amphiLeftRows.find(r=>r.row===rowNum);
-        const rightCfg = amphiRightRows.find(r=>r.row===rowNum);
+    const seatsRight = document.createElement("div");
+    seatsRight.className = "seats-row";
 
-        if (leftCfg){
-          for (let s=1; s<=leftCfg.seats; s++){
-            const meta = { zone:leftCfg.zone, row:leftCfg.row, seat:s };
-            seatsLeft.appendChild(makeSeatElement(seatKey(meta), s, leftCfg.className, leftCfg.price, meta));
-          }
-        }
+    const gap = document.createElement("div");
+    gap.className = "amphi-gap";
 
-        if (rightCfg){
-          for (let s=1; s<=rightCfg.seats; s++){
-            const seatNum = s+11; // 12–22
-            const meta = { zone:rightCfg.zone, row:rightCfg.row, seat:seatNum };
-            seatsRight.appendChild(makeSeatElement(seatKey(meta), seatNum, rightCfg.className, rightCfg.price, meta));
-          }
-        }
+    const leftCfg  = amphiLeftRows.find(r=>r.row===rowNum);
+    const rightCfg = amphiRightRows.find(r=>r.row===rowNum);
 
-        rowLine.appendChild(seatsLeft);
-        rowLine.appendChild(gap);
-        rowLine.appendChild(seatsRight);
-        block.appendChild(rowLine);
-      });
+    // === ЛЕВАЯ ЧАСТЬ (всегда есть)
+    if (leftCfg){
+      for (let s=1; s<=leftCfg.seats; s++){
+        const meta = { zone:leftCfg.zone, row:leftCfg.row, seat:s };
+        seatsLeft.appendChild(
+          makeSeatElement(seatKey(meta), s, leftCfg.className, leftCfg.price, meta)
+        );
+      }
     }
 
+    rowLine.appendChild(seatsLeft);
+
+    // === ПРАВАЯ ЧАСТЬ ТОЛЬКО ДЛЯ 19–21
+    if (rightCfg){
+      rowLine.appendChild(gap);
+
+      for (let s=1; s<=rightCfg.seats; s++){
+        const seatNum = s+11; // 12–22
+        const meta = { zone:rightCfg.zone, row:rightCfg.row, seat:seatNum };
+        seatsRight.appendChild(
+          makeSeatElement(seatKey(meta), seatNum, rightCfg.className, rightCfg.price, meta)
+        );
+      }
+
+      rowLine.appendChild(seatsRight);
+    }
+
+    block.appendChild(rowLine);
+  });
+}
     function renderBalcony(){
       const block = document.getElementById("balcony-block");
       block.innerHTML = "";
