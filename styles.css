@@ -263,3 +263,7 @@ body {
   color:#6b7280;
   cursor:not-allowed;
 }
+/* Центрируем только строки с двумя половинами */
+#amphi-block .row-line{
+  justify-content:center;
+}
