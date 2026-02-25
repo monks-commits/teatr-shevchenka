@@ -334,7 +334,7 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    const showSlug  = (qs.get("show")   || "").trim();
+    let showSlug  = (qs.get("show")   || "").trim();
 const SEANCE_ID = (qs.get("seance") || "").trim();
 
     // embed mode (backoffice): ?embed=1
@@ -625,7 +625,10 @@ async function loadShowMeta(){
     if (!rows || !rows.length) throw new Error("empty seance");
 
     const realShowSlug = rows[0].show_slug;
-    if (!realShowSlug) throw new Error("no show_slug");
+if (!realShowSlug) throw new Error("no show_slug");
+
+// 🔥 ВАЖНО — синхронизируем showSlug
+showSlug = realShowSlug;
 
     // 2️⃣ Грузим show.json из data/shows
     const showRes = await fetch(`../data/shows/${realShowSlug}.json`, {
