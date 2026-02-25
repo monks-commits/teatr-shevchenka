@@ -463,7 +463,11 @@ if (!saleAllowed) {
 
   [19,20,21,22,23].forEach(rowNum=>{
     const rowLine = document.createElement("div");
-    rowLine.className = "row-line";
+rowLine.className = "row-line";
+
+if (rowNum === 22 || rowNum === 23) {
+  rowLine.style.justifyContent = "flex-start";
+}
 
     const lab = document.createElement("div");
     lab.className = "row-label";
