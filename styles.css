@@ -263,10 +263,3 @@ body {
   color:#6b7280;
   cursor:not-allowed;
 }
-/* === FIX: центрирование амфитеатра и балкона === */
-#amphi-block,
-#balcony-block{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
