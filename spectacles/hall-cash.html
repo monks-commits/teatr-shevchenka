@@ -8,8 +8,8 @@
   <link rel="stylesheet" href="../styles.css" />
 
   <!-- QR генерация в браузере -->
- <!-- QR генерация локально -->
-<script src="../vendor/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+
   <style>
     .hall-layout{display:flex;gap:24px;align-items:flex-start;}
     .hall-left{flex:1 1 auto;min-width:0;}
@@ -335,7 +335,7 @@
 
   <script>
     const qs = new URLSearchParams(location.search);
-    let showSlug  = (qs.get("show")   || "").trim();
+    const showSlug  = (qs.get("show")   || "").trim();
 const SEANCE_ID = (qs.get("seance") || "").trim();
 
     // embed mode (backoffice): ?embed=1
@@ -626,10 +626,7 @@ async function loadShowMeta(){
     if (!rows || !rows.length) throw new Error("empty seance");
 
     const realShowSlug = rows[0].show_slug;
-if (!realShowSlug) throw new Error("no show_slug");
-
-// 🔥 ВАЖНО — синхронизируем showSlug
-showSlug = realShowSlug;
+    if (!realShowSlug) throw new Error("no show_slug");
 
     // 2️⃣ Грузим show.json из data/shows
     const showRes = await fetch(`../data/shows/${realShowSlug}.json`, {
