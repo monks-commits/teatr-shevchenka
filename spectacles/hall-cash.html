@@ -413,9 +413,12 @@ async function loadSeanceConfig() {
     ].map(r=>({...r, zone:"Амфітеатр (ліва)", price:0, className:"seat--amphi"}));
 
     const amphiRightRows = [
-      {row:19,seats:11},{row:20,seats:11},{row:21,seats:11},
-    ].map(r=>({...r, zone:"Амфітеатр (права)", price:0, className:"seat--amphi"}));
-
+  {row:19,seats:11},
+  {row:20,seats:11},
+  {row:21,seats:11},
+  {row:22,seats:0},
+  {row:23,seats:0},
+].map(r=>({...r, zone:"Амфітеатр (права)", price:0, className:"seat--amphi"}));
     const balconyRows15 = [1,2,3,4,5].map(n=>( { row:n, zone:"Балкон", price:0, className:"seat--balcony" } ));
     const balconyRow6 = { row:6, zone:"Балкон", price:0, className:"seat--balcony" };
 
