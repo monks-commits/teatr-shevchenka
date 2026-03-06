@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<title>Квиток</title>
+<title>Електронний квиток</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -14,30 +14,89 @@ body{
   justify-content:center;
   padding:20px;
 }
+
 .ticket{
-  width:260px;
+  width:320px;
   background:#fff;
-  border-radius:14px;
-  box-shadow:0 10px 25px rgba(0,0,0,.12);
-  padding:16px;
+  border-radius:16px;
+  box-shadow:0 15px 35px rgba(0,0,0,.12);
+  padding:20px;
 }
-h1{font-size:16px;margin:0 0 8px}
-.row{font-size:13px;margin:4px 0}
-.qr-wrap{
-  margin:14px auto;
-  width:120px;
-  height:120px;
-  border:1px solid #ddd;
+
+.header{
+  text-align:center;
+  margin-bottom:12px;
+}
+
+.theatre{
+  font-size:12px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+
+.ticket-id{
+  font-size:11px;
+  color:#666;
+  margin-top:4px;
+}
+
+.event{
+  font-size:16px;
+  font-weight:700;
+  margin:12px 0;
+}
+
+.row{
+  font-size:13px;
+  margin:4px 0;
+}
+
+.seat-block{
+  background:#f9fafb;
   border-radius:10px;
+  padding:10px;
+  text-align:center;
+  margin:10px 0;
+  font-size:14px;
+  font-weight:600;
+}
+
+.price{
+  font-size:14px;
+  font-weight:700;
+  margin-top:6px;
+}
+
+.qr-wrap{
+  margin:18px auto;
+  width:140px;
+  height:140px;
+  border:1px solid #ddd;
+  border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
+
 .footer{
   font-size:11px;
   color:#555;
   text-align:center;
   margin-top:10px;
+  line-height:1.4;
+}
+
+.order{
+  margin-top:6px;
+  font-size:11px;
+  text-align:center;
+  color:#666;
+}
+
+@media print{
+  body{background:#fff}
+  .ticket{box-shadow:none}
 }
 </style>
 
@@ -46,44 +105,67 @@ h1{font-size:16px;margin:0 0 8px}
 
 <body>
 <div class="ticket">
-  <h1>Квиток</h1>
-  <div class="row"><b>Канал:</b> Каса</div>
-  <div class="row" id="rowSeat"></div>
-  <div class="row" id="rowPrice"></div>
+
+  <div class="header">
+    <div class="theatre" id="theatreName"></div>
+    <div class="ticket-id" id="ticketId"></div>
+  </div>
+
+  <div class="event" id="eventTitle"></div>
+
+  <div class="row" id="eventDate"></div>
+  <div class="row" id="eventTime"></div>
+
+  <div class="seat-block" id="seatInfo"></div>
+
+  <div class="price" id="priceInfo"></div>
 
   <div class="qr-wrap" id="qr"></div>
 
+  <div class="order" id="orderInfo"></div>
+
   <div class="footer">
-    Покажіть цей квиток контролеру на вході
+    Дійсний на одну особу.<br>
+    Зберігати до кінця вистави.
   </div>
+
 </div>
 
 <script>
 (function(){
   const p = new URLSearchParams(location.search);
 
-  const order = p.get("order") || "";
-  const seat  = p.get("seat") || "";
+  const theatre = p.get("theatre") || "Театр";
+  const ticketId = p.get("ticket") || "";
+  const event = p.get("event") || "";
+  const date = p.get("date") || "";
+  const time = p.get("time") || "";
+  const seat = p.get("seat") || "";
   const price = p.get("price") || "";
+  const order = p.get("order") || "";
   const payload = p.get("payload") || "";
 
-  if(seat) document.getElementById("rowSeat").textContent = "Місце: " + seat;
-  if(price) document.getElementById("rowPrice").textContent = "Ціна: " + price + " грн";
+  document.getElementById("theatreName").textContent = theatre;
+  document.getElementById("ticketId").textContent = "E-Ticket № " + ticketId;
+  document.getElementById("eventTitle").textContent = event;
+  document.getElementById("eventDate").textContent = "Дата: " + date;
+  document.getElementById("eventTime").textContent = "Початок: " + time;
+  document.getElementById("seatInfo").textContent = "Місце: " + seat;
+  document.getElementById("priceInfo").textContent = "Ціна: " + price + " грн";
+  document.getElementById("orderInfo").textContent = "Замовлення: " + order;
 
   if(!payload){
     document.getElementById("qr").textContent = "QR недоступний";
     return;
   }
 
-  const box = document.getElementById("qr");
-  box.innerHTML = "<div></div>";
-
-  new QRCode(box,{
+  new QRCode(document.getElementById("qr"),{
     text: payload,
-    width:110,
-    height:110,
+    width:130,
+    height:130,
     correctLevel: QRCode.CorrectLevel.M
   });
+
 })();
 </script>
 </body>
