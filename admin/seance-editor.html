@@ -188,13 +188,18 @@ function addRule(){
     return;
   }
 
-  const key = `${z}${from}-${to}`;
+  for (let row = from; row <= to; row++) {
+  for (let seat = 1; seat <= 50; seat++) { // 👈 максимум мест (можно потом из hall брать)
+    
+    const key = `${z}${row}-M${seat}`;
 
-  data.pricing[key] = {
-    price: p,
-    color: c,
-    sale: saleAllowed
-  };
+    data.pricing[key] = {
+      price: p,
+      color: c,
+      sale: saleAllowed
+    };
+  }
+}
 
   render();
 }
