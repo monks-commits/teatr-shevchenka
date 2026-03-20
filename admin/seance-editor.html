@@ -188,26 +188,13 @@ function addRule(){
     return;
   }
 
-  for (let row = from; row <= to; row++) {
-  const SEATS_PER_ROW = {
-  P: 20,
-  A: 22,
-  B: 28
-};
+  const key = `${z}${from}-${to}`;
 
-const maxSeats = SEATS_PER_ROW[z] || 20;
-
-for (let seat = 1; seat <= maxSeats; seat++)
-    
-    const key = `${z}${row}-M${seat}`;
-
-    data.pricing[key] = {
-      price: p,
-      color: c,
-      sale: saleAllowed
-    };
-  }
-}
+  data.pricing[key] = {
+    price: p,
+    color: c,
+    sale: saleAllowed
+  };
 
   render();
 }
