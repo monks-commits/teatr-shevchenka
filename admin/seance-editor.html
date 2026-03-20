@@ -189,7 +189,15 @@ function addRule(){
   }
 
   for (let row = from; row <= to; row++) {
-  for (let seat = 1; seat <= 50; seat++) { // 👈 максимум мест (можно потом из hall брать)
+  const SEATS_PER_ROW = {
+  P: 20,
+  A: 22,
+  B: 28
+};
+
+const maxSeats = SEATS_PER_ROW[z] || 20;
+
+for (let seat = 1; seat <= maxSeats; seat++)
     
     const key = `${z}${row}-M${seat}`;
 
