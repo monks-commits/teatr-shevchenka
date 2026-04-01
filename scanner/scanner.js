@@ -172,6 +172,7 @@ if (r.status === 404) {
 }
 
 async function onScanSuccess(decodedText) {
+  ensureAudio();
   const now = Date.now();
   if (now - lastScanAt < cooldownMs) return;
   lastScanAt = now;
