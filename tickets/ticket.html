@@ -8,7 +8,7 @@
 <style>
 body{
   margin:0;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
   background:#f3f4f6;
   display:flex;
   justify-content:center;
@@ -16,7 +16,7 @@ body{
 }
 
 .ticket{
-  width:320px;
+  width:420px;
   background:#fff;
   border-radius:16px;
   box-shadow:0 15px 35px rgba(0,0,0,.12);
@@ -24,105 +24,90 @@ body{
 }
 
 .header{
-  text-align:center;
-  margin-bottom:12px;
-}
-
-.theatre{
-  font-size:12px;
-  font-weight:600;
-  text-transform:uppercase;
-  letter-spacing:.5px;
-}
-
-.ticket-id{
-  font-size:11px;
-  color:#666;
-  margin-top:4px;
-}
-
-.event{
-  font-size:16px;
-  font-weight:700;
-  margin:12px 0;
-}
-
-.row{
-  font-size:13px;
-  margin:4px 0;
-}
-
-.seat-block{
-  background:#f9fafb;
-  border-radius:10px;
-  padding:10px;
-  text-align:center;
-  margin:10px 0;
-  font-size:14px;
-  font-weight:600;
-}
-
-.price{
-  font-size:14px;
-  font-weight:700;
-  margin-top:6px;
-}
-
-.qr-wrap{
-  margin:18px auto;
-  width:140px;
-  height:140px;
-  border:1px solid #ddd;
-  border-radius:12px;
   display:flex;
-  align-items:center;
-  justify-content:center;
+  justify-content:space-between;
+  font-size:12px;
+  margin-bottom:10px;
+}
+
+.title{
+  font-size:18px;
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.meta{
+  font-size:13px;
+  margin-bottom:6px;
+}
+
+.layout{
+  display:flex;
+  gap:16px;
+  margin-top:12px;
+}
+
+.left{
+  flex:1;
+}
+
+.right{
+  width:140px;
+  text-align:center;
+}
+
+.poster{
+  width:100%;
+  border-radius:8px;
+  margin-bottom:8px;
+}
+
+.qr{
+  width:120px;
+  height:120px;
+  margin:0 auto;
 }
 
 .footer{
   font-size:11px;
+  margin-top:14px;
   color:#555;
-  text-align:center;
-  margin-top:10px;
-  line-height:1.4;
-}
-
-.order{
-  margin-top:6px;
-  font-size:11px;
-  text-align:center;
-  color:#666;
-}
-
-@media print{
-  body{background:#fff}
-  .ticket{box-shadow:none}
+  border-top:1px solid #eee;
+  padding-top:10px;
 }
 </style>
 
-<script src="../vendor/qrcode.min.js"></script> 
+<script src="../vendor/qrcode.min.js"></script>
 </head>
 
 <body>
 <div class="ticket">
 
   <div class="header">
-    <div class="theatre" id="theatreName"></div>
-    <div class="ticket-id" id="ticketId"></div>
+    <div>КВИТОК / E-TICKET</div>
+    <div id="ticketId"></div>
   </div>
 
-  <div class="event" id="eventTitle"></div>
+  <div class="title" id="eventTitle"></div>
 
-  <div class="row" id="eventDate"></div>
-  <div class="row" id="eventTime"></div>
+  <div class="meta" id="eventDate"></div>
+  <div class="meta" id="eventTime"></div>
+  <div class="meta" id="theatreName"></div>
 
-  <div class="seat-block" id="seatInfo"></div>
+  <div class="layout">
 
-  <div class="price" id="priceInfo"></div>
+    <div class="left">
+      <div class="meta" id="seatInfo"></div>
+      <div class="meta" id="priceInfo"></div>
+      <div class="meta" id="orderInfo"></div>
+    </div>
 
-  <div class="qr-wrap" id="qr"></div>
+    <div class="right">
+      <img id="poster" class="poster">
+      <div id="qr" class="qr"></div>
+    </div>
 
-  <div class="order" id="orderInfo"></div>
+  </div>
 
   <div class="footer">
     Дійсний на одну особу.<br>
@@ -133,9 +118,21 @@ body{
 
 <script>
 (function(){
+
   const p = new URLSearchParams(location.search);
 
-  const theatre = p.get("theatre") || "Театр";
+  const venue = p.get("venue") || "shevchenko";
+
+  const theatreMap = {
+    shevchenko: "Театр ім. Т. Г. Шевченка",
+    academy: "Академія руху, Кривий Ріг"
+  };
+
+  const posterMap = {
+    "Сонечко всередині": "../images/sonechko.jpg",
+    "Залишайся собою": "../images/zalyshaysya.jpg"
+  };
+
   const ticketId = p.get("ticket") || "";
   const event = p.get("event") || "";
   const date = p.get("date") || "";
@@ -145,28 +142,33 @@ body{
   const order = p.get("order") || "";
   const payload = p.get("payload") || "";
 
-  document.getElementById("theatreName").textContent = theatre;
-  document.getElementById("ticketId").textContent = "E-Ticket № " + ticketId;
+  document.getElementById("ticketId").textContent = "№ " + ticketId;
   document.getElementById("eventTitle").textContent = event;
+
   document.getElementById("eventDate").textContent = "Дата: " + date;
-  document.getElementById("eventTime").textContent = "Початок: " + time;
+  document.getElementById("eventTime").textContent = "Час: " + time;
+
+  document.getElementById("theatreName").textContent = theatreMap[venue] || theatreMap.shevchenko;
+
   document.getElementById("seatInfo").textContent = "Місце: " + seat;
   document.getElementById("priceInfo").textContent = "Ціна: " + price + " грн";
   document.getElementById("orderInfo").textContent = "Замовлення: " + order;
 
-  if(!payload){
-    document.getElementById("qr").textContent = "QR недоступний";
-    return;
-  }
+  // афиша
+  const poster = posterMap[event] || "../images/default.jpg";
+  document.getElementById("poster").src = poster;
 
-  new QRCode(document.getElementById("qr"),{
-    text: payload,
-    width:130,
-    height:130,
-    correctLevel: QRCode.CorrectLevel.M
-  });
+  // QR
+  if(payload){
+    new QRCode(document.getElementById("qr"),{
+      text: payload,
+      width:120,
+      height:120
+    });
+  }
 
 })();
 </script>
+
 </body>
 </html>
