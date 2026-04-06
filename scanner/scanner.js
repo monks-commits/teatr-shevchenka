@@ -248,4 +248,9 @@ window.addEventListener("load", async () => {
   $("btnStart").addEventListener("click", start);
   $("btnStop").addEventListener("click", stop);
   $("btnClear").addEventListener("click", clearSecret);
+
+document.addEventListener("click", () => {
+  ensureAudio();
+}, { once: true });
+  
 });
