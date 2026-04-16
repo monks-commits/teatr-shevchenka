@@ -10,49 +10,77 @@ let lastScanAt = 0;
 
 // --- Sound (WebAudio) ---
 let audioCtx = null;
+let audioUnlocked = false;
 
 function ensureAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  // иногда контекст "suspended" пока не будет user gesture
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume().catch(() => {});
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    if (audioCtx.state === "suspended") {
+      return audioCtx.resume().catch(() => {});
+    }
+
+    return Promise.resolve();
+  } catch {
+    return Promise.resolve();
   }
 }
 
-function beep({ freq = 880, duration = 0.10, type = "sine", gain = 0.12 } = {}) {
+function beep({ freq = 880, duration = 0.12, type = "sine", gain = 0.20 } = {}) {
   try {
-    ensureAudio();  // ← ДОБАВЛЕНО
-
-    if (!audioCtx) return;
+    if (!audioCtx || audioCtx.state !== "running") return;
 
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
+
     o.type = type;
     o.frequency.value = freq;
-    g.gain.value = gain;
+
+    // мягкий вход/выход сигнала
+    const now = audioCtx.currentTime;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(Math.max(gain, 0.0001), now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     o.connect(g);
     g.connect(audioCtx.destination);
 
-    o.start();
-    setTimeout(() => {
-      try { o.stop(); } catch {}
-    }, duration * 1000);
-
+    o.start(now);
+    o.stop(now + duration + 0.02);
   } catch {}
 }
 
-function soundOk() {
-  // красивый короткий "пик"
-  beep({ freq: 1046, duration: 0.08, type: "sine", gain: 0.12 }); // C6
+async function unlockAudio() {
+  try {
+    await ensureAudio();
+    if (!audioCtx || audioCtx.state !== "running") return;
+
+    // очень короткий почти беззвучный сигнал для разблокировки
+    beep({ freq: 440, duration: 0.03, type: "sine", gain: 0.001 });
+    audioUnlocked = true;
+  } catch {}
 }
 
-function soundBad() {
-  // грубый двойной низкий сигнал
-  beep({ freq: 220, duration: 0.12, type: "square", gain: 0.10 });
-  setTimeout(() => beep({ freq: 196, duration: 0.14, type: "square", gain: 0.10 }), 140);
+async function soundOk() {
+  try {
+    await ensureAudio();
+    beep({ freq: 1046, duration: 0.14, type: "sine", gain: 0.30 });
+    setTimeout(() => {
+      beep({ freq: 1318, duration: 0.12, type: "sine", gain: 0.24 });
+    }, 110);
+  } catch {}
+}
+
+async function soundBad() {
+  try {
+    await ensureAudio();
+    beep({ freq: 220, duration: 0.18, type: "square", gain: 0.24 });
+    setTimeout(() => {
+      beep({ freq: 196, duration: 0.20, type: "square", gain: 0.22 });
+    }, 180);
+  } catch {}
 }
 
 function vibrateBad() {
@@ -97,7 +125,7 @@ async function sendToServer(qr_payload) {
   const secret = ($("secret").value || "").trim();
   if (cfg.requireSecret && !secret) {
     setStatus("warn", "Потрібен secret", "Вставте SCANNER_SECRET і повторіть сканування.", qr_payload);
-    soundBad();
+    await soundBad();
     vibrateBad();
     throw new Error("secret required");
   }
@@ -120,38 +148,37 @@ async function sendToServer(qr_payload) {
   // 401
   if (r.status === 401) {
     setStatus("bad", "Доступ заборонено", "Невірний SCANNER_SECRET (401).", qr_payload);
-    soundBad();
+    await soundBad();
     vibrateBad();
     return;
   }
 
   // 404 — билет не найден в Supabase
-if (r.status === 404) {
+  if (r.status === 404) {
+    // ⛔ если это НЕ касса — ошибка
+    if (!qr_payload.startsWith("order:CASH-")) {
+      setStatus("bad", "Недійсний квиток", "Ticket not found (404).", qr_payload);
+      await soundBad();
+      vibrateBad();
+      return;
+    }
 
-  // ⛔ если это НЕ касса — ошибка
-  if (!qr_payload.startsWith("order:CASH-")) {
-    setStatus("bad", "Недійсний квиток", "Ticket not found (404).", qr_payload);
-    soundBad();
-    vibrateBad();
+    // ✅ кассовый офлайн-билет
+    setStatus(
+      "ok",
+      "Пропустити (каса)",
+      "Офлайн-квиток • не синхронізований",
+      qr_payload
+    );
+    await soundOk();
     return;
   }
-
-  // ✅ кассовый офлайн-билет
-  setStatus(
-    "ok",
-    "Пропустити (каса)",
-    "Офлайн-квиток • не синхронізований",
-    qr_payload
-  );
-  soundOk();
-  return;
-}
 
   // 409 (already_used / race)
   if (r.status === 409) {
     const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
     setStatus("warn", "Вже використано", at ? `Погашено: ${at}` : "Квиток вже погашений.", qr_payload);
-    soundBad();
+    await soundBad();
     vibrateBad();
     return;
   }
@@ -159,7 +186,7 @@ if (r.status === 404) {
   // other errors
   if (!r.ok || data?.ok === false) {
     setStatus("bad", "Помилка", data?.error ? String(data.error) : `HTTP ${r.status}`, qr_payload);
-    soundBad();
+    await soundBad();
     vibrateBad();
     return;
   }
@@ -168,11 +195,12 @@ if (r.status === 404) {
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
   const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
   setStatus("ok", "Пропустити", [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "), qr_payload);
-  soundOk();
+  await soundOk();
 }
 
 async function onScanSuccess(decodedText) {
-  ensureAudio();
+  await ensureAudio();
+
   const now = Date.now();
   if (now - lastScanAt < cooldownMs) return;
   lastScanAt = now;
@@ -193,15 +221,15 @@ async function onScanSuccess(decodedText) {
 }
 
 async function start() {
-  // ВАЖНО: именно тут включаем аудио (после user gesture)
-  ensureAudio();
-
   $("btnStart").disabled = true;
 
-  const readerId = "reader";
-  qr = new Html5Qrcode(readerId);
-
   try {
+    await ensureAudio();
+    await unlockAudio();
+
+    const readerId = "reader";
+    qr = new Html5Qrcode(readerId);
+
     await qr.start(
       { facingMode: "environment" },
       { fps: 12, qrbox: { width: 280, height: 280 }, disableFlip: false },
@@ -210,13 +238,14 @@ async function start() {
 
     $("btnStop").disabled = false;
     setStatus("ok", "Камера працює", "Скануйте QR квитка.", "");
-    // маленький стартовый "тик"
-    beep({ freq: 660, duration: 0.05, type: "sine", gain: 0.06 });
+
+    // стартовый тестовый сигнал
+    beep({ freq: 880, duration: 0.16, type: "sine", gain: 0.32 });
   } catch (err) {
     $("btnStart").disabled = false;
     $("btnStop").disabled = true;
     setStatus("bad", "Помилка камери", String(err?.message || err), "");
-    soundBad();
+    await soundBad();
   }
 }
 
@@ -249,8 +278,16 @@ window.addEventListener("load", async () => {
   $("btnStop").addEventListener("click", stop);
   $("btnClear").addEventListener("click", clearSecret);
 
-document.addEventListener("click", () => {
-  ensureAudio();
-}, { once: true });
-  
+  // Доп. разблокировка аудио при первом касании экрана
+  document.addEventListener("click", async () => {
+    if (!audioUnlocked) {
+      await unlockAudio();
+    }
+  }, { once: true });
+
+  document.addEventListener("touchstart", async () => {
+    if (!audioUnlocked) {
+      await unlockAudio();
+    }
+  }, { once: true, passive: true });
 });
