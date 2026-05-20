@@ -191,6 +191,23 @@ async function sendToServer(qr_payload) {
     return;
   }
 
+// COMPENSATION
+if (data?.mode === "compensation") {
+  const seat = data?.ticket?.seat_label
+    ? `Компенсація • ${data.ticket.seat_label}`
+    : "Компенсаційний прохід";
+
+  setStatus(
+    "warn",
+    "КОМПЕНСАЦІЙНИЙ ПРОХІД",
+    seat,
+    qr_payload
+  );
+
+  await soundBad();
+  return;
+}
+  
   // OK
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
   const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
