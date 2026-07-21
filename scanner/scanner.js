@@ -1,21 +1,16 @@
-"use strict";
+// scanner.js (FULL REPLACE)
 
 const LS_SECRET_KEY = "va_scanner_secret_v1";
 
 let cfg = null;
 let qr = null;
-let scannerStarting = false;
-let scannerRunning = false;
-
 let lastQr = "";
+let cooldownMs = 1400;
 let lastScanAt = 0;
-const cooldownMs = 1400;
 
+// --- Sound (WebAudio) ---
 let audioCtx = null;
 let audioUnlocked = false;
-
-const $ = (id) => document.getElementById(id);
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function ensureAudio() {
   try {
@@ -61,178 +56,52 @@ async function unlockAudio() {
     await ensureAudio();
     if (!audioCtx || audioCtx.state !== "running") return;
 
-    beep({ freq:440, duration:0.03, type:"sine", gain:0.001 });
+    beep({ freq: 440, duration: 0.03, type: "sine", gain: 0.001 });
     audioUnlocked = true;
   } catch {}
 }
 
 async function soundOk() {
-  await ensureAudio();
-  beep({ freq:1046, duration:0.14, gain:0.30 });
-  setTimeout(() => beep({ freq:1318, duration:0.12, gain:0.24 }), 110);
+  try {
+    await ensureAudio();
+    beep({ freq: 1046, duration: 0.14, type: "sine", gain: 0.30 });
+    setTimeout(() => {
+      beep({ freq: 1318, duration: 0.12, type: "sine", gain: 0.24 });
+    }, 110);
+  } catch {}
 }
 
 async function soundBad() {
-  await ensureAudio();
-  beep({ freq:220, duration:0.18, type:"square", gain:0.24 });
-  setTimeout(() => beep({ freq:196, duration:0.20, type:"square", gain:0.22 }), 180);
+  try {
+    await ensureAudio();
+    beep({ freq: 220, duration: 0.18, type: "square", gain: 0.24 });
+    setTimeout(() => {
+      beep({ freq: 196, duration: 0.20, type: "square", gain: 0.22 });
+    }, 180);
+  } catch {}
 }
 
 function vibrateBad() {
   try {
-    if (navigator.vibrate) navigator.vibrate([80,40,120]);
+    if (navigator.vibrate) navigator.vibrate([80, 40, 120]);
   } catch {}
 }
 
+const $ = (id) => document.getElementById(id);
+
 function setStatus(kind, title, details, qrText) {
   const box = $("statusBox");
-  box.classList.remove("ok","warn","bad");
-  if (kind) box.classList.add(kind);
+  box.classList.remove("ok", "warn", "bad");
+  box.classList.add(kind);
 
   $("stText").textContent = title || "";
   $("stDetails").textContent = details || "—";
   $("stQr").textContent = qrText || "—";
 }
 
-function stopVideoTracks(){
-  document.querySelectorAll("video").forEach(video => {
-    try {
-      const stream = video.srcObject;
-      if (stream && typeof stream.getTracks === "function") {
-        stream.getTracks().forEach(track => {
-          try { track.stop(); } catch {}
-        });
-      }
-      video.srcObject = null;
-    } catch {}
-  });
-}
-
-async function releaseCamera({ showStatus = false } = {}){
-  /*
-    Сначала синхронно освобождаем MediaStream.
-    Это важно при уходе назад, сворачивании браузера и переходе
-    между обычным и Recovery Scanner.
-  */
-  stopVideoTracks();
-
-  const instance = qr;
-  qr = null;
-  scannerRunning = false;
-  scannerStarting = false;
-
-  if (instance) {
-    try { await instance.stop(); } catch {}
-    try { await instance.clear(); } catch {}
-  }
-
-  stopVideoTracks();
-
-  const reader = $("reader");
-  if (reader) reader.innerHTML = "";
-
-  if ($("btnStart")) $("btnStart").disabled = false;
-  if ($("btnStop")) $("btnStop").disabled = true;
-
-  if (showStatus) {
-    setStatus("ok", "Камеру звільнено", "Можна запустити повторно.", "");
-  }
-}
-
-function chooseRearCamera(cameras){
-  if (!Array.isArray(cameras) || !cameras.length) return null;
-
-  const rearPattern =
-    /(back|rear|environment|задн|основн|camera 0)/i;
-
-  return (
-    cameras.find(c => rearPattern.test(String(c.label || ""))) ||
-    cameras[cameras.length - 1]
-  );
-}
-
-function waitForVideoFrame(timeoutMs = 7000){
-  return new Promise((resolve, reject) => {
-    const started = Date.now();
-
-    const check = () => {
-      const video = document.querySelector("#reader video");
-
-      if (
-        video &&
-        video.srcObject &&
-        video.readyState >= 2 &&
-        video.videoWidth > 0 &&
-        video.videoHeight > 0
-      ) {
-        resolve(video);
-        return;
-      }
-
-      if (Date.now() - started >= timeoutMs) {
-        reject(new Error(
-          "Камера відкрита, але відеокадр не з'явився. Натисніть «Запустити камеру» ще раз."
-        ));
-        return;
-      }
-
-      requestAnimationFrame(check);
-    };
-
-    check();
-  });
-}
-
-async function startQrEngine(onSuccess){
-  const scanConfig = {
-    fps:10,
-    qrbox:(viewWidth, viewHeight) => {
-      const edge = Math.max(
-        180,
-        Math.min(280, Math.floor(Math.min(viewWidth, viewHeight) * 0.72))
-      );
-      return { width:edge, height:edge };
-    },
-    disableFlip:false
-  };
-
-  let instance = new Html5Qrcode("reader", { verbose:false });
-
-  try {
-    await instance.start(
-      { facingMode:{ ideal:"environment" } },
-      scanConfig,
-      onSuccess,
-      () => {}
-    );
-    return instance;
-  } catch(firstError) {
-    try { await instance.clear(); } catch {}
-    stopVideoTracks();
-    await sleep(350);
-
-    const cameras = await Html5Qrcode.getCameras();
-    const rear = chooseRearCamera(cameras);
-
-    if (!rear?.id) throw firstError;
-
-    instance = new Html5Qrcode("reader", { verbose:false });
-
-    await instance.start(
-      rear.id,
-      scanConfig,
-      onSuccess,
-      () => {}
-    );
-
-    return instance;
-  }
-}
-
 async function loadConfig() {
-  const res = await fetch("./config.json", { cache:"no-store" });
+  const res = await fetch("./config.json", { cache: "no-store" });
   if (!res.ok) throw new Error("Не вдалося завантажити scanner/config.json");
-
   cfg = await res.json();
 
   $("theatreName").textContent = cfg.theatreName || "Сканер квитків";
@@ -252,31 +121,24 @@ async function sendToServer(qr_payload) {
   const gate = ($("gate").value || "gate-1").trim();
 
   const secret = ($("secret").value || "").trim();
-
   if (cfg.requireSecret && !secret) {
-    setStatus(
-      "warn",
-      "Потрібен secret",
-      "Вставте SCANNER_SECRET і повторіть сканування.",
-      qr_payload
-    );
+    setStatus("warn", "Потрібен secret", "Вставте SCANNER_SECRET і повторіть сканування.", qr_payload);
     await soundBad();
     vibrateBad();
-    return;
+    throw new Error("secret required");
   }
 
   if (secret) localStorage.setItem(LS_SECRET_KEY, secret);
 
+  const body = { qr_payload, checked_in_by: gate };
+
   const r = await fetch(endpoint, {
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "x-scanner-secret":secret
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-scanner-secret": secret,
     },
-    body:JSON.stringify({
-      qr_payload,
-      checked_in_by:gate
-    })
+    body: JSON.stringify(body),
   });
 
   const data = await r.json().catch(() => ({}));
@@ -308,24 +170,14 @@ async function sendToServer(qr_payload) {
 
   if (r.status === 409) {
     const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
-    setStatus(
-      "warn",
-      "Вже використано",
-      at ? `Погашено: ${at}` : "Квиток вже погашений.",
-      qr_payload
-    );
+    setStatus("warn", "Вже використано", at ? `Погашено: ${at}` : "Квиток вже погашений.", qr_payload);
     await soundBad();
     vibrateBad();
     return;
   }
 
   if (!r.ok || data?.ok === false) {
-    setStatus(
-      "bad",
-      "Помилка",
-      data?.error ? String(data.error) : `HTTP ${r.status}`,
-      qr_payload
-    );
+    setStatus("bad", "Помилка", data?.error ? String(data.error) : `HTTP ${r.status}`, qr_payload);
     await soundBad();
     vibrateBad();
     return;
@@ -336,23 +188,20 @@ async function sendToServer(qr_payload) {
       ? `Компенсація • ${data.ticket.seat_label}`
       : "Компенсаційний прохід";
 
-    setStatus("warn", "КОМПЕНСАЦІЙНИЙ ПРОХІД", seat, qr_payload);
+    setStatus(
+      "warn",
+      "КОМПЕНСАЦІЙНИЙ ПРОХІД",
+      seat,
+      qr_payload
+    );
+
     await soundBad();
     return;
   }
-
+  
   const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
-  const seat = data?.ticket?.seat_label
-    ? `Місце: ${data.ticket.seat_label}`
-    : "";
-
-  setStatus(
-    "ok",
-    "Пропустити",
-    [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "),
-    qr_payload
-  );
-
+  const seat = data?.ticket?.seat_label ? `Місце: ${data.ticket.seat_label}` : "";
+  setStatus("ok", "Пропустити", [seat, at ? `Погашено: ${at}` : ""].filter(Boolean).join(" • "), qr_payload);
   await soundOk();
 }
 
@@ -360,82 +209,71 @@ async function onScanSuccess(decodedText) {
   await ensureAudio();
 
   const now = Date.now();
+  if (now - lastScanAt < cooldownMs) return;
+  lastScanAt = now;
+
   const text = normalizeQr(decodedText);
   if (!text) return;
 
-  if (text === lastQr && now - lastScanAt < cooldownMs) return;
-
+  if (text === lastQr) return;
   lastQr = text;
-  lastScanAt = now;
+
   $("stQr").textContent = text;
 
   try {
     await sendToServer(text);
-  } catch(e) {
-    console.error("scan request error", e);
+  } catch {
   }
 }
 
 async function start() {
-  if (scannerStarting || scannerRunning) return;
-
-  scannerStarting = true;
   $("btnStart").disabled = true;
-  $("btnStop").disabled = true;
 
   try {
     await ensureAudio();
     await unlockAudio();
 
-    await releaseCamera();
-    await sleep(350);
+    const readerId = "reader";
+    qr = new Html5Qrcode(readerId);
 
-    scannerStarting = true;
-    $("btnStart").disabled = true;
-
-    qr = await startQrEngine(onScanSuccess);
-
-    const video = await waitForVideoFrame();
-    video.setAttribute("playsinline", "");
-    video.muted = true;
-
-    try { await video.play(); } catch {}
-
-    scannerRunning = true;
-    scannerStarting = false;
+    await qr.start(
+      { facingMode: "environment" },
+      { fps: 12, qrbox: { width: 280, height: 280 }, disableFlip: false },
+      onScanSuccess,
+    );
 
     $("btnStop").disabled = false;
     setStatus("ok", "Камера працює", "Скануйте QR квитка.", "");
 
-    beep({ freq:880, duration:0.12, gain:0.22 });
-
-  } catch(err) {
-    await releaseCamera();
-
-    setStatus(
-      "bad",
-      "Помилка камери",
-      String(err?.message || err),
-      ""
-    );
-
+    beep({ freq: 880, duration: 0.16, type: "sine", gain: 0.32 });
+  } catch (err) {
+    $("btnStart").disabled = false;
+    $("btnStop").disabled = true;
+    setStatus("bad", "Помилка камери", String(err?.message || err), "");
     await soundBad();
   }
 }
 
 async function stop() {
-  await releaseCamera({ showStatus:true });
+  $("btnStop").disabled = true;
+  try {
+    if (qr) {
+      await qr.stop();
+      await qr.clear();
+      qr = null;
+    }
+    $("btnStart").disabled = false;
+    setStatus("ok", "Зупинено", "Камеру зупинено.", "");
+  } catch (e) {
+    $("btnStart").disabled = false;
+    setStatus("warn", "Зупинено з попередженням", String(e?.message || e), "");
+  }
 }
 
 function clearSecret() {
   localStorage.removeItem(LS_SECRET_KEY);
   $("secret").value = "";
   setStatus("ok", "Secret очищено", "Вставте SCANNER_SECRET знову при потребі.", "");
-}
-
-function emergencyRelease(){
-  stopVideoTracks();
-  releaseCamera().catch(() => {});
 }
 
 window.addEventListener("load", async () => {
@@ -446,31 +284,14 @@ window.addEventListener("load", async () => {
   $("btnClear").addEventListener("click", clearSecret);
 
   document.addEventListener("click", async () => {
-    if (!audioUnlocked) await unlockAudio();
-  }, { once:true });
+    if (!audioUnlocked) {
+      await unlockAudio();
+    }
+  }, { once: true });
 
   document.addEventListener("touchstart", async () => {
-    if (!audioUnlocked) await unlockAudio();
-  }, { once:true, passive:true });
-});
-
-window.addEventListener("pagehide", emergencyRelease);
-window.addEventListener("beforeunload", emergencyRelease);
-
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && (scannerRunning || scannerStarting)) {
-    emergencyRelease();
-  }
-});
-
-window.addEventListener("pageshow", event => {
-  if (event.persisted) {
-    emergencyRelease();
-    setStatus(
-      "warn",
-      "Камеру було звільнено",
-      "Після повернення на сторінку запустіть камеру повторно.",
-      ""
-    );
-  }
+    if (!audioUnlocked) {
+      await unlockAudio();
+    }
+  }, { once: true, passive: true });
 });
