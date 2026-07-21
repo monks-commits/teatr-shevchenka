@@ -2,10 +2,14 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" /> 
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <title>Сканер квитків</title>
   <link rel="stylesheet" href="./scanner.css" />
-  <!-- Библиотека сканирования QR (работает в браузере, без сборки) -->
+
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -28,7 +32,7 @@
           </div>
 
           <div class="hint">
-            Камера працює тільки по <b>HTTPS</b>. На телефоні відкривайте сканер через https-домен (GitHub Pages теж ок).
+            Камера працює тільки по <b>HTTPS</b>. На телефоні відкривайте сканер через https-домен.
           </div>
         </div>
 
@@ -40,7 +44,7 @@
           <input id="secret" class="input" placeholder="встав код (разово)"/>
 
           <div class="small">
-            Зберігається в цьому браузері (localStorage). Можна видалити в налаштуваннях браузера.
+            Зберігається в цьому браузері (localStorage).
           </div>
 
           <div id="statusBox" class="status ok">
@@ -57,6 +61,6 @@
     </section>
   </div>
 
-  <script src="./scanner.js"></script>
+  <script src="./scanner.js?v=20260721-camera-session-v3"></script>
 </body>
 </html>
