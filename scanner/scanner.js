@@ -109,31 +109,7 @@ async function loadConfig() {
   const saved = localStorage.getItem(LS_SECRET_KEY) || "";
   if (saved) $("secret").value = saved;
 
-  const sid = expectedSeance();
-  if ($("seanceLine")) {
-    $("seanceLine").textContent = sid
-      ? `Контроль сеансу: ${sid}`
-      : "Сеанс не передано. Відкрийте сканер через «Місце контролера».";
-  }
-
-  setStatus(
-    sid ? "ok" : "warn",
-    sid ? "Готово" : "Сеанс не визначено",
-    sid
-      ? "Сканер прив'язаний до поточного сеансу. Запустіть камеру."
-      : "Для штатного входу відкрийте сканер через робоче місце контролера.",
-    ""
-  );
-}
-
-function expectedSeance() {
-  const params = new URLSearchParams(location.search);
-  return String(
-    params.get("seance") ||
-    params.get("seance_id") ||
-    cfg?.expectedSeanceId ||
-    ""
-  ).trim();
+  setStatus("ok", "Готово", "Запустіть камеру і скануйте QR.", "");
 }
 
 function normalizeQr(text) {
@@ -143,7 +119,6 @@ function normalizeQr(text) {
 async function sendToServer(qr_payload) {
   const endpoint = cfg.endpoint;
   const gate = ($("gate").value || "gate-1").trim();
-  const sid = expectedSeance();
 
   const secret = ($("secret").value || "").trim();
   if (cfg.requireSecret && !secret) {
@@ -156,7 +131,6 @@ async function sendToServer(qr_payload) {
   if (secret) localStorage.setItem(LS_SECRET_KEY, secret);
 
   const body = { qr_payload, checked_in_by: gate };
-  if (sid) body.expected_seance_id = sid;
 
   const r = await fetch(endpoint, {
     method: "POST",
@@ -177,25 +151,6 @@ async function sendToServer(qr_payload) {
   }
 
   if (r.status === 404) {
-    // Якщо сканер прив'язаний до конкретного сеансу, невідомий квиток
-    // не можна пропускати як "офлайн касу": його сеанс неможливо перевірити.
-    if (sid) {
-      const looksCash = /^order:CASH-/i.test(qr_payload) || /^TK-/i.test(qr_payload);
-      setStatus(
-        looksCash ? "warn" : "bad",
-        looksCash ? "Квиток не синхронізовано" : "Недійсний квиток",
-        looksCash
-          ? "Касовий квиток не знайдено у центральній базі. Виконайте SYNC у касі та повторіть сканування."
-          : "Квиток не знайдено для перевірки поточного сеансу.",
-        qr_payload
-      );
-      await soundBad();
-      vibrateBad();
-      return;
-    }
-
-    // Лише прямий технічний запуск без прив'язки до сеансу зберігає
-    // стару сумісність для legacy order:CASH- QR.
     if (!qr_payload.startsWith("order:CASH-")) {
       setStatus("bad", "Недійсний квиток", "Ticket not found (404).", qr_payload);
       await soundBad();
@@ -204,29 +159,16 @@ async function sendToServer(qr_payload) {
     }
 
     setStatus(
-      "warn",
-      "Квиток не синхронізовано",
-      "Legacy касовий QR не перевірений по сеансу. Для штатного входу використовуйте «Місце контролера» після SYNC.",
+      "ok",
+      "Пропустити (каса)",
+      "Офлайн-квиток • не синхронізований",
       qr_payload
     );
-    await soundBad();
-    vibrateBad();
+    await soundOk();
     return;
   }
 
   if (r.status === 409) {
-    if (data?.error === "wrong_seance" || data?.response_code === "wrong_seance") {
-      setStatus(
-        "bad",
-        "Інший сеанс",
-        "Цей квиток належить іншому сеансу. Не пропускати.",
-        qr_payload
-      );
-      await soundBad();
-      vibrateBad();
-      return;
-    }
-
     const at = data?.checked_in_at || data?.ticket?.checked_in_at || "";
     setStatus("warn", "Вже використано", at ? `Погашено: ${at}` : "Квиток вже погашений.", qr_payload);
     await soundBad();
